@@ -1,4 +1,5 @@
 #include "lat_lng_harmony.hpp"
+#include "napi_double_props.hpp"
 #include "utils/logger.h"
 #include "napi/core/napi_args.hpp"
 #include <cmath>
@@ -12,68 +13,20 @@ using mbgl::harmony::napi::NapiArgs;
 // ==================== LatLngHarmony Helper Implementation ====================
 
 napi_value LatLngHarmony::CreateLatLngObject(napi_env env, const mbgl::LatLng& latLng) {
-    // Create object literal {latitude, longitude}
-    napi_value obj;
-    napi_status status = napi_create_object(env, &obj);
-    if (status != napi_ok) {
-        Logger::error("LatLngHarmony", "Failed to create LatLng object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    // Set latitude property
-    napi_value latValue;
-    napi_create_double(env, latLng.latitude(), &latValue);
-    napi_set_named_property(env, obj, "latitude", latValue);
-    
-    // Set longitude property
-    napi_value lngValue;
-    napi_create_double(env, latLng.longitude(), &lngValue);
-    napi_set_named_property(env, obj, "longitude", lngValue);
-    
-    return obj;
+    // Object literal {latitude, longitude}
+    return CreateDoublePropsObject(env, "LatLngHarmony",
+                                   {{"latitude", latLng.latitude()},
+                                    {"longitude", latLng.longitude()}});
 }
 
 bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& outLatLng) {
-    // Ensure the value is an object
-    napi_valuetype type;
-    napi_status status = napi_typeof(env, value, &type);
-    if (status != napi_ok || type != napi_object) {
-        Logger::error("LatLngHarmony", "Value is not an object");
+    double latitude = 0.0;
+    double longitude = 0.0;
+    if (!ParseDoubleProps(env, value, "LatLngHarmony",
+                          {{"latitude", &latitude}, {"longitude", &longitude}})) {
         return false;
     }
-    
-    // Retrieve latitude property
-    napi_value latValue;
-    status = napi_get_named_property(env, value, "latitude", &latValue);
-    if (status != napi_ok) {
-        Logger::error("LatLngHarmony", "Failed to get latitude property");
-        return false;
-    }
-    
-    double latitude;
-    status = napi_get_value_double(env, latValue, &latitude);
-    if (status != napi_ok) {
-        Logger::error("LatLngHarmony", "Failed to parse latitude as double");
-        return false;
-    }
-    
-    // Retrieve longitude property
-    napi_value lngValue;
-    status = napi_get_named_property(env, value, "longitude", &lngValue);
-    if (status != napi_ok) {
-        Logger::error("LatLngHarmony", "Failed to get longitude property");
-        return false;
-    }
-    
-    double longitude;
-    status = napi_get_value_double(env, lngValue, &longitude);
-    if (status != napi_ok) {
-        Logger::error("LatLngHarmony", "Failed to parse longitude as double");
-        return false;
-    }
-    
+
     // Validate range
     if (latitude < -90.0 || latitude > 90.0) {
         Logger::error("LatLngHarmony", "Latitude out of range: %f", latitude);
@@ -83,7 +36,7 @@ bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& ou
         Logger::error("LatLngHarmony", "Longitude out of range: %f", longitude);
         return false;
     }
-    
+
     outLatLng = mbgl::LatLng(latitude, longitude);
     return true;
 }

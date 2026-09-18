@@ -2,21 +2,9 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
+#include "style/layer_source_factory_harmony.hpp"
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/source.hpp>
-#include <mbgl/style/sources/geojson_source.hpp>
-#include <mbgl/style/sources/vector_source.hpp>
-#include <mbgl/style/sources/raster_source.hpp>
-#include <mbgl/style/sources/raster_dem_source.hpp>
-#include <mbgl/style/sources/image_source.hpp>
-// Source NAPI classes
-#include "sources/geojson_source_napi.hpp"
-#include "sources/vector_source_napi.hpp"
-#include "sources/raster_source_napi.hpp"
-#include "sources/raster_dem_source_napi.hpp"
-#include "sources/image_source_napi.hpp"
-#include "sources/custom_geometry_source_napi.hpp"
-#include <mbgl/style/sources/custom_geometry_source.hpp>
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -121,38 +109,20 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
     }
 
     {
-        // Create the corresponding NAPI instance based on the source type
         Logger::info("StyleNAPI", "GetSource: %s (type: %d)", sourceId.c_str(), static_cast<int>(source->getType()));
 
-        switch (source->getType()) {
-            case mbgl::style::SourceType::GeoJSON: {
-                auto* geoJsonSource = static_cast<mbgl::style::GeoJSONSource*>(source);
-                return mbgl::harmony::GeoJsonSourceNAPI::CreateInstance(env, geoJsonSource);
-            }
-            case mbgl::style::SourceType::Vector: {
-                auto* vectorSource = static_cast<mbgl::style::VectorSource*>(source);
-                return mbgl::harmony::VectorSourceNAPI::CreateInstance(env, vectorSource);
-            }
-            case mbgl::style::SourceType::Raster: {
-                auto* rasterSource = static_cast<mbgl::style::RasterSource*>(source);
-                return mbgl::harmony::RasterSourceNAPI::CreateInstance(env, rasterSource);
-            }
-            case mbgl::style::SourceType::RasterDEM: {
-                auto* rasterDemSource = static_cast<mbgl::style::RasterDEMSource*>(source);
-                return mbgl::harmony::RasterDemSourceNAPI::CreateInstance(env, rasterDemSource);
-            }
-            case mbgl::style::SourceType::Image: {
-                auto* imageSource = static_cast<mbgl::style::ImageSource*>(source);
-                return mbgl::harmony::ImageSourceNAPI::CreateInstance(env, imageSource);
-            }
-            case mbgl::style::SourceType::CustomVector: {
-                auto* customGeometrySource = static_cast<mbgl::style::CustomGeometrySource*>(source);
-                return mbgl::harmony::CustomGeometrySourceNAPI::CreateInstance(env, customGeometrySource);
-            }
-            default:
-                Logger::warn("StyleNAPI", "GetSource: Unknown source type: %d", static_cast<int>(source->getType()));
-                return napiArgs.Null();
+        // Create the corresponding NAPI instance through the shared factory
+        // (same per-type CreateInstance dispatch as before). Null fallback
+        // keeps the historical "unknown source type" branch observable.
+        napi_value wrapper = mbgl::harmony::LayerSourceFactory::createSourceWrapper(
+            env, source, mbgl::harmony::WrapperFallback::Null);
+        napi_valuetype wrapperType = napi_undefined;
+        napi_typeof(env, wrapper, &wrapperType);
+        if (wrapperType == napi_null) {
+            Logger::warn("StyleNAPI", "GetSource: Unknown source type: %d", static_cast<int>(source->getType()));
+            return napiArgs.Null();
         }
+        return wrapper;
     }
 }
 
@@ -199,32 +169,9 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
             napi_value idValue = CreateStringValue(env, source->getID());
             napi_set_named_property(env, sourceObj, "id", idValue);
             
-            // Determine the source type
-            std::string typeStr;
-            switch (source->getType()) {
-                case mbgl::style::SourceType::Vector:
-                    typeStr = "vector";
-                    break;
-                case mbgl::style::SourceType::Raster:
-                    typeStr = "raster";
-                    break;
-                case mbgl::style::SourceType::RasterDEM:
-                    typeStr = "raster-dem";
-                    break;
-                case mbgl::style::SourceType::GeoJSON:
-                    typeStr = "geojson";
-                    break;
-                case mbgl::style::SourceType::Image:
-                    typeStr = "image";
-                    break;
-                case mbgl::style::SourceType::CustomVector:
-                    typeStr = "custom-vector";
-                    break;
-                default:
-                    typeStr = "unknown";
-                    break;
-            }
-            
+            // Determine the source type (single shared spelling)
+            const std::string typeStr = mbgl::harmony::LayerSourceFactory::SourceTypeToString(source->getType());
+
             napi_value typeValue = CreateStringValue(env, typeStr);
             napi_set_named_property(env, sourceObj, "type", typeValue);
             

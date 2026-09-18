@@ -49,6 +49,53 @@ bool ReadBoolProperty(napi_env env, napi_value value, bool fallback) {
     return out;
 }
 
+// The minZoom/maxZoom/pixelRatio/includeIdeographs options shared by the
+// TilePyramid and Geometry region definitions.
+struct CommonRegionOptions {
+    double minZoom = 0.0;
+    double maxZoom = 22.0;
+    double pixelRatio = 1.0;
+    bool includeIdeographs = false;
+};
+
+CommonRegionOptions ReadCommonOptions(napi_env env, napi_value obj) {
+    CommonRegionOptions opts;
+
+    napi_value value;
+    napi_get_named_property(env, obj, "minZoom", &value);
+    opts.minZoom = ReadDoubleProperty(env, value, 0.0);
+
+    napi_get_named_property(env, obj, "maxZoom", &value);
+    opts.maxZoom = ReadDoubleProperty(env, value, 22.0);
+
+    napi_get_named_property(env, obj, "pixelRatio", &value);
+    opts.pixelRatio = ReadDoubleProperty(env, value, 1.0);
+
+    napi_get_named_property(env, obj, "includeIdeographs", &value);
+    opts.includeIdeographs = ReadBoolProperty(env, value, false);
+
+    return opts;
+}
+
+// Works for both OfflineTilePyramidRegionDefinition and
+// OfflineGeometryRegionDefinition, which share the same option members.
+template <typename Definition>
+void WriteCommonOptions(napi_env env, napi_value obj, const Definition& def) {
+    napi_value value;
+
+    napi_create_double(env, def.minZoom, &value);
+    napi_set_named_property(env, obj, "minZoom", value);
+
+    napi_create_double(env, def.maxZoom, &value);
+    napi_set_named_property(env, obj, "maxZoom", value);
+
+    napi_create_double(env, def.pixelRatio, &value);
+    napi_set_named_property(env, obj, "pixelRatio", value);
+
+    napi_get_boolean(env, def.includeIdeographs, &value);
+    napi_set_named_property(env, obj, "includeIdeographs", value);
+}
+
 } // namespace
 
 // ========== Convert from NAPI object to C++ definition ==========
@@ -104,33 +151,15 @@ mbgl::OfflineTilePyramidRegionDefinition OfflineRegionDefinitionNAPI::TilePyrami
         throw std::runtime_error("Failed to parse bounds");
     }
 
-    // Get minZoom
-    napi_value minZoomValue;
-    napi_get_named_property(env, obj, "minZoom", &minZoomValue);
-    double minZoom = ReadDoubleProperty(env, minZoomValue, 0.0);
-
-    // Get maxZoom
-    napi_value maxZoomValue;
-    napi_get_named_property(env, obj, "maxZoom", &maxZoomValue);
-    double maxZoom = ReadDoubleProperty(env, maxZoomValue, 22.0);
-
-    // Get pixelRatio
-    napi_value pixelRatioValue;
-    napi_get_named_property(env, obj, "pixelRatio", &pixelRatioValue);
-    double pixelRatio = ReadDoubleProperty(env, pixelRatioValue, 1.0);
-
-    // Get includeIdeographs
-    napi_value includeIdeographsValue;
-    napi_get_named_property(env, obj, "includeIdeographs", &includeIdeographsValue);
-    bool includeIdeographs = ReadBoolProperty(env, includeIdeographsValue, false);
+    CommonRegionOptions opts = ReadCommonOptions(env, obj);
 
     return mbgl::OfflineTilePyramidRegionDefinition(
         std::move(styleURL),
         bounds,
-        minZoom,
-        maxZoom,
-        static_cast<float>(pixelRatio),
-        includeIdeographs
+        opts.minZoom,
+        opts.maxZoom,
+        static_cast<float>(opts.pixelRatio),
+        opts.includeIdeographs
     );
 }
 
@@ -151,27 +180,9 @@ napi_value OfflineRegionDefinitionNAPI::TilePyramidToNapi(napi_env env, const mb
     // Set bounds
     napi_value boundsValue = mbgl::harmony::LatLngBoundsHarmony::CreateLatLngBoundsObject(env, def.bounds);
     napi_set_named_property(env, obj, "bounds", boundsValue);
-    
-    // Set minZoom
-    napi_value minZoomValue;
-    napi_create_double(env, def.minZoom, &minZoomValue);
-    napi_set_named_property(env, obj, "minZoom", minZoomValue);
-    
-    // Set maxZoom
-    napi_value maxZoomValue;
-    napi_create_double(env, def.maxZoom, &maxZoomValue);
-    napi_set_named_property(env, obj, "maxZoom", maxZoomValue);
-    
-    // Set pixelRatio
-    napi_value pixelRatioValue;
-    napi_create_double(env, def.pixelRatio, &pixelRatioValue);
-    napi_set_named_property(env, obj, "pixelRatio", pixelRatioValue);
-    
-    // Set includeIdeographs
-    napi_value includeIdeographsValue;
-    napi_get_boolean(env, def.includeIdeographs, &includeIdeographsValue);
-    napi_set_named_property(env, obj, "includeIdeographs", includeIdeographsValue);
-    
+
+    WriteCommonOptions(env, obj, def);
+
     return obj;
 }
 
@@ -189,33 +200,15 @@ mbgl::OfflineGeometryRegionDefinition OfflineRegionDefinitionNAPI::GeometryFromN
 
     mbgl::Geometry<double> geometry = mbgl::harmony::geojson::GeoJsonConverter::JsObjectToGeometry(env, geometryValue);
 
-    // Get minZoom
-    napi_value minZoomValue;
-    napi_get_named_property(env, obj, "minZoom", &minZoomValue);
-    double minZoom = ReadDoubleProperty(env, minZoomValue, 0.0);
-
-    // Get maxZoom
-    napi_value maxZoomValue;
-    napi_get_named_property(env, obj, "maxZoom", &maxZoomValue);
-    double maxZoom = ReadDoubleProperty(env, maxZoomValue, 22.0);
-
-    // Get pixelRatio
-    napi_value pixelRatioValue;
-    napi_get_named_property(env, obj, "pixelRatio", &pixelRatioValue);
-    double pixelRatio = ReadDoubleProperty(env, pixelRatioValue, 1.0);
-
-    // Get includeIdeographs
-    napi_value includeIdeographsValue;
-    napi_get_named_property(env, obj, "includeIdeographs", &includeIdeographsValue);
-    bool includeIdeographs = ReadBoolProperty(env, includeIdeographsValue, false);
+    CommonRegionOptions opts = ReadCommonOptions(env, obj);
 
     return mbgl::OfflineGeometryRegionDefinition(
         std::move(styleURL),
         geometry,
-        minZoom,
-        maxZoom,
-        static_cast<float>(pixelRatio),
-        includeIdeographs
+        opts.minZoom,
+        opts.maxZoom,
+        static_cast<float>(opts.pixelRatio),
+        opts.includeIdeographs
     );
 }
 
@@ -236,27 +229,9 @@ napi_value OfflineRegionDefinitionNAPI::GeometryToNapi(napi_env env, const mbgl:
     // Set geometry
     napi_value geometryValue = mbgl::harmony::geojson::GeoJsonConverter::GeometryToJsObject(env, def.geometry);
     napi_set_named_property(env, obj, "geometry", geometryValue);
-    
-    // Set minZoom
-    napi_value minZoomValue;
-    napi_create_double(env, def.minZoom, &minZoomValue);
-    napi_set_named_property(env, obj, "minZoom", minZoomValue);
-    
-    // Set maxZoom
-    napi_value maxZoomValue;
-    napi_create_double(env, def.maxZoom, &maxZoomValue);
-    napi_set_named_property(env, obj, "maxZoom", maxZoomValue);
-    
-    // Set pixelRatio
-    napi_value pixelRatioValue;
-    napi_create_double(env, def.pixelRatio, &pixelRatioValue);
-    napi_set_named_property(env, obj, "pixelRatio", pixelRatioValue);
-    
-    // Set includeIdeographs
-    napi_value includeIdeographsValue;
-    napi_get_boolean(env, def.includeIdeographs, &includeIdeographsValue);
-    napi_set_named_property(env, obj, "includeIdeographs", includeIdeographsValue);
-    
+
+    WriteCommonOptions(env, obj, def);
+
     return obj;
 }
 

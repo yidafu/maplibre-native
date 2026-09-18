@@ -13,6 +13,7 @@ import { ComponentContentRegistry } from '../annotations/ComponentContentRegistr
 import { ViewAnnotationBuilderContext } from '../annotations/ViewAnnotationTypes';
 import { NativeViewAnnotationOptions, NativeViewAnnotationFrame } from '../annotations/NativeViewAnnotationTypes';
 import { UiSettings } from '../UiSettings';
+import { widgetX, widgetY } from '../common/MapUtils';
 import { CompassView } from '../widgets/CompassView';
 import { LogoView } from '../widgets/LogoView';
 import { ScaleBarView } from '../widgets/ScaleBarView';
@@ -342,17 +343,7 @@ export struct MapView {
    */
   private getCompassX(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const alignment = uiSettings.getCompassAlignment();
-    const margins = uiSettings.getCompassMargins();
-
-    switch (alignment) {
-      case Alignment.TopStart:
-      case Alignment.Start:
-      case Alignment.BottomStart:
-        return margins.left;
-      default:
-        return `calc(100% - 48vp - ${margins.right}vp)`; // 100% - component width - right margin
-    }
+    return widgetX(48, uiSettings.getCompassAlignment(), uiSettings.getCompassMargins());
   }
 
   /**
@@ -360,17 +351,7 @@ export struct MapView {
    */
   private getCompassY(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const alignment = uiSettings.getCompassAlignment();
-    const margins = uiSettings.getCompassMargins();
-
-    switch (alignment) {
-      case Alignment.BottomStart:
-      case Alignment.Bottom:
-      case Alignment.BottomEnd:
-        return `calc(100% - 48vp - ${margins.bottom}vp)`; // 100% - component height - bottom margin
-      default:
-        return margins.top;
-    }
+    return widgetY(48, uiSettings.getCompassAlignment(), uiSettings.getCompassMargins());
   }
 
   /**
@@ -378,21 +359,7 @@ export struct MapView {
    */
   private getLogoX(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const alignment = uiSettings.getLogoAlignment();
-    const margins = uiSettings.getLogoMargins();
-
-    switch (alignment) {
-      case Alignment.TopStart:
-      case Alignment.Start:
-      case Alignment.BottomStart:
-        return margins.left;
-      case Alignment.TopEnd:
-      case Alignment.End:
-      case Alignment.BottomEnd:
-        return `calc(100% - 80vp - ${margins.right}vp)`; // 100% - logo width - right margin
-      default:
-        return margins.left; // Default left alignment
-    }
+    return widgetX(80, uiSettings.getLogoAlignment(), uiSettings.getLogoMargins());
   }
 
   /**
@@ -400,17 +367,7 @@ export struct MapView {
    */
   private getLogoY(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const alignment = uiSettings.getLogoAlignment();
-    const margins = uiSettings.getLogoMargins();
-
-    switch (alignment) {
-      case Alignment.TopStart:
-      case Alignment.Top:
-      case Alignment.TopEnd:
-        return margins.top;
-      default:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - logo height - bottom margin
-    }
+    return widgetY(40, uiSettings.getLogoAlignment(), uiSettings.getLogoMargins());
   }
 
   /**
@@ -418,21 +375,8 @@ export struct MapView {
    */
   private getScaleBarX(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const alignment = uiSettings.getScaleBarAlignment();
-    const margins = uiSettings.getScaleBarMargins();
-
-    switch (alignment) {
-      case Alignment.TopStart:
-      case Alignment.Start:
-      case Alignment.BottomStart:
-        return margins.left;
-      case Alignment.TopEnd:
-      case Alignment.End:
-      case Alignment.BottomEnd:
-        return `calc(100% - 200vp - ${margins.right}vp)`; // 100% - scale bar max width - right margin
-      default:
-        return margins.left; // Default left alignment
-    }
+    // 200vp = scale bar max width
+    return widgetX(200, uiSettings.getScaleBarAlignment(), uiSettings.getScaleBarMargins());
   }
 
   /**
@@ -440,17 +384,7 @@ export struct MapView {
    */
   private getScaleBarY(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const alignment = uiSettings.getScaleBarAlignment();
-    const margins = uiSettings.getScaleBarMargins();
-
-    switch (alignment) {
-      case Alignment.BottomStart:
-      case Alignment.Bottom:
-      case Alignment.BottomEnd:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - scale bar height - bottom margin
-      default:
-        return margins.top;
-    }
+    return widgetY(40, uiSettings.getScaleBarAlignment(), uiSettings.getScaleBarMargins());
   }
 
   /**
@@ -458,19 +392,7 @@ export struct MapView {
    */
   private getAttributionX(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const alignment = uiSettings.getAttributionAlignment();
-    const margins = uiSettings.getAttributionMargins();
-
-    switch (alignment) {
-      case Alignment.TopStart:
-      case Alignment.BottomStart:
-        return margins.left;
-      case Alignment.TopEnd:
-      case Alignment.BottomEnd:
-        return `calc(100% - 40vp - ${margins.right}vp)`; // 100% - button width - right margin
-      default:
-        return margins.left;
-    }
+    return widgetX(40, uiSettings.getAttributionAlignment(), uiSettings.getAttributionMargins());
   }
 
   /**
@@ -478,19 +400,7 @@ export struct MapView {
    */
   private getAttributionY(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const alignment = uiSettings.getAttributionAlignment();
-    const margins = uiSettings.getAttributionMargins();
-
-    switch (alignment) {
-      case Alignment.TopStart:
-      case Alignment.TopEnd:
-        return margins.top;
-      case Alignment.BottomStart:
-      case Alignment.BottomEnd:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - button height - bottom margin
-      default:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`;
-    }
+    return widgetY(40, uiSettings.getAttributionAlignment(), uiSettings.getAttributionMargins());
   }
 
   /**
@@ -1163,17 +1073,7 @@ export struct MapView {
    * ```
    */
   setDebug(debugOptions: number): void {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'setDebug: Native map view not initialized');
-      return;
-    }
-    try {
-      mapView.setDebug(debugOptions);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `setDebug failed: ${errorMsg}`);
-    }
+    this.controller.setDebug(debugOptions);
   }
 
   /**
@@ -1191,17 +1091,7 @@ export struct MapView {
    * ```
    */
   setDebugActive(active: boolean): void {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'setDebugActive: Native map view not initialized');
-      return;
-    }
-    try {
-      mapView.setDebugActive(active);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `setDebugActive failed: ${errorMsg}`);
-    }
+    this.controller.setDebugActive(active);
   }
 
   /**
@@ -1210,18 +1100,7 @@ export struct MapView {
    * @returns True if any debug options are enabled
    */
   isDebugActive(): boolean {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'isDebugActive: Native map view not initialized');
-      return false;
-    }
-    try {
-      return mapView.isDebugActive();
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `isDebugActive failed: ${errorMsg}`);
-      return false;
-    }
+    return this.controller.isDebugActive();
   }
 
   // ========== Prefetch tile getters ==========

@@ -8,6 +8,21 @@ import type { PropertyValue } from '../expressions/index';
 import { convertValue } from './LayerUtils';
 import { LayerInternalTag, SourcedLayer, resolveLayerNative } from './BaseLayer';
 
+/**
+ * Apply an optional layer property through its setter when the value is present.
+ *
+ * Module-level generic helper replacing the repeated
+ * `if (props.x !== undefined) { this.setX(props.x) }` boilerplate inside
+ * withTextProperties()/withIconProperties(): each property becomes one call
+ * pairing the value with its setter closure. The undefined check lives here so
+ * the setter closure receives the narrowed, non-undefined value.
+ */
+function applyIfDefined<T>(value: T | undefined, setter: (v: T) => void): void {
+  if (value !== undefined) {
+    setter(value);
+  }
+}
+
 export class SymbolLayer extends SourcedLayer<maplibre.SymbolLayer, SymbolLayer> {
   // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'SymbolLayer';
@@ -551,96 +566,36 @@ export class SymbolLayer extends SourcedLayer<maplibre.SymbolLayer, SymbolLayer>
    * ```
    */
   withTextProperties(props: TextProperties): SymbolLayer {
-    if (props.textField !== undefined) {
-      this.setTextField(props.textField);
-    }
-    if (props.textFont !== undefined) {
-      this.setTextFont(props.textFont);
-    }
-    if (props.textSize !== undefined) {
-      this.setTextSize(props.textSize);
-    }
-    if (props.textMaxWidth !== undefined) {
-      this.setTextMaxWidth(props.textMaxWidth);
-    }
-    if (props.textOffset !== undefined) {
-      this.setTextOffset(props.textOffset);
-    }
-    if (props.textAnchor !== undefined) {
-      this.setTextAnchor(props.textAnchor);
-    }
-    if (props.textAllowOverlap !== undefined) {
-      this.setTextAllowOverlap(props.textAllowOverlap);
-    }
-    if (props.textIgnorePlacement !== undefined) {
-      this.setTextIgnorePlacement(props.textIgnorePlacement);
-    }
-    if (props.textOptional !== undefined) {
-      this.setTextOptional(props.textOptional);
-    }
-    if (props.textPadding !== undefined) {
-      this.setTextPadding(props.textPadding);
-    }
-    if (props.textKeepUpright !== undefined) {
-      this.setTextKeepUpright(props.textKeepUpright);
-    }
-    if (props.textOpacity !== undefined) {
-      this.setTextOpacity(props.textOpacity);
-    }
-    if (props.textColor !== undefined) {
-      this.setTextColor(props.textColor);
-    }
-    if (props.textHaloColor !== undefined) {
-      this.setTextHaloColor(props.textHaloColor);
-    }
-    if (props.textHaloWidth !== undefined) {
-      this.setTextHaloWidth(props.textHaloWidth);
-    }
-    if (props.textHaloBlur !== undefined) {
-      this.setTextHaloBlur(props.textHaloBlur);
-    }
-    if (props.textTranslate !== undefined) {
-      this.setTextTranslate(props.textTranslate);
-    }
-    if (props.textTranslateAnchor !== undefined) {
-      this.setTextTranslateAnchor(props.textTranslateAnchor);
-    }
-    if (props.textLineHeight !== undefined) {
-      this.setTextLineHeight(props.textLineHeight);
-    }
-    if (props.textLetterSpacing !== undefined) {
-      this.setTextLetterSpacing(props.textLetterSpacing);
-    }
-    if (props.textJustify !== undefined) {
-      this.setTextJustify(props.textJustify);
-    }
-    if (props.textRotate !== undefined) {
-      this.setTextRotate(props.textRotate);
-    }
-    if (props.textTransform !== undefined) {
-      this.setTextTransform(props.textTransform);
-    }
-    if (props.textMaxAngle !== undefined) {
-      this.setTextMaxAngle(props.textMaxAngle);
-    }
-    if (props.textRadialOffset !== undefined) {
-      this.setTextRadialOffset(props.textRadialOffset);
-    }
-    if (props.textPitchAlignment !== undefined) {
-      this.setTextPitchAlignment(props.textPitchAlignment);
-    }
-    if (props.textRotationAlignment !== undefined) {
-      this.setTextRotationAlignment(props.textRotationAlignment);
-    }
-    if (props.textVariableAnchor !== undefined) {
-      this.setTextVariableAnchor(props.textVariableAnchor);
-    }
-    if (props.textVariableAnchorOffset !== undefined) {
-      this.setTextVariableAnchorOffset(props.textVariableAnchorOffset);
-    }
-    if (props.textWritingMode !== undefined) {
-      this.setTextWritingMode(props.textWritingMode);
-    }
+    applyIfDefined(props.textField, (v: PropertyValue<string>) => this.setTextField(v));
+    applyIfDefined(props.textFont, (v: PropertyValue<string[]>) => this.setTextFont(v));
+    applyIfDefined(props.textSize, (v: PropertyValue<number>) => this.setTextSize(v));
+    applyIfDefined(props.textMaxWidth, (v: PropertyValue<number>) => this.setTextMaxWidth(v));
+    applyIfDefined(props.textOffset, (v: PropertyValue<number[]>) => this.setTextOffset(v));
+    applyIfDefined(props.textAnchor, (v: PropertyValue<string>) => this.setTextAnchor(v));
+    applyIfDefined(props.textAllowOverlap, (v: PropertyValue<boolean>) => this.setTextAllowOverlap(v));
+    applyIfDefined(props.textIgnorePlacement, (v: boolean) => this.setTextIgnorePlacement(v));
+    applyIfDefined(props.textOptional, (v: boolean) => this.setTextOptional(v));
+    applyIfDefined(props.textPadding, (v: number) => this.setTextPadding(v));
+    applyIfDefined(props.textKeepUpright, (v: boolean) => this.setTextKeepUpright(v));
+    applyIfDefined(props.textOpacity, (v: PropertyValue<number>) => this.setTextOpacity(v));
+    applyIfDefined(props.textColor, (v: PropertyValue<string>) => this.setTextColor(v));
+    applyIfDefined(props.textHaloColor, (v: PropertyValue<string>) => this.setTextHaloColor(v));
+    applyIfDefined(props.textHaloWidth, (v: PropertyValue<number>) => this.setTextHaloWidth(v));
+    applyIfDefined(props.textHaloBlur, (v: PropertyValue<number>) => this.setTextHaloBlur(v));
+    applyIfDefined(props.textTranslate, (v: PropertyValue<number[]>) => this.setTextTranslate(v));
+    applyIfDefined(props.textTranslateAnchor, (v: string) => this.setTextTranslateAnchor(v));
+    applyIfDefined(props.textLineHeight, (v: PropertyValue<number>) => this.setTextLineHeight(v));
+    applyIfDefined(props.textLetterSpacing, (v: PropertyValue<number>) => this.setTextLetterSpacing(v));
+    applyIfDefined(props.textJustify, (v: PropertyValue<string>) => this.setTextJustify(v));
+    applyIfDefined(props.textRotate, (v: PropertyValue<number>) => this.setTextRotate(v));
+    applyIfDefined(props.textTransform, (v: PropertyValue<string>) => this.setTextTransform(v));
+    applyIfDefined(props.textMaxAngle, (v: PropertyValue<number>) => this.setTextMaxAngle(v));
+    applyIfDefined(props.textRadialOffset, (v: number) => this.setTextRadialOffset(v));
+    applyIfDefined(props.textPitchAlignment, (v: string) => this.setTextPitchAlignment(v));
+    applyIfDefined(props.textRotationAlignment, (v: string) => this.setTextRotationAlignment(v));
+    applyIfDefined(props.textVariableAnchor, (v: string[]) => this.setTextVariableAnchor(v));
+    applyIfDefined(props.textVariableAnchorOffset, (v: number[]) => this.setTextVariableAnchorOffset(v));
+    applyIfDefined(props.textWritingMode, (v: string[]) => this.setTextWritingMode(v));
     return this;
   }
 
@@ -659,69 +614,27 @@ export class SymbolLayer extends SourcedLayer<maplibre.SymbolLayer, SymbolLayer>
    * ```
    */
   withIconProperties(props: IconProperties): SymbolLayer {
-    if (props.iconImage !== undefined) {
-      this.setIconImage(props.iconImage);
-    }
-    if (props.iconSize !== undefined) {
-      this.setIconSize(props.iconSize);
-    }
-    if (props.iconRotate !== undefined) {
-      this.setIconRotate(props.iconRotate);
-    }
-    if (props.iconOffset !== undefined) {
-      this.setIconOffset(props.iconOffset);
-    }
-    if (props.iconAnchor !== undefined) {
-      this.setIconAnchor(props.iconAnchor);
-    }
-    if (props.iconAllowOverlap !== undefined) {
-      this.setIconAllowOverlap(props.iconAllowOverlap);
-    }
-    if (props.iconIgnorePlacement !== undefined) {
-      this.setIconIgnorePlacement(props.iconIgnorePlacement);
-    }
-    if (props.iconOptional !== undefined) {
-      this.setIconOptional(props.iconOptional);
-    }
-    if (props.iconPadding !== undefined) {
-      this.setIconPadding(props.iconPadding);
-    }
-    if (props.iconKeepUpright !== undefined) {
-      this.setIconKeepUpright(props.iconKeepUpright);
-    }
-    if (props.iconOpacity !== undefined) {
-      this.setIconOpacity(props.iconOpacity);
-    }
-    if (props.iconColor !== undefined) {
-      this.setIconColor(props.iconColor);
-    }
-    if (props.iconHaloColor !== undefined) {
-      this.setIconHaloColor(props.iconHaloColor);
-    }
-    if (props.iconHaloWidth !== undefined) {
-      this.setIconHaloWidth(props.iconHaloWidth);
-    }
-    if (props.iconHaloBlur !== undefined) {
-      this.setIconHaloBlur(props.iconHaloBlur);
-    }
-    if (props.iconPitchAlignment !== undefined) {
-      this.setIconPitchAlignment(props.iconPitchAlignment);
-    }
-    if (props.iconRotationAlignment !== undefined) {
-      this.setIconRotationAlignment(props.iconRotationAlignment);
-    }
-    if (props.iconTextFit !== undefined) {
-      this.setIconTextFit(props.iconTextFit);
-    }
-    if (props.iconTextFitPadding !== undefined) {
-      this.setIconTextFitPadding(props.iconTextFitPadding);
-    }
-    if (props.iconTranslate !== undefined) {
-      this.setIconTranslate(props.iconTranslate);
-    }
-    if (props.iconTranslateAnchor !== undefined) {
-      this.setIconTranslateAnchor(props.iconTranslateAnchor);
-    }
+    applyIfDefined(props.iconImage, (v: PropertyValue<string>) => this.setIconImage(v));
+    applyIfDefined(props.iconSize, (v: PropertyValue<number>) => this.setIconSize(v));
+    applyIfDefined(props.iconRotate, (v: PropertyValue<number>) => this.setIconRotate(v));
+    applyIfDefined(props.iconOffset, (v: PropertyValue<number[]>) => this.setIconOffset(v));
+    applyIfDefined(props.iconAnchor, (v: PropertyValue<string>) => this.setIconAnchor(v));
+    applyIfDefined(props.iconAllowOverlap, (v: PropertyValue<boolean>) => this.setIconAllowOverlap(v));
+    applyIfDefined(props.iconIgnorePlacement, (v: boolean) => this.setIconIgnorePlacement(v));
+    applyIfDefined(props.iconOptional, (v: boolean) => this.setIconOptional(v));
+    applyIfDefined(props.iconPadding, (v: number) => this.setIconPadding(v));
+    applyIfDefined(props.iconKeepUpright, (v: boolean) => this.setIconKeepUpright(v));
+    applyIfDefined(props.iconOpacity, (v: PropertyValue<number>) => this.setIconOpacity(v));
+    applyIfDefined(props.iconColor, (v: PropertyValue<string>) => this.setIconColor(v));
+    applyIfDefined(props.iconHaloColor, (v: PropertyValue<string>) => this.setIconHaloColor(v));
+    applyIfDefined(props.iconHaloWidth, (v: PropertyValue<number>) => this.setIconHaloWidth(v));
+    applyIfDefined(props.iconHaloBlur, (v: PropertyValue<number>) => this.setIconHaloBlur(v));
+    applyIfDefined(props.iconPitchAlignment, (v: string) => this.setIconPitchAlignment(v));
+    applyIfDefined(props.iconRotationAlignment, (v: string) => this.setIconRotationAlignment(v));
+    applyIfDefined(props.iconTextFit, (v: string) => this.setIconTextFit(v));
+    applyIfDefined(props.iconTextFitPadding, (v: number[]) => this.setIconTextFitPadding(v));
+    applyIfDefined(props.iconTranslate, (v: PropertyValue<number[]>) => this.setIconTranslate(v));
+    applyIfDefined(props.iconTranslateAnchor, (v: string) => this.setIconTranslateAnchor(v));
     return this;
   }
 

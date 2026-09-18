@@ -41,6 +41,7 @@ import { IPixelCoordinate, PixelCoordinate, Point } from '../geometry/Point';
 import { IProjectedMeters, ProjectedMeters } from '../geometry/ProjectedMeters';
 import { VisibleRegion } from './VisibleRegion';
 import { LatLngBounds } from '../geometry/LatLngBounds';
+import { safePixelRatio } from '../common/MapUtils';
 
 /**
  * GeometryConstants - Geometry constants
@@ -64,7 +65,6 @@ export class Projection {
   private viewWidth: number = 0;
   private viewHeight: number = 0;
   private contentPadding: number[] = [0, 0, 0, 0]; // [left, top, right, bottom]
-  private static readonly DEFAULT_PIXEL_RATIO: number = 1;
 
   /**
    * Constructor
@@ -80,16 +80,7 @@ export class Projection {
   }
 
   private getPixelRatio(): number {
-    try {
-      const ratioCandidate = this.nativeMapView.getPixelRatio?.();
-      if (typeof ratioCandidate === 'number' && Number.isFinite(ratioCandidate) && ratioCandidate > 0) {
-        return ratioCandidate;
-      }
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : `${error}`;
-      hilog.warn(DOMAIN, 'Projection', '%{public}s', `[Projection] Failed to read pixel ratio, fallback to 1: ${reason}`);
-    }
-    return Projection.DEFAULT_PIXEL_RATIO;
+    return safePixelRatio(this.nativeMapView, 'Projection');
   }
 
   /**

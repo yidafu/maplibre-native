@@ -1,37 +1,42 @@
-import { hilog } from '@kit.PerformanceAnalysisKit';
-import { DOMAIN } from '../../constants/HiLogConstants';
-/**
- * PolygonManager - polygon manager.
- *
- * Handles polygon creation, updates, deletion, and queries.
- *
- * Architecture:
- * - Uses the native annotation system (`nativeMapView.addPolygons`)
- * - Queries run via the `queryShapeAnnotations` API
- * - Differs from `MarkerManager`, which uses a GeoJSON-based approach
- *
- * Reference: Android `PolygonContainer` implementation.
- */
 import type { MapLibreMap } from '../MapLibreMap';
 import { Polygon, PolygonOptions } from './Polygon';
+import { NativeAnnotationManager } from './NativeAnnotationManager';
 
 /**
  * PolygonManager class.
  *
  * Manages all polygon annotations on the map via the native annotation system.
+ * Shared add/remove/update/clear/query plumbing lives in
+ * {@link NativeAnnotationManager}.
  */
-export class PolygonManager {
-  private mapLibreMap: MapLibreMap;
-  // Polygon ID -> Polygon mapping
-  private polygonMap: Map<number, Polygon> = new Map();
-
+export class PolygonManager extends NativeAnnotationManager<Polygon, PolygonOptions> {
   /**
    * Constructor.
    *
    * @param mapLibreMap MapLibreMap instance.
    */
   constructor(mapLibreMap: MapLibreMap) {
-    this.mapLibreMap = mapLibreMap;
+    super(mapLibreMap, 'PolygonManager', 'polygon');
+  }
+
+  protected create(options: PolygonOptions): Polygon {
+    return new Polygon(options);
+  }
+
+  protected addToNative(polygons: Polygon[]): number[] {
+    return this.mapLibreMap.getNativeMapView().addPolygons(polygons);
+  }
+
+  protected updateOnNative(polygon: Polygon): void {
+    this.mapLibreMap.updatePolygon(polygon);
+  }
+
+  protected readId(polygon: Polygon): number {
+    return polygon.getId();
+  }
+
+  protected writeId(polygon: Polygon, id: number): void {
+    polygon.setId(id);
   }
 
   /**
@@ -41,24 +46,7 @@ export class PolygonManager {
    * @returns Created polygon.
    */
   public addPolygon(options: PolygonOptions): Polygon {
-    try {
-      // Create polygon object
-      const polygon = new Polygon(options);
-
-      // Invoke native API (returns an array of IDs)
-      const ids = this.mapLibreMap.getNativeMapView().addPolygons([polygon]);
-
-      if (ids.length > 0) {
-        const id = ids[0];
-        polygon.setId(id);
-        this.polygonMap.set(id, polygon);
-      }
-
-      return polygon;
-    } catch (error) {
-      hilog.error(DOMAIN, 'PolygonManager', '%{public}s', `[PolygonManager] Failed to add polygon: ${error}`);
-      throw new Error(`Failed to add polygon: ${error}`);
-    }
+    return this.addOne(options);
   }
 
   /**
@@ -68,29 +56,7 @@ export class PolygonManager {
    * @returns Array of created polygons.
    */
   public addPolygons(optionsList: PolygonOptions[]): Polygon[] {
-    try {
-      // Create polygon objects
-      const polygons: Polygon[] = [];
-      for (const options of optionsList) {
-        polygons.push(new Polygon(options));
-      }
-
-      // Add them to the map in batch
-      const ids = this.mapLibreMap.getNativeMapView().addPolygons(polygons);
-
-      // Assign IDs and register them
-      for (let i = 0; i < polygons.length; i++) {
-        const polygon = polygons[i];
-        const id = ids[i];
-        polygon.setId(id);
-        this.polygonMap.set(id, polygon);
-      }
-
-      return polygons;
-    } catch (error) {
-      hilog.error(DOMAIN, 'PolygonManager', '%{public}s', `[PolygonManager] Failed to add polygons batch: ${error}`);
-      throw new Error(`Failed to add polygons batch: ${error}`);
-    }
+    return this.addMany(optionsList);
   }
 
   /**
@@ -99,13 +65,7 @@ export class PolygonManager {
    * @param polygon Polygon to remove.
    */
   public removePolygon(polygon: Polygon): void {
-    const id = polygon.getId();
-    if (id === -1) {
-      return;
-    }
-
-    this.mapLibreMap.getNativeMapView().removeAnnotations([id]);
-    this.polygonMap.delete(id);
+    this.removeOne(polygon);
   }
 
   /**
@@ -114,19 +74,7 @@ export class PolygonManager {
    * @param polygons Polygons to remove.
    */
   public removePolygons(polygons: Polygon[]): void {
-    const ids: number[] = [];
-
-    for (const polygon of polygons) {
-      const id = polygon.getId();
-      if (id !== -1) {
-        ids.push(id);
-        this.polygonMap.delete(id);
-      }
-    }
-
-    if (ids.length > 0) {
-      this.mapLibreMap.getNativeMapView().removeAnnotations(ids);
-    }
+    this.removeMany(polygons);
   }
 
   /**
@@ -135,24 +83,14 @@ export class PolygonManager {
    * @param polygon Polygon to update.
    */
   public updatePolygon(polygon: Polygon): void {
-    const id = polygon.getId();
-    if (id === -1) {
-      hilog.warn(DOMAIN, 'PolygonManager', '%{public}s', '[PolygonManager] Cannot update polygon with id -1');
-      return;
-    }
-
-    this.mapLibreMap.updatePolygon(polygon);
+    this.updateOne(polygon);
   }
 
   /**
    * Remove all polygons.
    */
   public clear(): void {
-    const ids = Array.from(this.polygonMap.keys());
-    if (ids.length > 0) {
-      this.mapLibreMap.getNativeMapView().removeAnnotations(ids);
-    }
-    this.polygonMap.clear();
+    this.clearAll();
   }
 
   /**
@@ -161,6 +99,6 @@ export class PolygonManager {
    * @returns Array of polygons.
    */
   public getPolygons(): Polygon[] {
-    return Array.from(this.polygonMap.values());
+    return this.getAll();
   }
 }

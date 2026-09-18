@@ -111,27 +111,11 @@ napi_value MarkerNAPI::Init(napi_env env, napi_value exports) {
         { "setMapLibreMap", nullptr, SetMapLibreMap, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "Marker", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("MarkerNAPI", "Failed to define Marker class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("MarkerNAPI", "Failed to create reference to Marker constructor");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "Marker", cons);
-    if (status != napi_ok) {
-        Logger::error("MarkerNAPI", "Failed to export Marker class");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "Marker", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "MarkerNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("MarkerNAPI", "Marker NAPI class registered successfully");
     return exports;
 }
@@ -227,17 +211,7 @@ napi_value MarkerNAPI::GetPosition(napi_env env, napi_callback_info info) {
     }
     
     // Create LatLng object
-    napi_value result;
-    napi_create_object(env, &result);
-    
-    napi_value lat, lng;
-    napi_create_double(env, marker->position.y, &lat);
-    napi_create_double(env, marker->position.x, &lng);
-    
-    napi_set_named_property(env, result, "latitude", lat);
-    napi_set_named_property(env, result, "longitude", lng);
-    
-    return result;
+    return LatLngHarmony::CreateLatLngObject(env, mbgl::LatLng(marker->position.y, marker->position.x));
 }
 
 napi_value MarkerNAPI::GetIcon(napi_env env, napi_callback_info info) {

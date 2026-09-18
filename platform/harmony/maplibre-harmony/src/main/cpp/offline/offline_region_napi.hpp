@@ -47,6 +47,10 @@ private:
     explicit OfflineRegionNAPI(std::shared_ptr<mbgl::DatabaseFileSource> fileSource,
                               std::unique_ptr<mbgl::OfflineRegion> region);
     ~OfflineRegionNAPI();
+
+    // Shared body of delete()/invalidate(); `invalidate` selects the
+    // invalidateOfflineRegion call and its thread-safe callback resource name.
+    static napi_value DeleteOrInvalidate(napi_env env, napi_callback_info info, bool invalidate);
     
     std::shared_ptr<mbgl::DatabaseFileSource> fileSource_;
     std::unique_ptr<mbgl::OfflineRegion> region_;

@@ -10,25 +10,7 @@
 #include "../geometry/lat_lng_bounds_harmony.hpp"
 #include "../core/thread_safe_callback.hpp"
 #include "../napi/core/napi_args.hpp"
-
-// Layer NAPI classes (for getLayer)
-#include "../style/layers/fill_layer_harmony.hpp"
-#include "../style/layers/line_layer_harmony.hpp"
-#include "../style/layers/circle_layer_harmony.hpp"
-#include "../style/layers/symbol_layer_harmony.hpp"
-#include "../style/layers/raster_layer_harmony.hpp"
-#include "../style/layers/background_layer_harmony.hpp"
-#include "../style/layers/heatmap_layer_harmony.hpp"
-#include "../style/layers/hillshade_layer_harmony.hpp"
-#include "../style/layers/fill_extrusion_layer_harmony.hpp"
-#include "../style/layers/color_relief_layer_harmony.hpp"
-#include "../style/layers/location_indicator_layer_harmony.hpp"
-// Source NAPI classes (for getSource)
-#include "../sources/geojson_source_napi.hpp"
-#include "../sources/vector_source_napi.hpp"
-#include "../sources/raster_source_napi.hpp"
-#include "../sources/raster_dem_source_napi.hpp"
-#include "../sources/image_source_napi.hpp"
+#include "../style/layer_source_factory_harmony.hpp"
 // Image/Icon NAPI classes (for addImage)
 #include "../napi/bindings/image/image_napi.hpp"
 #include "../napi/bindings/icon/icon_napi.hpp"
@@ -38,21 +20,6 @@
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/source.hpp>
 #include <mbgl/style/image.hpp>
-#include <mbgl/style/layers/fill_layer.hpp>
-#include <mbgl/style/layers/line_layer.hpp>
-#include <mbgl/style/layers/circle_layer.hpp>
-#include <mbgl/style/layers/symbol_layer.hpp>
-#include <mbgl/style/layers/raster_layer.hpp>
-#include <mbgl/style/layers/background_layer.hpp>
-#include <mbgl/style/layers/heatmap_layer.hpp>
-#include <mbgl/style/layers/hillshade_layer.hpp>
-#include <mbgl/style/layers/fill_extrusion_layer.hpp>
-#include <mbgl/style/layers/location_indicator_layer.hpp>
-#include <mbgl/style/sources/geojson_source.hpp>
-#include <mbgl/style/sources/vector_source.hpp>
-#include <mbgl/style/sources/raster_source.hpp>
-#include <mbgl/style/sources/raster_dem_source.hpp>
-#include <mbgl/style/sources/image_source.hpp>
 #include <napi/native_api.h>
 #include <string>
 #include <memory>
@@ -126,6 +93,72 @@ public:
     }
 };
 
+namespace {
+
+/**
+ * Unwrap the MapSnapshotterInstance from `this` and verify it is usable.
+ *
+ * Returns nullptr (after signaling the failure) when the snapshotter was not
+ * created or has already been released. Without `op` the failure is reported
+ * as a thrown JS error ("Snapshotter not initialized"); with `op` it is a
+ * warning log line and the caller returns undefined.
+ */
+MapSnapshotterInstance* RequireSnapshotter(NapiArgs& args, const char* op = nullptr) {
+    MapSnapshotterInstance* snapshotterInstance =
+        NapiArgs::Unwrap<MapSnapshotterInstance>(args.Env(), args.This());
+    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
+        if (op) {
+            Logger::warn("SnapshotterNAPI", "%s: Snapshotter not initialized", op);
+        } else {
+            napi_throw_error(args.Env(), nullptr, "Snapshotter not initialized");
+        }
+        return nullptr;
+    }
+    return snapshotterInstance;
+}
+
+/**
+ * Parse {target: {latitude, longitude}, zoom, bearing, tilt} into CameraOptions.
+ * Shared by CreateMapSnapshotter and SnapshotterSetCameraPosition.
+ */
+mbgl::CameraOptions ParseCameraPositionArgs(NapiArgs& args, napi_value cameraObj) {
+    mbgl::CameraOptions camera;
+
+    // Parse target (LatLng)
+    napi_value targetVal;
+    if (napi_get_named_property(args.Env(), cameraObj, "target", &targetVal) == napi_ok) {
+        double lat = args.GetDoubleProperty(targetVal, "latitude", 0.0);
+        double lng = args.GetDoubleProperty(targetVal, "longitude", 0.0);
+        camera.center = mbgl::LatLng(lat, lng);
+    }
+
+    // Parse zoom, bearing, tilt
+    camera.zoom = args.GetDoubleProperty(cameraObj, "zoom", 0.0);
+    camera.bearing = args.GetDoubleProperty(cameraObj, "bearing", 0.0);
+    camera.pitch = args.GetDoubleProperty(cameraObj, "tilt", 0.0);
+
+    return camera;
+}
+
+/**
+ * Parse {north, south, east, west} into a hull LatLngBounds. Shared by
+ * CreateMapSnapshotter and SnapshotterSetRegion. Note: the key names differ
+ * from LatLngBoundsHarmony::ParseLatLngBounds (sw/ne), so this stays local.
+ */
+mbgl::LatLngBounds ParseRegionBounds(NapiArgs& args, napi_value regionObj) {
+    double north = args.GetDoubleProperty(regionObj, "north", 0.0);
+    double south = args.GetDoubleProperty(regionObj, "south", 0.0);
+    double east = args.GetDoubleProperty(regionObj, "east", 0.0);
+    double west = args.GetDoubleProperty(regionObj, "west", 0.0);
+
+    return mbgl::LatLngBounds::hull(
+        mbgl::LatLng(north, east),
+        mbgl::LatLng(south, west)
+    );
+}
+
+} // namespace
+
 /**
  * Create a MapSnapshotter instance.
  *
@@ -164,25 +197,10 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
         napi_valuetype cameraType;
         napi_typeof(env, cameraVal, &cameraType);
         if (cameraType == napi_object) {
-            mbgl::CameraOptions camera;
-            
-            // Parse target (LatLng)
-            napi_value targetVal;
-            if (napi_get_named_property(env, cameraVal, "target", &targetVal) == napi_ok) {
-                double lat = args.GetDoubleProperty(targetVal, "latitude", 0.0);
-                double lng = args.GetDoubleProperty(targetVal, "longitude", 0.0);
-                camera.center = mbgl::LatLng(lat, lng);
-            }
-            
-            // Parse zoom, bearing, tilt
-            camera.zoom = args.GetDoubleProperty(cameraVal, "zoom", 0.0);
-            camera.bearing = args.GetDoubleProperty(cameraVal, "bearing", 0.0);
-            camera.pitch = args.GetDoubleProperty(cameraVal, "tilt", 0.0);
-            
-            options.camera = camera;
+            options.camera = ParseCameraPositionArgs(args, cameraVal);
         }
     }
-    
+
     // Parse optional region (LatLngBounds)
     napi_value regionVal;
     status = napi_get_named_property(env, optionsObj, "region", &regionVal);
@@ -190,16 +208,7 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
         napi_valuetype regionType;
         napi_typeof(env, regionVal, &regionType);
         if (regionType == napi_object) {
-            double north = args.GetDoubleProperty(regionVal, "north", 0.0);
-            double south = args.GetDoubleProperty(regionVal, "south", 0.0);
-            double east = args.GetDoubleProperty(regionVal, "east", 0.0);
-            double west = args.GetDoubleProperty(regionVal, "west", 0.0);
-            
-            mbgl::LatLngBounds bounds = mbgl::LatLngBounds::hull(
-                mbgl::LatLng(north, east),
-                mbgl::LatLng(south, west)
-            );
-            options.region = bounds;
+            options.region = ParseRegionBounds(args, regionVal);
         }
     }
     
@@ -275,15 +284,8 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-    
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        napi_throw_error(env, nullptr, "Snapshotter not initialized");
-        return nullptr;
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args);
+    if (!snapshotterInstance) return nullptr;
 
     // Create a thread-safe callback
     napi_value callback = args.GetFunction(0, "callback");
@@ -370,15 +372,8 @@ napi_value SnapshotterCancel(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-    
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        napi_throw_error(env, nullptr, "Snapshotter not initialized");
-        return nullptr;
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args);
+    if (!snapshotterInstance) return nullptr;
 
     Logger::info("SnapshotterNAPI", "Cancelling snapshot");
     snapshotterInstance->snapshotter->cancel();
@@ -395,15 +390,8 @@ napi_value SnapshotterSetStyleUrl(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-    
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        napi_throw_error(env, nullptr, "Snapshotter not initialized");
-        return nullptr;
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args);
+    if (!snapshotterInstance) return nullptr;
 
     // Parse styleUrl
     std::string styleUrl = args.GetString(0, "styleUrl");
@@ -423,35 +411,15 @@ napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-    
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        napi_throw_error(env, nullptr, "Snapshotter not initialized");
-        return nullptr;
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args);
+    if (!snapshotterInstance) return nullptr;
 
     // Parse CameraPosition
     napi_value cameraObj = args.GetObject(0, "cameraPosition");
     if (args.HasError()) return args.Undefined();
-    
-    mbgl::CameraOptions camera;
-    
-    // Parse target (LatLng)
-    napi_value targetVal;
-    if (napi_get_named_property(env, cameraObj, "target", &targetVal) == napi_ok) {
-        double lat = args.GetDoubleProperty(targetVal, "latitude", 0.0);
-        double lng = args.GetDoubleProperty(targetVal, "longitude", 0.0);
-        camera.center = mbgl::LatLng(lat, lng);
-    }
-    
-    // Parse zoom, bearing, tilt
-    camera.zoom = args.GetDoubleProperty(cameraObj, "zoom", 0.0);
-    camera.bearing = args.GetDoubleProperty(cameraObj, "bearing", 0.0);
-    camera.pitch = args.GetDoubleProperty(cameraObj, "tilt", 0.0);
-    
+
+    mbgl::CameraOptions camera = ParseCameraPositionArgs(args, cameraObj);
+
     snapshotterInstance->snapshotter->setCameraOptions(camera);
     Logger::info("SnapshotterNAPI", "Camera position set");
 
@@ -467,15 +435,8 @@ napi_value SnapshotterSetStyleJson(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-    
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        napi_throw_error(env, nullptr, "Snapshotter not initialized");
-        return nullptr;
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args);
+    if (!snapshotterInstance) return nullptr;
 
     // Parse styleJson
     std::string styleJson = args.GetString(0, "styleJson");
@@ -496,31 +457,14 @@ napi_value SnapshotterSetRegion(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-    
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        napi_throw_error(env, nullptr, "Snapshotter not initialized");
-        return nullptr;
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args);
+    if (!snapshotterInstance) return nullptr;
 
     // Parse LatLngBounds
     napi_value regionObj = args.GetObject(0, "region");
     if (args.HasError()) return args.Undefined();
-    
-    double north = args.GetDoubleProperty(regionObj, "north", 0.0);
-    double south = args.GetDoubleProperty(regionObj, "south", 0.0);
-    double east = args.GetDoubleProperty(regionObj, "east", 0.0);
-    double west = args.GetDoubleProperty(regionObj, "west", 0.0);
-    
-    mbgl::LatLngBounds bounds = mbgl::LatLngBounds::hull(
-        mbgl::LatLng(north, east),
-        mbgl::LatLng(south, west)
-    );
-    
-    snapshotterInstance->snapshotter->setRegion(bounds);
+
+    snapshotterInstance->snapshotter->setRegion(ParseRegionBounds(args, regionObj));
     Logger::info("SnapshotterNAPI", "Region set");
 
     return nullptr;
@@ -535,15 +479,8 @@ napi_value SnapshotterSetSize(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-    
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        napi_throw_error(env, nullptr, "Snapshotter not initialized");
-        return nullptr;
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args);
+    if (!snapshotterInstance) return nullptr;
 
     // Parse width and height
     uint32_t width = static_cast<uint32_t>(args.GetInt64(0, "width"));
@@ -565,15 +502,8 @@ napi_value SnapshotterSetObserver(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-    
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        napi_throw_error(env, nullptr, "Snapshotter not initialized");
-        return nullptr;
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args);
+    if (!snapshotterInstance) return nullptr;
 
     // Clear any previous callbacks
     snapshotterInstance->onDidFinishLoadingStyleCallback.reset();
@@ -624,15 +554,8 @@ napi_value SnapshotterGetLayer(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-    
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        Logger::warn("SnapshotterNAPI", "getLayer: Snapshotter not initialized");
-        return args.Undefined();
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args, "getLayer");
+    if (!snapshotterInstance) return args.Undefined();
 
     // Parse layerId
     std::string layerId = args.GetString(0, "layerId");
@@ -652,34 +575,16 @@ napi_value SnapshotterGetLayer(napi_env env, napi_callback_info info) {
         const std::string layerType = layer->getTypeInfo()->type;
         Logger::info("SnapshotterNAPI", "getLayer: %s (type: %s)", layerId.c_str(), layerType.c_str());
 
-        // Create the corresponding NAPI wrapper based on the layer type
-        // (same dispatch as StyleNAPI::GetLayer)
-        if (layerType == "symbol") {
-            return mbgl::harmony::SymbolLayerNAPI::CreateInstance(env, static_cast<mbgl::style::SymbolLayer*>(layer));
-        } else if (layerType == "fill") {
-            return mbgl::harmony::FillLayerNAPI::CreateInstance(env, static_cast<mbgl::style::FillLayer*>(layer));
-        } else if (layerType == "line") {
-            return mbgl::harmony::LineLayerNAPI::CreateInstance(env, static_cast<mbgl::style::LineLayer*>(layer));
-        } else if (layerType == "circle") {
-            return mbgl::harmony::CircleLayerNAPI::CreateInstance(env, static_cast<mbgl::style::CircleLayer*>(layer));
-        } else if (layerType == "raster") {
-            return mbgl::harmony::RasterLayerNAPI::CreateInstance(env, static_cast<mbgl::style::RasterLayer*>(layer));
-        } else if (layerType == "heatmap") {
-            return mbgl::harmony::HeatmapLayerNAPI::CreateInstance(env, static_cast<mbgl::style::HeatmapLayer*>(layer));
-        } else if (layerType == "hillshade") {
-            return mbgl::harmony::HillshadeLayerNAPI::CreateInstance(env, static_cast<mbgl::style::HillshadeLayer*>(layer));
-        } else if (layerType == "fill-extrusion") {
-            return mbgl::harmony::FillExtrusionLayerNAPI::CreateInstance(env, static_cast<mbgl::style::FillExtrusionLayer*>(layer));
-        } else if (layerType == "background") {
-            return mbgl::harmony::BackgroundLayerNAPI::CreateInstance(env, static_cast<mbgl::style::BackgroundLayer*>(layer));
-        } else if (layerType == "color-relief") {
-            return mbgl::harmony::ColorReliefLayerNAPI::CreateInstance(env, static_cast<mbgl::style::ColorReliefLayer*>(layer));
-        } else if (layerType == "location-indicator") {
-            return mbgl::harmony::LocationIndicatorLayerNAPI::CreateInstance(env, static_cast<mbgl::style::LocationIndicatorLayer*>(layer));
+        // Dispatch through the shared factory (same per-type CreateInstance
+        // calls as StyleNAPI::GetLayer). Null fallback keeps the historical
+        // "unknown layer type" behavior for types without a full wrapper.
+        napi_value wrapper = LayerSourceFactory::createLayerWrapper(env, layer, WrapperFallback::Null);
+        napi_valuetype wrapperType = napi_undefined;
+        napi_typeof(env, wrapper, &wrapperType);
+        if (wrapperType == napi_null) {
+            Logger::warn("SnapshotterNAPI", "getLayer: Unknown layer type: %s", layerType.c_str());
         }
-
-        Logger::warn("SnapshotterNAPI", "getLayer: Unknown layer type: %s", layerType.c_str());
-        return args.Null();
+        return wrapper;
     } catch (const std::exception& e) {
         Logger::error("SnapshotterNAPI", "getLayer failed: %s", e.what());
         return args.Null();
@@ -698,15 +603,8 @@ napi_value SnapshotterGetSource(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-    
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        Logger::warn("SnapshotterNAPI", "getSource: Snapshotter not initialized");
-        return args.Undefined();
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args, "getSource");
+    if (!snapshotterInstance) return args.Undefined();
 
     // Parse sourceId
     std::string sourceId = args.GetString(0, "sourceId");
@@ -726,34 +624,17 @@ napi_value SnapshotterGetSource(napi_env env, napi_callback_info info) {
         Logger::info("SnapshotterNAPI", "getSource: %s (type: %d)", sourceId.c_str(),
                      static_cast<int>(source->getType()));
 
-        // Create the corresponding NAPI wrapper based on the source type
-        // (same dispatch as StyleNAPI::GetSource)
-        switch (source->getType()) {
-            case mbgl::style::SourceType::GeoJSON: {
-                auto* geoJsonSource = static_cast<mbgl::style::GeoJSONSource*>(source);
-                return mbgl::harmony::GeoJsonSourceNAPI::CreateInstance(env, geoJsonSource);
-            }
-            case mbgl::style::SourceType::Vector: {
-                auto* vectorSource = static_cast<mbgl::style::VectorSource*>(source);
-                return mbgl::harmony::VectorSourceNAPI::CreateInstance(env, vectorSource);
-            }
-            case mbgl::style::SourceType::Raster: {
-                auto* rasterSource = static_cast<mbgl::style::RasterSource*>(source);
-                return mbgl::harmony::RasterSourceNAPI::CreateInstance(env, rasterSource);
-            }
-            case mbgl::style::SourceType::RasterDEM: {
-                auto* rasterDemSource = static_cast<mbgl::style::RasterDEMSource*>(source);
-                return mbgl::harmony::RasterDemSourceNAPI::CreateInstance(env, rasterDemSource);
-            }
-            case mbgl::style::SourceType::Image: {
-                auto* imageSource = static_cast<mbgl::style::ImageSource*>(source);
-                return mbgl::harmony::ImageSourceNAPI::CreateInstance(env, imageSource);
-            }
-            default:
-                Logger::warn("SnapshotterNAPI", "getSource: Unknown source type: %d",
-                             static_cast<int>(source->getType()));
-                return args.Null();
+        // Dispatch through the shared factory (same per-type CreateInstance
+        // calls as StyleNAPI::GetSource). Null fallback keeps the historical
+        // "unknown source type" behavior for types without a full wrapper.
+        napi_value wrapper = LayerSourceFactory::createSourceWrapper(env, source, WrapperFallback::Null);
+        napi_valuetype wrapperType = napi_undefined;
+        napi_typeof(env, wrapper, &wrapperType);
+        if (wrapperType == napi_null) {
+            Logger::warn("SnapshotterNAPI", "getSource: Unknown source type: %d",
+                         static_cast<int>(source->getType()));
         }
+        return wrapper;
     } catch (const std::exception& e) {
         Logger::error("SnapshotterNAPI", "getSource failed: %s", e.what());
         return args.Null();
@@ -781,15 +662,8 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
-        snapshotterInstance = nullptr;
-    }
-
-    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
-        Logger::warn("SnapshotterNAPI", "addImage: Snapshotter not initialized");
-        return args.Undefined();
-    }
+    MapSnapshotterInstance* snapshotterInstance = RequireSnapshotter(args, "addImage");
+    if (!snapshotterInstance) return args.Undefined();
 
     // Parse arguments
     std::string name = args.GetString(0, "name");

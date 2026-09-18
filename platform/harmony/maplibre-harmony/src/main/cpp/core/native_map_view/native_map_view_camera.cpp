@@ -34,6 +34,179 @@ namespace CameraMoveReason {
     constexpr int REASON_ANIMATION_CANCELLED = 4;
 }
 
+namespace {
+
+// Parse a `[left, top, right, bottom]` padding array and scale it by
+// pixelRatio into `out`. When paddingRaw is non-null it receives the unscaled
+// [left, top, right, bottom] values for logging. Returns false when the value
+// is not a 4-element array or its elements cannot be read; `out` is only
+// written on success.
+bool ParsePaddingArray(napi_env env, napi_value value, double pixelRatio,
+                       mbgl::EdgeInsets& out, double* paddingRaw = nullptr) {
+    bool isArray = false;
+    napi_is_array(env, value, &isArray);
+    if (!isArray) {
+        return false;
+    }
+
+    uint32_t length = 0;
+    napi_get_array_length(env, value, &length);
+    if (length != 4) {
+        return false;
+    }
+
+    napi_value leftVal, topVal, rightVal, bottomVal;
+    double left = 0, top = 0, right = 0, bottom = 0;
+    if (napi_get_element(env, value, 0, &leftVal) != napi_ok ||
+        napi_get_element(env, value, 1, &topVal) != napi_ok ||
+        napi_get_element(env, value, 2, &rightVal) != napi_ok ||
+        napi_get_element(env, value, 3, &bottomVal) != napi_ok) {
+        return false;
+    }
+
+    napi_get_value_double(env, leftVal, &left);
+    napi_get_value_double(env, topVal, &top);
+    napi_get_value_double(env, rightVal, &right);
+    napi_get_value_double(env, bottomVal, &bottom);
+
+    // Apply pixelRatio scaling
+    out = mbgl::EdgeInsets{
+        top * pixelRatio,
+        left * pixelRatio,
+        bottom * pixelRatio,
+        right * pixelRatio
+    };
+
+    if (paddingRaw) {
+        paddingRaw[0] = left;
+        paddingRaw[1] = top;
+        paddingRaw[2] = right;
+        paddingRaw[3] = bottom;
+    }
+
+    return true;
+}
+
+// Parse center/zoom/bearing/pitch from a JS camera options object into
+// `options`. Missing or malformed properties leave the corresponding field
+// untouched.
+void ParseCameraOptionsObject(napi_env env, napi_value cameraObj,
+                              mbgl::CameraOptions& options) {
+    // Retrieve the center (LatLng)
+    napi_value centerValue;
+    if (napi_get_named_property(env, cameraObj, "center", &centerValue) == napi_ok) {
+        napi_value latValue, lngValue;
+        if (napi_get_named_property(env, centerValue, "latitude", &latValue) == napi_ok &&
+            napi_get_named_property(env, centerValue, "longitude", &lngValue) == napi_ok) {
+            double lat, lng;
+            if (napi_get_value_double(env, latValue, &lat) == napi_ok &&
+                napi_get_value_double(env, lngValue, &lng) == napi_ok) {
+                options.center = LatLng{lat, lng};
+            }
+        }
+    }
+
+    // Retrieve zoom
+    napi_value zoomValue;
+    if (napi_get_named_property(env, cameraObj, "zoom", &zoomValue) == napi_ok) {
+        double zoom;
+        if (napi_get_value_double(env, zoomValue, &zoom) == napi_ok) {
+            options.zoom = zoom;
+        }
+    }
+
+    // Retrieve bearing
+    napi_value bearingValue;
+    if (napi_get_named_property(env, cameraObj, "bearing", &bearingValue) == napi_ok) {
+        double bearing;
+        if (napi_get_value_double(env, bearingValue, &bearing) == napi_ok) {
+            options.bearing = bearing;
+        }
+    }
+
+    // Retrieve pitch
+    napi_value pitchValue;
+    if (napi_get_named_property(env, cameraObj, "pitch", &pitchValue) == napi_ok) {
+        double pitch;
+        if (napi_get_value_double(env, pitchValue, &pitch) == napi_ok) {
+            options.pitch = pitch;
+        }
+    }
+}
+
+} // namespace
+
+// Shared NAPI body for the bounds scalar getters (getMinZoom/getMaxZoom/
+// getMinPitch/getMaxPitch). `get` extracts the optional scalar from the map's
+// BoundOptions.
+template <typename Get>
+napi_value NativeMapView::GetBoundsScalar(napi_env env, napi_callback_info info,
+                                          const char* label, Get get) {
+    NapiArgs args(env, info);
+
+    // Retrieve the NativeMapView instance
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "%s: Failed to get instance or map not initialized", label);
+        return args.Undefined();
+    }
+
+    try {
+        auto bounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getBounds(); }, mbgl::BoundOptions{});
+        if (auto value = get(bounds)) {
+            napi_value result;
+            napi_create_double(env, *value, &result);
+            return result;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "%s: Failed - %s", label, e.what());
+    }
+
+    return args.Undefined();
+}
+
+// Shared NAPI body for the bounds scalar setters (setMinZoom/setMaxZoom/
+// setMinPitch/setMaxPitch). `apply` builds the BoundOptions for the parsed
+// value; the setBounds call runs on the map thread. parseBeforeUnwrap keeps
+// each method's original validation order (zoom setters parse the argument
+// first, pitch setters unwrap the instance first).
+template <typename Apply>
+napi_value NativeMapView::SetBoundsScalar(napi_env env, napi_callback_info info,
+                                          const char* label, const char* argName,
+                                          const char* okLogFormat,
+                                          bool parseBeforeUnwrap, Apply apply) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+
+    double value = 0.0;
+    if (parseBeforeUnwrap) {
+        value = args.GetDouble(0, argName);
+        if (args.HasError()) return args.Undefined();
+    }
+
+    // Retrieve the NativeMapView instance
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "%s: Failed to get instance or map not initialized", label);
+        return args.Undefined();
+    }
+
+    if (!parseBeforeUnwrap) {
+        value = args.GetDouble(0, argName);
+        if (args.HasError()) return args.Undefined();
+    }
+
+    try {
+        instance->invokeOnMapThread([value, apply](mbgl::Map* m){ m->setBounds(apply(value)); });
+        Logger::info("NativeMapView", okLogFormat, value);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "%s: Failed - %s", label, e.what());
+    }
+
+    return args.Undefined();
+}
+
 napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
@@ -230,39 +403,12 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     // padding format: [left, top, right, bottom]
     if (args.Count() >= 6) {
         napi_value paddingValue = args.GetValue(5);
-        bool isArray = false;
-        napi_is_array(env, paddingValue, &isArray);
-        
-        if (isArray) {
-            uint32_t length = 0;
-            napi_get_array_length(env, paddingValue, &length);
-            
-            if (length == 4) {
-                napi_value leftVal, topVal, rightVal, bottomVal;
-                double left = 0, top = 0, right = 0, bottom = 0;
-                
-                if (napi_get_element(env, paddingValue, 0, &leftVal) == napi_ok &&
-                    napi_get_element(env, paddingValue, 1, &topVal) == napi_ok &&
-                    napi_get_element(env, paddingValue, 2, &rightVal) == napi_ok &&
-                    napi_get_element(env, paddingValue, 3, &bottomVal) == napi_ok) {
-                    
-                    napi_get_value_double(env, leftVal, &left);
-                    napi_get_value_double(env, topVal, &top);
-                    napi_get_value_double(env, rightVal, &right);
-                    napi_get_value_double(env, bottomVal, &bottom);
-                    
-                    // Apply pixelRatio scaling
-                    cameraOptions.padding = EdgeInsets{
-                        top * instance->pixelRatio,
-                        left * instance->pixelRatio,
-                        bottom * instance->pixelRatio,
-                        right * instance->pixelRatio
-                    };
-                    
-                    Logger::info("NativeMapView", "jumpTo: padding=[%.1f, %.1f, %.1f, %.1f]", 
-                                left, top, right, bottom);
-                }
-            }
+        mbgl::EdgeInsets padding;
+        double rawPadding[4];
+        if (ParsePaddingArray(env, paddingValue, instance->pixelRatio, padding, rawPadding)) {
+            cameraOptions.padding = padding;
+            Logger::info("NativeMapView", "jumpTo: padding=[%.1f, %.1f, %.1f, %.1f]",
+                         rawPadding[0], rawPadding[1], rawPadding[2], rawPadding[3]);
         }
     } else {
         // If padding is omitted, fall back to stored contentPadding_.
@@ -276,7 +422,7 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
                 instance->contentPadding_[3] * instance->pixelRatio, // bottom = contentPadding_[3]
                 instance->contentPadding_[2] * instance->pixelRatio  // right = contentPadding_[2]
             };
-            
+
             Logger::info("NativeMapView", "jumpTo: using stored contentPadding_: left=%.1f, top=%.1f, right=%.1f, bottom=%.1f",
                         instance->contentPadding_[0], instance->contentPadding_[1],
                         instance->contentPadding_[2], instance->contentPadding_[3]);
@@ -327,85 +473,18 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
     }
     
     CameraOptions cameraOptions;
-    
-    // Retrieve the center (LatLng)
-    napi_value centerValue;
-    if (napi_get_named_property(env, cameraObj, "center", &centerValue) == napi_ok) {
-        napi_value latValue, lngValue;
-        if (napi_get_named_property(env, centerValue, "latitude", &latValue) == napi_ok &&
-            napi_get_named_property(env, centerValue, "longitude", &lngValue) == napi_ok) {
-            double lat, lng;
-            if (napi_get_value_double(env, latValue, &lat) == napi_ok &&
-                napi_get_value_double(env, lngValue, &lng) == napi_ok) {
-                cameraOptions.center = LatLng{lat, lng};
-            }
-        }
-    }
-    
-    // Retrieve zoom
-    napi_value zoomValue;
-    if (napi_get_named_property(env, cameraObj, "zoom", &zoomValue) == napi_ok) {
-        double zoom;
-        if (napi_get_value_double(env, zoomValue, &zoom) == napi_ok) {
-            cameraOptions.zoom = zoom;
-        }
-    }
-    
-    // Retrieve bearing
-    napi_value bearingValue;
-    if (napi_get_named_property(env, cameraObj, "bearing", &bearingValue) == napi_ok) {
-        double bearing;
-        if (napi_get_value_double(env, bearingValue, &bearing) == napi_ok) {
-            cameraOptions.bearing = bearing;
-        }
-    }
-    
-    // Retrieve pitch
-    napi_value pitchValue;
-    if (napi_get_named_property(env, cameraObj, "pitch", &pitchValue) == napi_ok) {
-        double pitch;
-        if (napi_get_value_double(env, pitchValue, &pitch) == napi_ok) {
-            cameraOptions.pitch = pitch;
-        }
-    }
-    
+    ParseCameraOptionsObject(env, cameraObj, cameraOptions);
+
     // Retrieve padding (optional)
     // padding format: [left, top, right, bottom] or {left, top, right, bottom}
     napi_value paddingValue;
     if (napi_get_named_property(env, cameraObj, "padding", &paddingValue) == napi_ok) {
-        bool isArray = false;
-        napi_is_array(env, paddingValue, &isArray);
-        
-        if (isArray) {
-            uint32_t length = 0;
-            napi_get_array_length(env, paddingValue, &length);
-            
-            if (length == 4) {
-                napi_value leftVal, topVal, rightVal, bottomVal;
-                double left = 0, top = 0, right = 0, bottom = 0;
-                
-                if (napi_get_element(env, paddingValue, 0, &leftVal) == napi_ok &&
-                    napi_get_element(env, paddingValue, 1, &topVal) == napi_ok &&
-                    napi_get_element(env, paddingValue, 2, &rightVal) == napi_ok &&
-                    napi_get_element(env, paddingValue, 3, &bottomVal) == napi_ok) {
-                    
-                    napi_get_value_double(env, leftVal, &left);
-                    napi_get_value_double(env, topVal, &top);
-                    napi_get_value_double(env, rightVal, &right);
-                    napi_get_value_double(env, bottomVal, &bottom);
-                    
-                    // Apply pixelRatio scaling
-                    cameraOptions.padding = EdgeInsets{
-                        top * instance->pixelRatio,
-                        left * instance->pixelRatio,
-                        bottom * instance->pixelRatio,
-                        right * instance->pixelRatio
-                    };
-                    
-                    Logger::info("NativeMapView", "easeTo: padding=[%.1f, %.1f, %.1f, %.1f]", 
-                                left, top, right, bottom);
-                }
-            }
+        mbgl::EdgeInsets padding;
+        double rawPadding[4];
+        if (ParsePaddingArray(env, paddingValue, instance->pixelRatio, padding, rawPadding)) {
+            cameraOptions.padding = padding;
+            Logger::info("NativeMapView", "easeTo: padding=[%.1f, %.1f, %.1f, %.1f]",
+                        rawPadding[0], rawPadding[1], rawPadding[2], rawPadding[3]);
         }
     }
     
@@ -457,47 +536,7 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
     }
     
     CameraOptions cameraOptions;
-    
-    // Retrieve the center (LatLng)
-    napi_value centerValue;
-    if (napi_get_named_property(env, cameraObj, "center", &centerValue) == napi_ok) {
-        napi_value latValue, lngValue;
-        if (napi_get_named_property(env, centerValue, "latitude", &latValue) == napi_ok &&
-            napi_get_named_property(env, centerValue, "longitude", &lngValue) == napi_ok) {
-            double lat, lng;
-            if (napi_get_value_double(env, latValue, &lat) == napi_ok &&
-                napi_get_value_double(env, lngValue, &lng) == napi_ok) {
-                cameraOptions.center = LatLng{lat, lng};
-            }
-        }
-    }
-    
-    // Retrieve zoom
-    napi_value zoomValue;
-    if (napi_get_named_property(env, cameraObj, "zoom", &zoomValue) == napi_ok) {
-        double zoom;
-        if (napi_get_value_double(env, zoomValue, &zoom) == napi_ok) {
-            cameraOptions.zoom = zoom;
-        }
-    }
-    
-    // Retrieve bearing
-    napi_value bearingValue;
-    if (napi_get_named_property(env, cameraObj, "bearing", &bearingValue) == napi_ok) {
-        double bearing;
-        if (napi_get_value_double(env, bearingValue, &bearing) == napi_ok) {
-            cameraOptions.bearing = bearing;
-        }
-    }
-    
-    // Retrieve pitch
-    napi_value pitchValue;
-    if (napi_get_named_property(env, cameraObj, "pitch", &pitchValue) == napi_ok) {
-        double pitch;
-        if (napi_get_value_double(env, pitchValue, &pitch) == napi_ok) {
-            cameraOptions.pitch = pitch;
-        }
-    }
+    ParseCameraOptionsObject(env, cameraObj, cameraOptions);
     
     // Optional animation duration (defaults to flyTo automatic duration)
     uint64_t duration = static_cast<uint64_t>(args.GetDoubleOr(1, 0.0));
@@ -529,20 +568,8 @@ napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
     {
         auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
         if (cameraOptions.center) {
-            const auto& center = *cameraOptions.center;
-            
             // Create the return object { latitude, longitude }
-            napi_value result;
-            napi_create_object(env, &result);
-            
-            napi_value latValue, lngValue;
-            napi_create_double(env, center.latitude(), &latValue);
-            napi_create_double(env, center.longitude(), &lngValue);
-            
-            napi_set_named_property(env, result, "latitude", latValue);
-            napi_set_named_property(env, result, "longitude", lngValue);
-            
-            return result;
+            return LatLngHarmony::CreateLatLngObject(env, *cameraOptions.center);
         }
     }
     
@@ -580,39 +607,12 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
         // padding format: [left, top, right, bottom]
         if (args.Count() >= 3) {
             napi_value paddingValue = args.GetValue(2);
-            bool isArray = false;
-            napi_is_array(env, paddingValue, &isArray);
-            
-            if (isArray) {
-                uint32_t length = 0;
-                napi_get_array_length(env, paddingValue, &length);
-                
-                if (length == 4) {
-                    napi_value leftVal, topVal, rightVal, bottomVal;
-                    double left = 0, top = 0, right = 0, bottom = 0;
-                    
-                    if (napi_get_element(env, paddingValue, 0, &leftVal) == napi_ok &&
-                        napi_get_element(env, paddingValue, 1, &topVal) == napi_ok &&
-                        napi_get_element(env, paddingValue, 2, &rightVal) == napi_ok &&
-                        napi_get_element(env, paddingValue, 3, &bottomVal) == napi_ok) {
-                        
-                        napi_get_value_double(env, leftVal, &left);
-                        napi_get_value_double(env, topVal, &top);
-                        napi_get_value_double(env, rightVal, &right);
-                        napi_get_value_double(env, bottomVal, &bottom);
-                        
-                        // Apply pixelRatio scaling
-                        cameraOptions.padding = mbgl::EdgeInsets{
-                            top * instance->pixelRatio,
-                            left * instance->pixelRatio,
-                            bottom * instance->pixelRatio,
-                            right * instance->pixelRatio
-                        };
-                        
-                        Logger::info("NativeMapView", "setLatLng: padding=[%.1f, %.1f, %.1f, %.1f]", 
-                                    left, top, right, bottom);
-                    }
-                }
+            mbgl::EdgeInsets padding;
+            double rawPadding[4];
+            if (ParsePaddingArray(env, paddingValue, instance->pixelRatio, padding, rawPadding)) {
+                cameraOptions.padding = padding;
+                Logger::info("NativeMapView", "setLatLng: padding=[%.1f, %.1f, %.1f, %.1f]",
+                            rawPadding[0], rawPadding[1], rawPadding[2], rawPadding[3]);
             }
         }
         
@@ -942,207 +942,63 @@ napi_value NativeMapView::resetZoom(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) return args.Undefined();
-    
-    double zoom = args.GetDouble(0, "zoom");
-    if (args.HasError()) return args.Undefined();
-    
-    // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setMinZoom: Failed to get instance or map not initialized");
-        return args.Undefined();
-    }
-    
-    try {
-        instance->invokeOnMapThread([zoom](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions().withMinZoom(zoom)); });
-        Logger::info("NativeMapView", "setMinZoom: Set min zoom to %.2f", zoom);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setMinZoom: Failed - %s", e.what());
-    }
-    
-    return args.Undefined();
+    return SetBoundsScalar(env, info, "setMinZoom", "zoom",
+                           "setMinZoom: Set min zoom to %.2f", true,
+                           [](double value) {
+                               mbgl::BoundOptions options;
+                               options.withMinZoom(value);
+                               return options;
+                           });
 }
 
 napi_value NativeMapView::getMinZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "getMinZoom: Failed to get instance or map not initialized");
-        return args.Undefined();
-    }
-    
-    try {
-        auto bounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getBounds(); }, mbgl::BoundOptions{});
-        if (bounds.minZoom) {
-            napi_value result;
-            napi_create_double(env, *bounds.minZoom, &result);
-            return result;
-        }
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getMinZoom: Failed - %s", e.what());
-    }
-    
-    return args.Undefined();
+    return GetBoundsScalar(env, info, "getMinZoom",
+                           [](const mbgl::BoundOptions& bounds) { return bounds.minZoom; });
 }
 
 napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) return args.Undefined();
-    
-    double zoom = args.GetDouble(0, "zoom");
-    if (args.HasError()) return args.Undefined();
-    
-    // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setMaxZoom: Failed to get instance or map not initialized");
-        return args.Undefined();
-    }
-    
-    try {
-        instance->invokeOnMapThread([zoom](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions().withMaxZoom(zoom)); });
-        Logger::info("NativeMapView", "setMaxZoom: Set max zoom to %.2f", zoom);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setMaxZoom: Failed - %s", e.what());
-    }
-    
-    return args.Undefined();
+    return SetBoundsScalar(env, info, "setMaxZoom", "zoom",
+                           "setMaxZoom: Set max zoom to %.2f", true,
+                           [](double value) {
+                               mbgl::BoundOptions options;
+                               options.withMaxZoom(value);
+                               return options;
+                           });
 }
 
 napi_value NativeMapView::getMaxZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "getMaxZoom: Failed to get instance or map not initialized");
-        return args.Undefined();
-    }
-    
-    try {
-        auto bounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getBounds(); }, mbgl::BoundOptions{});
-        if (bounds.maxZoom) {
-            napi_value result;
-            napi_create_double(env, *bounds.maxZoom, &result);
-            return result;
-        }
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getMaxZoom: Failed - %s", e.what());
-    }
-    
-    return args.Undefined();
+    return GetBoundsScalar(env, info, "getMaxZoom",
+                           [](const mbgl::BoundOptions& bounds) { return bounds.maxZoom; });
 }
 
 napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return args.Undefined();
-    }
-    
-    // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setMinPitch: Failed to get instance or map not initialized");
-        return args.Undefined();
-    }
-    
-    double pitch = args.GetDouble(0, "pitch");
-    if (args.HasError()) {
-        return args.Undefined();
-    }
-    
-    try {
-        instance->invokeOnMapThread([pitch](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions().withMinPitch(pitch)); });
-        Logger::info("NativeMapView", "setMinPitch: Set min pitch to %.2f", pitch);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setMinPitch: Failed - %s", e.what());
-    }
-    
-    return args.Undefined();
+    return SetBoundsScalar(env, info, "setMinPitch", "pitch",
+                           "setMinPitch: Set min pitch to %.2f", false,
+                           [](double value) {
+                               mbgl::BoundOptions options;
+                               options.withMinPitch(value);
+                               return options;
+                           });
 }
 
 napi_value NativeMapView::getMinPitch(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "getMinPitch: Failed to get instance or map not initialized");
-        return args.Undefined();
-    }
-    
-    try {
-        auto bounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getBounds(); }, mbgl::BoundOptions{});
-        if (bounds.minPitch) {
-            napi_value result;
-            napi_create_double(env, *bounds.minPitch, &result);
-            return result;
-        }
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getMinPitch: Failed - %s", e.what());
-    }
-    
-    return args.Undefined();
+    return GetBoundsScalar(env, info, "getMinPitch",
+                           [](const mbgl::BoundOptions& bounds) { return bounds.minPitch; });
 }
 
 napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return args.Undefined();
-    }
-    
-    // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setMaxPitch: Failed to get instance or map not initialized");
-        return args.Undefined();
-    }
-    
-    double pitch = args.GetDouble(0, "pitch");
-    if (args.HasError()) {
-        return args.Undefined();
-    }
-    
-    try {
-        instance->invokeOnMapThread([pitch](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions().withMaxPitch(pitch)); });
-        Logger::info("NativeMapView", "setMaxPitch: Set max pitch to %.2f", pitch);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setMaxPitch: Failed - %s", e.what());
-    }
-    
-    return args.Undefined();
+    return SetBoundsScalar(env, info, "setMaxPitch", "pitch",
+                           "setMaxPitch: Set max pitch to %.2f", false,
+                           [](double value) {
+                               mbgl::BoundOptions options;
+                               options.withMaxPitch(value);
+                               return options;
+                           });
 }
 
 napi_value NativeMapView::getMaxPitch(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "getMaxPitch: Failed to get instance or map not initialized");
-        return args.Undefined();
-    }
-    
-    try {
-        auto bounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getBounds(); }, mbgl::BoundOptions{});
-        if (bounds.maxPitch) {
-            napi_value result;
-            napi_create_double(env, *bounds.maxPitch, &result);
-            return result;
-        }
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getMaxPitch: Failed - %s", e.what());
-    }
-    
-    return args.Undefined();
+    return GetBoundsScalar(env, info, "getMaxPitch",
+                           [](const mbgl::BoundOptions& bounds) { return bounds.maxPitch; });
 }
 
 napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
@@ -1559,16 +1415,8 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
         
         // Add center (target)
         if (cameraOptions.center) {
-            napi_value targetObj;
-            napi_create_object(env, &targetObj);
-            
-            napi_value latValue, lngValue;
-            napi_create_double(env, cameraOptions.center->latitude(), &latValue);
-            napi_create_double(env, cameraOptions.center->longitude(), &lngValue);
-            
-            napi_set_named_property(env, targetObj, "latitude", latValue);
-            napi_set_named_property(env, targetObj, "longitude", lngValue);
-            napi_set_named_property(env, result, "target", targetObj);
+            napi_set_named_property(env, result, "target",
+                                    LatLngHarmony::CreateLatLngObject(env, *cameraOptions.center));
         }
         
         return result;
@@ -1603,10 +1451,11 @@ napi_value NativeMapView::getCameraState(napi_env env, napi_callback_info info) 
         }
 
         if (cameraOptions.center) {
+            napi_value centerObj = LatLngHarmony::CreateLatLngObject(env, *cameraOptions.center);
             napi_value lat, lng;
-            napi_create_double(env, cameraOptions.center->latitude(), &lat);
+            napi_get_named_property(env, centerObj, "latitude", &lat);
+            napi_get_named_property(env, centerObj, "longitude", &lng);
             napi_set_named_property(env, result, "latitude", lat);
-            napi_create_double(env, cameraOptions.center->longitude(), &lng);
             napi_set_named_property(env, result, "longitude", lng);
         }
 

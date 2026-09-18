@@ -17,6 +17,81 @@ export class FocalPoint {
 }
 
 /**
+ * WidgetConfig - shared per-widget configuration.
+ *
+ * Holds the state shared by all four map widgets (compass, logo, scale bar,
+ * attribution): enabled flag, ArkUI alignment, margins and optional offset,
+ * plus a change callback. Replaces the previous four hand-written copies of
+ * the same fields and getters/setters in UiSettings.
+ *
+ * Plain class composition (no decorators) so it can be owned by UiSettings;
+ * widget-specific state (compass visibility, scale bar units, ...) stays on
+ * UiSettings itself.
+ */
+class WidgetConfig {
+  private enabled: boolean;
+  private alignment: Alignment;
+  private margins: Margins;
+  private offset?: Offset2D;
+  /** Change hook, wired by UiSettings to the widget's public onXxxConfigChanged callback. */
+  private onChanged: () => void;
+
+  constructor(enabled: boolean, alignment: Alignment, onChanged: () => void) {
+    this.enabled = enabled;
+    this.alignment = alignment;
+    this.margins = { left: 10, top: 10, right: 10, bottom: 10 };
+    this.onChanged = onChanged;
+  }
+
+  setEnabled(enabled: boolean): void {
+    if (this.enabled !== enabled) {
+      this.enabled = enabled;
+      this.notifyChanged();
+    }
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+
+  setAlignment(alignment: Alignment): void {
+    if (this.alignment !== alignment) {
+      this.alignment = alignment;
+      this.notifyChanged();
+    }
+  }
+
+  getAlignment(): Alignment {
+    return this.alignment;
+  }
+
+  setMargins(left: number, top: number, right: number, bottom: number): void {
+    this.margins.left = left;
+    this.margins.top = top;
+    this.margins.right = right;
+    this.margins.bottom = bottom;
+    this.notifyChanged();
+  }
+
+  getMargins(): Margins {
+    return this.margins;
+  }
+
+  setOffset(offset: Offset2D | undefined): void {
+    this.offset = offset;
+    this.notifyChanged();
+  }
+
+  getOffset(): Offset2D | undefined {
+    return this.offset;
+  }
+
+  private notifyChanged(): void {
+    this.onChanged();
+  }
+}
+
+/**
  * UiSettings
  *
  * Manages gesture enablement and UI component configuration for the map.
@@ -63,61 +138,44 @@ export class UiSettings {
   // Rotation configuration
   private rotationRate: number = 1.0; // Rotation sensitivity multiplier
 
-  // ==================== Compass configuration ====================
+  // ==================== Widget configurations ====================
+  // Per-widget state (enabled/alignment/margins/offset) lives in WidgetConfig;
+  // each widget's change callback fans out to the public onXxxConfigChanged
+  // field below (assigned by the MapView component for @State syncing).
 
-  // Compass enablement
-  private compassEnabled: boolean = false;
+  // Compass configuration
+  private compassConfig: WidgetConfig = new WidgetConfig(false, Alignment.TopEnd, (): void => {
+    this.notifyCompassConfigChanged();
+  });
   // Compass visibility mode
   private compassVisibility: CompassVisibility = CompassVisibility.Adaptive;
   // Fade when facing north
   private compassFadeWhenFacingNorth: boolean = true;
-  // Compass alignment (ArkUI Alignment)
-  private compassAlignment: Alignment = Alignment.TopEnd;
-  // Compass margins
-  private compassMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // Optional compass offset
-  private compassOffset?: Offset2D;
   // Compass configuration change callback (injected by MapLibreMap)
   public onCompassConfigChanged?: () => void;
-  // ==================== Logo configuration ====================
 
-  // Logo enablement
-  private logoEnabled: boolean = false;
-  // Logo alignment (ArkUI Alignment)
-  private logoAlignment: Alignment = Alignment.BottomStart;
-  // Logo margins
-  private logoMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // Optional logo offset
-  private logoOffset?: Offset2D;
+  // Logo configuration
+  private logoConfig: WidgetConfig = new WidgetConfig(false, Alignment.BottomStart, (): void => {
+    this.notifyLogoConfigChanged();
+  });
   // Logo configuration callback
   public onLogoConfigChanged?: () => void;
-  // ==================== ScaleBar configuration ====================
 
-  // ScaleBar enablement
-  private scaleBarEnabled: boolean = true; // Enabled by default
-
+  // ScaleBar configuration
+  private scaleBarConfig: WidgetConfig = new WidgetConfig(true, Alignment.TopStart, (): void => {
+    this.notifyScaleBarConfigChanged();
+  });
   // ScaleBar units
   private scaleBarUnit: ScaleBarUnit = ScaleBarUnit.Metric;
   // Dark theme toggle for ScaleBar
   private scaleBarUseDarkStyles: boolean = false;
-  // ScaleBar alignment (ArkUI Alignment)
-  private scaleBarAlignment: Alignment = Alignment.TopStart;
-  // ScaleBar margins
-  private scaleBarMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // Optional ScaleBar offset
-  private scaleBarOffset?: Offset2D;
   // ScaleBar configuration callback
   public onScaleBarConfigChanged?: () => void;
-  // ==================== Attribution configuration ====================
 
-  // Attribution enablement
-  private attributionEnabled: boolean = true;
-  // Attribution alignment (ArkUI Alignment)
-  private attributionAlignment: Alignment = Alignment.BottomEnd;
-  // Attribution margins
-  private attributionMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // Optional attribution offset
-  private attributionOffset?: Offset2D;
+  // Attribution configuration
+  private attributionConfig: WidgetConfig = new WidgetConfig(true, Alignment.BottomEnd, (): void => {
+    this.notifyAttributionConfigChanged();
+  });
   // Attribution configuration callback
   public onAttributionConfigChanged?: () => void;
 
@@ -512,17 +570,14 @@ export class UiSettings {
    * @param enabled Whether the compass is enabled
    */
   setCompassEnabled(enabled: boolean): void {
-    if (this.compassEnabled !== enabled) {
-      this.compassEnabled = enabled;
-      this.notifyCompassConfigChanged();
-    }
+    this.compassConfig.setEnabled(enabled);
   }
 
   /**
    * Check whether the compass is enabled
    */
   isCompassEnabled(): boolean {
-    return this.compassEnabled;
+    return this.compassConfig.isEnabled();
   }
 
   /**
@@ -569,46 +624,42 @@ export class UiSettings {
    * @param bottom Bottom margin
    */
   setCompassMargins(left: number, top: number, right: number, bottom: number): void {
-    this.compassMargins.left = left;
-    this.compassMargins.top = top;
-    this.compassMargins.right = right;
-    this.compassMargins.bottom = bottom;
-    this.notifyCompassConfigChanged();
+    this.compassConfig.setMargins(left, top, right, bottom);
   }
 
   /**
    * Get compass margins
    */
   getCompassMargins(): Margins {
-    return this.compassMargins;
+    return this.compassConfig.getMargins();
   }
-  
+
   /**
    * Get compass left margin
    */
   getCompassMarginLeft(): number {
-    return this.compassMargins.left;
+    return this.compassConfig.getMargins().left;
   }
-  
+
   /**
    * Get compass top margin
    */
   getCompassMarginTop(): number {
-    return this.compassMargins.top;
+    return this.compassConfig.getMargins().top;
   }
-  
+
   /**
    * Get compass right margin
    */
   getCompassMarginRight(): number {
-    return this.compassMargins.right;
+    return this.compassConfig.getMargins().right;
   }
-  
+
   /**
    * Get compass bottom margin
    */
   getCompassMarginBottom(): number {
-    return this.compassMargins.bottom;
+    return this.compassConfig.getMargins().bottom;
   }
 
   /**
@@ -616,33 +667,29 @@ export class UiSettings {
    * @param alignment ArkUI Alignment
    */
   setCompassAlignment(alignment: Alignment): void {
-    if (this.compassAlignment !== alignment) {
-      this.compassAlignment = alignment;
-      this.notifyCompassConfigChanged();
-    }
+    this.compassConfig.setAlignment(alignment);
   }
 
   /**
    * Get compass alignment
    */
   getCompassAlignment(): Alignment {
-    return this.compassAlignment;
+    return this.compassConfig.getAlignment();
   }
-  
+
   /**
    * Set additional compass offset
    * @param offset Offset { x, y } in vp
    */
   setCompassOffset(offset: Offset2D | undefined): void {
-    this.compassOffset = offset;
-    this.notifyCompassConfigChanged();
+    this.compassConfig.setOffset(offset);
   }
 
   /**
    * Get additional compass offset
    */
   getCompassOffset(): Offset2D | undefined {
-    return this.compassOffset;
+    return this.compassConfig.getOffset();
   }
 
   /**
@@ -661,17 +708,14 @@ export class UiSettings {
    * @param enabled Whether the logo is enabled
    */
   setLogoEnabled(enabled: boolean): void {
-    if (this.logoEnabled !== enabled) {
-      this.logoEnabled = enabled;
-      this.notifyLogoConfigChanged();
-    }
+    this.logoConfig.setEnabled(enabled);
   }
 
   /**
    * Check whether the logo is enabled
    */
   isLogoEnabled(): boolean {
-    return this.logoEnabled;
+    return this.logoConfig.isEnabled();
   }
 
   /**
@@ -679,17 +723,14 @@ export class UiSettings {
    * @param alignment ArkUI Alignment
    */
   setLogoAlignment(alignment: Alignment): void {
-    if (this.logoAlignment !== alignment) {
-      this.logoAlignment = alignment;
-      this.notifyLogoConfigChanged();
-    }
+    this.logoConfig.setAlignment(alignment);
   }
 
   /**
    * Get logo alignment
    */
   getLogoAlignment(): Alignment {
-    return this.logoAlignment;
+    return this.logoConfig.getAlignment();
   }
 
   /**
@@ -700,62 +741,57 @@ export class UiSettings {
    * @param bottom Bottom margin
    */
   setLogoMargins(left: number, top: number, right: number, bottom: number): void {
-    this.logoMargins.left = left;
-    this.logoMargins.top = top;
-    this.logoMargins.right = right;
-    this.logoMargins.bottom = bottom;
-    this.notifyLogoConfigChanged();
+    this.logoConfig.setMargins(left, top, right, bottom);
   }
 
   /**
    * Get logo margins
    */
   getLogoMargins(): Margins {
-    return this.logoMargins;
+    return this.logoConfig.getMargins();
   }
-  
+
   /**
    * Get logo left margin
    */
   getLogoMarginLeft(): number {
-    return this.logoMargins.left;
+    return this.logoConfig.getMargins().left;
   }
-  
+
   /**
    * Get logo top margin
    */
   getLogoMarginTop(): number {
-    return this.logoMargins.top;
+    return this.logoConfig.getMargins().top;
   }
-  
+
   /**
    * Get logo right margin
    */
   getLogoMarginRight(): number {
-    return this.logoMargins.right;
+    return this.logoConfig.getMargins().right;
   }
-  
+
   /**
    * Get logo bottom margin
    */
   getLogoMarginBottom(): number {
-    return this.logoMargins.bottom;
+    return this.logoConfig.getMargins().bottom;
   }
-  
+
   /**
    * Set additional logo offset
    * @param offset Offset { x, y } in vp
    */
   setLogoOffset(offset: Offset2D | undefined): void {
-    this.logoOffset = offset;
-    this.notifyLogoConfigChanged();
+    this.logoConfig.setOffset(offset);
   }
 
   /**
    * Get additional logo offset
    */
   getLogoOffset(): Offset2D | undefined {
-    return this.logoOffset;
+    return this.logoConfig.getOffset();
   }
 
   /**
@@ -774,17 +810,14 @@ export class UiSettings {
    * @param enabled Whether the ScaleBar is enabled
    */
   setScaleBarEnabled(enabled: boolean): void {
-    if (this.scaleBarEnabled !== enabled) {
-      this.scaleBarEnabled = enabled;
-      this.notifyScaleBarConfigChanged();
-    }
+    this.scaleBarConfig.setEnabled(enabled);
   }
 
   /**
    * Check whether the ScaleBar is enabled
    */
   isScaleBarEnabled(): boolean {
-    return this.scaleBarEnabled;
+    return this.scaleBarConfig.isEnabled();
   }
 
   /**
@@ -828,17 +861,14 @@ export class UiSettings {
    * @param alignment ArkUI Alignment
    */
   setScaleBarAlignment(alignment: Alignment): void {
-    if (this.scaleBarAlignment !== alignment) {
-      this.scaleBarAlignment = alignment;
-      this.notifyScaleBarConfigChanged();
-    }
+    this.scaleBarConfig.setAlignment(alignment);
   }
 
   /**
    * Get ScaleBar alignment
    */
   getScaleBarAlignment(): Alignment {
-    return this.scaleBarAlignment;
+    return this.scaleBarConfig.getAlignment();
   }
 
   /**
@@ -849,62 +879,57 @@ export class UiSettings {
    * @param bottom Bottom margin
    */
   setScaleBarMargins(left: number, top: number, right: number, bottom: number): void {
-    this.scaleBarMargins.left = left;
-    this.scaleBarMargins.top = top;
-    this.scaleBarMargins.right = right;
-    this.scaleBarMargins.bottom = bottom;
-    this.notifyScaleBarConfigChanged();
+    this.scaleBarConfig.setMargins(left, top, right, bottom);
   }
 
   /**
    * Get ScaleBar margins
    */
   getScaleBarMargins(): Margins {
-    return this.scaleBarMargins;
+    return this.scaleBarConfig.getMargins();
   }
-  
+
   /**
    * Get ScaleBar left margin
    */
   getScaleBarMarginLeft(): number {
-    return this.scaleBarMargins.left;
+    return this.scaleBarConfig.getMargins().left;
   }
-  
+
   /**
    * Get ScaleBar top margin
    */
   getScaleBarMarginTop(): number {
-    return this.scaleBarMargins.top;
+    return this.scaleBarConfig.getMargins().top;
   }
-  
+
   /**
    * Get ScaleBar right margin
    */
   getScaleBarMarginRight(): number {
-    return this.scaleBarMargins.right;
+    return this.scaleBarConfig.getMargins().right;
   }
-  
+
   /**
    * Get ScaleBar bottom margin
    */
   getScaleBarMarginBottom(): number {
-    return this.scaleBarMargins.bottom;
+    return this.scaleBarConfig.getMargins().bottom;
   }
-  
+
   /**
    * Set additional ScaleBar offset
    * @param offset Offset { x, y } in vp
    */
   setScaleBarOffset(offset: Offset2D | undefined): void {
-    this.scaleBarOffset = offset;
-    this.notifyScaleBarConfigChanged();
+    this.scaleBarConfig.setOffset(offset);
   }
 
   /**
    * Get additional ScaleBar offset
    */
   getScaleBarOffset(): Offset2D | undefined {
-    return this.scaleBarOffset;
+    return this.scaleBarConfig.getOffset();
   }
 
   /**
@@ -923,17 +948,14 @@ export class UiSettings {
    * @param enabled Whether attribution is enabled
    */
   setAttributionEnabled(enabled: boolean): void {
-    if (this.attributionEnabled !== enabled) {
-      this.attributionEnabled = enabled;
-      this.notifyAttributionConfigChanged();
-    }
+    this.attributionConfig.setEnabled(enabled);
   }
 
   /**
    * Check whether attribution is enabled
    */
   isAttributionEnabled(): boolean {
-    return this.attributionEnabled;
+    return this.attributionConfig.isEnabled();
   }
 
   /**
@@ -941,17 +963,14 @@ export class UiSettings {
    * @param alignment ArkUI Alignment
    */
   setAttributionAlignment(alignment: Alignment): void {
-    if (this.attributionAlignment !== alignment) {
-      this.attributionAlignment = alignment;
-      this.notifyAttributionConfigChanged();
-    }
+    this.attributionConfig.setAlignment(alignment);
   }
 
   /**
    * Get attribution alignment
    */
   getAttributionAlignment(): Alignment {
-    return this.attributionAlignment;
+    return this.attributionConfig.getAlignment();
   }
 
   /**
@@ -962,62 +981,57 @@ export class UiSettings {
    * @param bottom Bottom margin
    */
   setAttributionMargins(left: number, top: number, right: number, bottom: number): void {
-    this.attributionMargins.left = left;
-    this.attributionMargins.top = top;
-    this.attributionMargins.right = right;
-    this.attributionMargins.bottom = bottom;
-    this.notifyAttributionConfigChanged();
+    this.attributionConfig.setMargins(left, top, right, bottom);
   }
 
   /**
    * Get attribution margins
    */
   getAttributionMargins(): Margins {
-    return this.attributionMargins;
+    return this.attributionConfig.getMargins();
   }
-  
+
   /**
    * Get attribution left margin
    */
   getAttributionMarginLeft(): number {
-    return this.attributionMargins.left;
+    return this.attributionConfig.getMargins().left;
   }
-  
+
   /**
    * Get attribution top margin
    */
   getAttributionMarginTop(): number {
-    return this.attributionMargins.top;
+    return this.attributionConfig.getMargins().top;
   }
-  
+
   /**
    * Get attribution right margin
    */
   getAttributionMarginRight(): number {
-    return this.attributionMargins.right;
+    return this.attributionConfig.getMargins().right;
   }
-  
+
   /**
    * Get attribution bottom margin
    */
   getAttributionMarginBottom(): number {
-    return this.attributionMargins.bottom;
+    return this.attributionConfig.getMargins().bottom;
   }
-  
+
   /**
    * Set additional attribution offset
    * @param offset Offset { x, y } in vp
    */
   setAttributionOffset(offset: Offset2D | undefined): void {
-    this.attributionOffset = offset;
-    this.notifyAttributionConfigChanged();
+    this.attributionConfig.setOffset(offset);
   }
 
   /**
    * Get additional attribution offset
    */
   getAttributionOffset(): Offset2D | undefined {
-    return this.attributionOffset;
+    return this.attributionConfig.getOffset();
   }
 
   /**

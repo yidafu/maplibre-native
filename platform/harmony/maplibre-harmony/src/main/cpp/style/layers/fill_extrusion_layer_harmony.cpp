@@ -12,6 +12,7 @@
 #include <mbgl/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "layer_property_macros.hpp"
 namespace mbgl {
 namespace harmony {
 
@@ -76,15 +77,11 @@ napi_value FillExtrusionLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "FillExtrusionLayer", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) return nullptr;
-    
-    mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    napi_set_named_property(env, exports, "FillExtrusionLayer", cons);
-    
+    napi_value cons = RegisterNapiClass(env, exports, "FillExtrusionLayer", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "FillExtrusionLayerNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("FillExtrusionLayerNAPI", "FillExtrusionLayer NAPI class registered");
     return exports;
 }
@@ -118,107 +115,17 @@ napi_value FillExtrusionLayerNAPI::CreateInstance(napi_env env, mbgl::style::Fil
 }
 
 
-napi_value FillExtrusionLayerNAPI::SetFillExtrusionColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillExtrusionLayer, mbgl::Color>(
-        env, layerObj->getLayer(), argv[0], "fill-extrusion-color",
-        &mbgl::style::FillExtrusionLayer::setFillExtrusionColor
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionColor, setPaintProperty, "fill-extrusion-color", setFillExtrusionColor, mbgl::Color)
 
-napi_value FillExtrusionLayerNAPI::SetFillExtrusionOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillExtrusionLayer, float>(
-        env, layerObj->getLayer(), argv[0], "fill-extrusion-opacity",
-        &mbgl::style::FillExtrusionLayer::setFillExtrusionOpacity
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionOpacity, setPaintProperty, "fill-extrusion-opacity", setFillExtrusionOpacity, float)
 
-napi_value FillExtrusionLayerNAPI::SetFillExtrusionHeight(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillExtrusionLayer, float>(
-        env, layerObj->getLayer(), argv[0], "fill-extrusion-height",
-        &mbgl::style::FillExtrusionLayer::setFillExtrusionHeight
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionHeight, setPaintProperty, "fill-extrusion-height", setFillExtrusionHeight, float)
 
-napi_value FillExtrusionLayerNAPI::SetFillExtrusionBase(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillExtrusionLayer, float>(
-        env, layerObj->getLayer(), argv[0], "fill-extrusion-base",
-        &mbgl::style::FillExtrusionLayer::setFillExtrusionBase
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionBase, setPaintProperty, "fill-extrusion-base", setFillExtrusionBase, float)
 
-napi_value FillExtrusionLayerNAPI::SetFillExtrusionPattern(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillExtrusionLayer, mbgl::style::expression::Image>(
-        env, layerObj->getLayer(), argv[0], "fill-extrusion-pattern",
-        &mbgl::style::FillExtrusionLayer::setFillExtrusionPattern
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionPattern, setPaintProperty, "fill-extrusion-pattern", setFillExtrusionPattern, mbgl::style::expression::Image)
 
-napi_value FillExtrusionLayerNAPI::SetFillExtrusionTranslate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillExtrusionLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), argv[0], "fill-extrusion-translate",
-        &mbgl::style::FillExtrusionLayer::setFillExtrusionTranslate
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionTranslate, setPaintProperty, "fill-extrusion-translate", setFillExtrusionTranslate, std::array<float,2>)
 
 // Common layer methods
 napi_value FillExtrusionLayerNAPI::GetId(napi_env env, napi_callback_info info) {
@@ -279,87 +186,13 @@ napi_value FillExtrusionLayerNAPI::GetFilter(napi_env env, napi_callback_info in
 // New Properties
 // ============================================================================
 
-napi_value FillExtrusionLayerNAPI::SetFillExtrusionTranslateAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillExtrusionLayer, mbgl::style::TranslateAnchorType>(
-        env, layerObj->getLayer(), argv[0], "fill-extrusion-translate-anchor",
-        &mbgl::style::FillExtrusionLayer::setFillExtrusionTranslateAnchor
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionTranslateAnchor, setPaintProperty, "fill-extrusion-translate-anchor", setFillExtrusionTranslateAnchor, mbgl::style::TranslateAnchorType)
 
-napi_value FillExtrusionLayerNAPI::GetFillExtrusionTranslateAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+DEFINE_LAYER_GETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, GetFillExtrusionTranslateAnchor, getFillExtrusionTranslateAnchor, mbgl::style::TranslateAnchorType)
 
-    return mbgl::harmony::getProperty<mbgl::style::FillExtrusionLayer, mbgl::style::TranslateAnchorType>(
-        env, layer, &mbgl::style::FillExtrusionLayer::getFillExtrusionTranslateAnchor
-    );
-}
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionVerticalGradient, setPaintProperty, "fill-extrusion-vertical-gradient", setFillExtrusionVerticalGradient, bool)
 
-napi_value FillExtrusionLayerNAPI::SetFillExtrusionVerticalGradient(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillExtrusionLayer, bool>(
-        env, layerObj->getLayer(), argv[0], "fill-extrusion-vertical-gradient",
-        &mbgl::style::FillExtrusionLayer::setFillExtrusionVerticalGradient
-    );
-    return thisVar;
-}
-
-napi_value FillExtrusionLayerNAPI::GetFillExtrusionVerticalGradient(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::FillExtrusionLayer, bool>(
-        env, layer, &mbgl::style::FillExtrusionLayer::getFillExtrusionVerticalGradient
-    );
-}
+DEFINE_LAYER_GETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, GetFillExtrusionVerticalGradient, getFillExtrusionVerticalGradient, bool)
 
 // ==================== Generic Property Methods ====================
 

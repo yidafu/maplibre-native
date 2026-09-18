@@ -193,6 +193,30 @@ export class Expression<T = Object> {
     return new ExpressionLiteral(value);
   }
 
+  /**
+   * Wrap a raw operand into a literal expression unless it is already an
+   * Expression. Collapses the inline
+   * `typeof x === 'number' ? Expression.literal(x) : x` boilerplate that was
+   * repeated across the factory helpers.
+   */
+  private static arg<T>(value: T | Expression<T>): Expression<T> {
+    if (value instanceof Expression) {
+      return value;
+    }
+    // Expression.literal only exposes (number|string|boolean|ExpressionValue[])
+    // overloads, so dispatch on the runtime type before calling it.
+    if (typeof value === 'string') {
+      return Expression.literal(value as Object as string) as Object as Expression<T>;
+    }
+    if (typeof value === 'boolean') {
+      return Expression.literal(value as Object as boolean) as Object as Expression<T>;
+    }
+    if (typeof value === 'number') {
+      return Expression.literal(value as Object as number) as Object as Expression<T>;
+    }
+    return new ExpressionLiteral(value as Object as ExpressionValue) as Object as Expression<T>;
+  }
+
   // ==================== Color Operators ====================
 
   /**
@@ -228,9 +252,9 @@ export class Expression<T = Object> {
     green: Expression<number> | number,
     blue: Expression<number> | number
   ): Expression<string> {
-    const redExpr = typeof red === 'number' ? Expression.literal(red) : red;
-    const greenExpr = typeof green === 'number' ? Expression.literal(green) : green;
-    const blueExpr = typeof blue === 'number' ? Expression.literal(blue) : blue;
+    const redExpr = Expression.arg<number>(red);
+    const greenExpr = Expression.arg<number>(green);
+    const blueExpr = Expression.arg<number>(blue);
     return new Expression<string>('rgb', redExpr, greenExpr, blueExpr);
   }
 
@@ -258,10 +282,10 @@ export class Expression<T = Object> {
     blue: Expression<number> | number,
     alpha: Expression<number> | number
   ): Expression<string> {
-    const redExpr = typeof red === 'number' ? Expression.literal(red) : red;
-    const greenExpr = typeof green === 'number' ? Expression.literal(green) : green;
-    const blueExpr = typeof blue === 'number' ? Expression.literal(blue) : blue;
-    const alphaExpr = typeof alpha === 'number' ? Expression.literal(alpha) : alpha;
+    const redExpr = Expression.arg<number>(red);
+    const greenExpr = Expression.arg<number>(green);
+    const blueExpr = Expression.arg<number>(blue);
+    const alphaExpr = Expression.arg<number>(alpha);
     return new Expression<string>('rgba', redExpr, greenExpr, blueExpr, alphaExpr);
   }
 
@@ -322,7 +346,7 @@ export class Expression<T = Object> {
     key: Expression<string> | string,
     object?: Expression<Object>
   ): Expression<T> {
-    const keyExpr = typeof key === 'string' ? Expression.literal(key) : key;
+    const keyExpr = Expression.arg<string>(key);
     if (object === undefined) {
       return new Expression<T>('get', keyExpr);
     }
@@ -366,7 +390,7 @@ export class Expression<T = Object> {
     key: Expression<string> | string,
     object?: Expression<Object>
   ): Expression<boolean> {
-    const keyExpr = typeof key === 'string' ? Expression.literal(key) : key;
+    const keyExpr = Expression.arg<string>(key);
     if (object === undefined) {
       return new Expression<boolean>('has', keyExpr);
     }
@@ -441,7 +465,7 @@ export class Expression<T = Object> {
     index: Expression<number> | number,
     array: Expression<T[]>
   ): Expression<T> {
-    const indexExpr = typeof index === 'number' ? Expression.literal(index) : index;
+    const indexExpr = Expression.arg<number>(index);
     return new Expression<T>('at', indexExpr, array);
   }
 
@@ -470,14 +494,7 @@ export class Expression<T = Object> {
     needle: Expression<Object> | number | string,
     haystack: Expression<Object>
   ): Expression<boolean> {
-    let needleExpr: Expression<Object>;
-    if (needle instanceof Expression) {
-      needleExpr = needle;
-    } else if (typeof needle === 'number') {
-      needleExpr = Expression.literal(needle);
-    } else {
-      needleExpr = Expression.literal(needle as string);
-    }
+    const needleExpr = Expression.arg<Object>(needle);
     return new Expression<boolean>('in', needleExpr, haystack);
   }
 
@@ -564,11 +581,11 @@ export class Expression<T = Object> {
     fromIndex: Expression<number> | number,
     toIndex?: Expression<number> | number
   ): Expression<T[] | string> {
-    const fromIndexExpr = typeof fromIndex === 'number' ? Expression.literal(fromIndex) : fromIndex;
+    const fromIndexExpr = Expression.arg<number>(fromIndex);
     if (toIndex === undefined) {
       return new Expression<T[] | string>('slice', input, fromIndexExpr);
     }
-    const toIndexExpr = typeof toIndex === 'number' ? Expression.literal(toIndex) : toIndex;
+    const toIndexExpr = Expression.arg<number>(toIndex);
     return new Expression<T[] | string>('slice', input, fromIndexExpr, toIndexExpr);
   }
 
@@ -581,6 +598,19 @@ export class Expression<T = Object> {
   }
 
   // ==================== Comparison Operators ====================
+
+  /**
+   * Shared implementation for the binary comparison operators
+   * (eq / neq / gt / lt / gte / lte): normalizes the right-hand operand into
+   * an expression and emits `[op, compareOne, compareTwo]`.
+   */
+  private static compare(
+    op: string,
+    compareOne: Expression<Object>,
+    compareTwo: Expression<Object> | boolean | string | number
+  ): Expression<boolean> {
+    return new Expression<boolean>(op, compareOne, Expression.arg<Object>(compareTwo));
+  }
 
   /**
    * Equality comparison (Expression).
@@ -609,17 +639,7 @@ export class Expression<T = Object> {
     compareOne: Expression<Object>,
     compareTwo: Expression<Object> | boolean | string | number
   ): Expression<boolean> {
-    let compareTwoExpr: Expression<Object>;
-    if (compareTwo instanceof Expression) {
-      compareTwoExpr = compareTwo;
-    } else if (typeof compareTwo === 'boolean') {
-      compareTwoExpr = Expression.literal(compareTwo);
-    } else if (typeof compareTwo === 'number') {
-      compareTwoExpr = Expression.literal(compareTwo);
-    } else {
-      compareTwoExpr = Expression.literal(compareTwo as string);
-    }
-    return new Expression<boolean>('==', compareOne, compareTwoExpr);
+    return Expression.compare('==', compareOne, compareTwo);
   }
 
   /**
@@ -649,17 +669,7 @@ export class Expression<T = Object> {
     compareOne: Expression<Object>,
     compareTwo: Expression<Object> | boolean | string | number
   ): Expression<boolean> {
-    let compareTwoExpr: Expression<Object>;
-    if (compareTwo instanceof Expression) {
-      compareTwoExpr = compareTwo;
-    } else if (typeof compareTwo === 'boolean') {
-      compareTwoExpr = Expression.literal(compareTwo);
-    } else if (typeof compareTwo === 'number') {
-      compareTwoExpr = Expression.literal(compareTwo);
-    } else {
-      compareTwoExpr = Expression.literal(compareTwo as string);
-    }
-    return new Expression<boolean>('!=', compareOne, compareTwoExpr);
+    return Expression.compare('!=', compareOne, compareTwo);
   }
 
   /**
@@ -684,15 +694,7 @@ export class Expression<T = Object> {
     compareOne: Expression<Object>,
     compareTwo: Expression<Object> | number | string
   ): Expression<boolean> {
-    let compareTwoExpr: Expression<Object>;
-    if (compareTwo instanceof Expression) {
-      compareTwoExpr = compareTwo;
-    } else if (typeof compareTwo === 'number') {
-      compareTwoExpr = Expression.literal(compareTwo);
-    } else {
-      compareTwoExpr = Expression.literal(compareTwo as string);
-    }
-    return new Expression<boolean>('>', compareOne, compareTwoExpr);
+    return Expression.compare('>', compareOne, compareTwo);
   }
 
   /**
@@ -717,15 +719,7 @@ export class Expression<T = Object> {
     compareOne: Expression<Object>,
     compareTwo: Expression<Object> | number | string
   ): Expression<boolean> {
-    let compareTwoExpr: Expression<Object>;
-    if (compareTwo instanceof Expression) {
-      compareTwoExpr = compareTwo;
-    } else if (typeof compareTwo === 'number') {
-      compareTwoExpr = Expression.literal(compareTwo);
-    } else {
-      compareTwoExpr = Expression.literal(compareTwo as string);
-    }
-    return new Expression<boolean>('<', compareOne, compareTwoExpr);
+    return Expression.compare('<', compareOne, compareTwo);
   }
 
   /**
@@ -750,15 +744,7 @@ export class Expression<T = Object> {
     compareOne: Expression<Object>,
     compareTwo: Expression<Object> | number | string
   ): Expression<boolean> {
-    let compareTwoExpr: Expression<Object>;
-    if (compareTwo instanceof Expression) {
-      compareTwoExpr = compareTwo;
-    } else if (typeof compareTwo === 'number') {
-      compareTwoExpr = Expression.literal(compareTwo);
-    } else {
-      compareTwoExpr = Expression.literal(compareTwo as string);
-    }
-    return new Expression<boolean>('>=', compareOne, compareTwoExpr);
+    return Expression.compare('>=', compareOne, compareTwo);
   }
 
   /**
@@ -783,15 +769,7 @@ export class Expression<T = Object> {
     compareOne: Expression<Object>,
     compareTwo: Expression<Object> | number | string
   ): Expression<boolean> {
-    let compareTwoExpr: Expression<Object>;
-    if (compareTwo instanceof Expression) {
-      compareTwoExpr = compareTwo;
-    } else if (typeof compareTwo === 'number') {
-      compareTwoExpr = Expression.literal(compareTwo);
-    } else {
-      compareTwoExpr = Expression.literal(compareTwo as string);
-    }
-    return new Expression<boolean>('<=', compareOne, compareTwoExpr);
+    return Expression.compare('<=', compareOne, compareTwo);
   }
 
   // ==================== Logical Operators ====================
@@ -824,7 +802,7 @@ export class Expression<T = Object> {
    * Implementation helper for logical NOT.
    */
   public static not(input: Expression<boolean> | boolean): Expression<boolean> {
-    const inputExpr = typeof input === 'boolean' ? Expression.literal(input) : input;
+    const inputExpr = Expression.arg<boolean>(input);
     return new Expression<boolean>('!', inputExpr);
   }
 
@@ -899,12 +877,12 @@ export class Expression<T = Object> {
   ): Expression<number> {
     if (second === undefined) {
       // unary negation
-      const valueExpr = typeof first === 'number' ? Expression.literal(first) : first;
+      const valueExpr = Expression.arg<number>(first);
       return new Expression<number>('-', valueExpr);
     } else {
       // binary subtraction
-      const firstExpr = typeof first === 'number' ? Expression.literal(first) : first;
-      const secondExpr = typeof second === 'number' ? Expression.literal(second) : second;
+      const firstExpr = Expression.arg<number>(first);
+      const secondExpr = Expression.arg<number>(second);
       return new Expression<number>('-', firstExpr, secondExpr);
     }
   }
@@ -933,8 +911,8 @@ export class Expression<T = Object> {
     first: Expression<number> | number,
     second: Expression<number> | number
   ): Expression<number> {
-    const firstExpr = typeof first === 'number' ? Expression.literal(first) : first;
-    const secondExpr = typeof second === 'number' ? Expression.literal(second) : second;
+    const firstExpr = Expression.arg<number>(first);
+    const secondExpr = Expression.arg<number>(second);
     return new Expression<number>('/', firstExpr, secondExpr);
   }
 
@@ -955,8 +933,8 @@ export class Expression<T = Object> {
     first: Expression<number> | number,
     second: Expression<number> | number
   ): Expression<number> {
-    const firstExpr = typeof first === 'number' ? Expression.literal(first) : first;
-    const secondExpr = typeof second === 'number' ? Expression.literal(second) : second;
+    const firstExpr = Expression.arg<number>(first);
+    const secondExpr = Expression.arg<number>(second);
     return new Expression<number>('%', firstExpr, secondExpr);
   }
 
@@ -977,8 +955,8 @@ export class Expression<T = Object> {
     base: Expression<number> | number,
     exponent: Expression<number> | number
   ): Expression<number> {
-    const baseExpr = typeof base === 'number' ? Expression.literal(base) : base;
-    const exponentExpr = typeof exponent === 'number' ? Expression.literal(exponent) : exponent;
+    const baseExpr = Expression.arg<number>(base);
+    const exponentExpr = Expression.arg<number>(exponent);
     return new Expression<number>('^', baseExpr, exponentExpr);
   }
 
@@ -998,7 +976,7 @@ export class Expression<T = Object> {
    * Implementation helper for square root.
    */
   public static sqrt(value: Expression<number> | number): Expression<number> {
-    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    const valueExpr = Expression.arg<number>(value);
     return new Expression<number>('sqrt', valueExpr);
   }
 
@@ -1016,7 +994,7 @@ export class Expression<T = Object> {
    * Implementation helper for the base-10 logarithm.
    */
   public static log10(value: Expression<number> | number): Expression<number> {
-    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    const valueExpr = Expression.arg<number>(value);
     return new Expression<number>('log10', valueExpr);
   }
 
@@ -1034,7 +1012,7 @@ export class Expression<T = Object> {
    * Implementation helper for the base-2 logarithm.
    */
   public static log2(value: Expression<number> | number): Expression<number> {
-    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    const valueExpr = Expression.arg<number>(value);
     return new Expression<number>('log2', valueExpr);
   }
 
@@ -1052,7 +1030,7 @@ export class Expression<T = Object> {
    * Implementation helper for the natural logarithm.
    */
   public static ln(value: Expression<number> | number): Expression<number> {
-    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    const valueExpr = Expression.arg<number>(value);
     return new Expression<number>('ln', valueExpr);
   }
 
@@ -1070,7 +1048,7 @@ export class Expression<T = Object> {
    * Implementation helper for absolute value.
    */
   public static abs(value: Expression<number> | number): Expression<number> {
-    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    const valueExpr = Expression.arg<number>(value);
     return new Expression<number>('abs', valueExpr);
   }
 
@@ -1088,7 +1066,7 @@ export class Expression<T = Object> {
    * Implementation helper for ceiling.
    */
   public static ceil(value: Expression<number> | number): Expression<number> {
-    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    const valueExpr = Expression.arg<number>(value);
     return new Expression<number>('ceil', valueExpr);
   }
 
@@ -1106,7 +1084,7 @@ export class Expression<T = Object> {
    * Implementation helper for floor.
    */
   public static floor(value: Expression<number> | number): Expression<number> {
-    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    const valueExpr = Expression.arg<number>(value);
     return new Expression<number>('floor', valueExpr);
   }
 
@@ -1124,7 +1102,7 @@ export class Expression<T = Object> {
    * Implementation helper for rounding.
    */
   public static round(value: Expression<number> | number): Expression<number> {
-    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    const valueExpr = Expression.arg<number>(value);
     return new Expression<number>('round', valueExpr);
   }
 
@@ -1221,7 +1199,7 @@ export class Expression<T = Object> {
    * Implementation helper for uppercase conversion.
    */
   public static upcase(input: Expression<string> | string): Expression<string> {
-    const inputExpr = typeof input === 'string' ? Expression.literal(input) : input;
+    const inputExpr = Expression.arg<string>(input);
     return new Expression<string>('upcase', inputExpr);
   }
 
@@ -1239,7 +1217,7 @@ export class Expression<T = Object> {
    * Implementation helper for lowercase conversion.
    */
   public static downcase(input: Expression<string> | string): Expression<string> {
-    const inputExpr = typeof input === 'string' ? Expression.literal(input) : input;
+    const inputExpr = Expression.arg<string>(input);
     return new Expression<string>('downcase', inputExpr);
   }
 
@@ -1299,7 +1277,7 @@ export class Expression<T = Object> {
    * Implementation helper for string renderability checks.
    */
   public static isSupportedScript(input: Expression<string> | string): Expression<boolean> {
-    const inputExpr = typeof input === 'string' ? Expression.literal(input) : input;
+    const inputExpr = Expression.arg<string>(input);
     return new Expression<boolean>('is-supported-script', inputExpr);
   }
 
@@ -1495,7 +1473,7 @@ export class Expression<T = Object> {
    * Implementation helper for exponential interpolation.
    */
   public static exponential(base: Expression<number> | number): Expression<Object> {
-    const baseExpr = typeof base === 'number' ? Expression.literal(base) : base;
+    const baseExpr = Expression.arg<number>(base);
     return new Expression<Object>('exponential', baseExpr);
   }
 
@@ -1535,10 +1513,10 @@ export class Expression<T = Object> {
     x2: Expression<number> | number,
     y2: Expression<number> | number
   ): Expression<Object> {
-    const x1Expr = typeof x1 === 'number' ? Expression.literal(x1) : x1;
-    const y1Expr = typeof y1 === 'number' ? Expression.literal(y1) : y1;
-    const x2Expr = typeof x2 === 'number' ? Expression.literal(x2) : x2;
-    const y2Expr = typeof y2 === 'number' ? Expression.literal(y2) : y2;
+    const x1Expr = Expression.arg<number>(x1);
+    const y1Expr = Expression.arg<number>(y1);
+    const x2Expr = Expression.arg<number>(x2);
+    const y2Expr = Expression.arg<number>(y2);
     return new Expression<Object>('cubic-bezier', x1Expr, y1Expr, x2Expr, y2Expr);
   }
 
@@ -1595,8 +1573,8 @@ export class Expression<T = Object> {
     defaultOutput: Expression<Object> | number,
     ...stops: Expression[]
   ): Expression<Object> {
-    const inputExpr = typeof input === 'number' ? Expression.literal(input) : input;
-    const defaultExpr = typeof defaultOutput === 'number' ? Expression.literal(defaultOutput) : defaultOutput;
+    const inputExpr = Expression.arg<number>(input);
+    const defaultExpr = Expression.arg<Object>(defaultOutput);
     const args: Expression[] = [inputExpr, defaultExpr];
     for (const stop of stops) {
       args.push(stop);
@@ -1614,7 +1592,7 @@ export class Expression<T = Object> {
    */
   public static stop(input: number | Expression<number>,
     output: number | string | boolean | null | Expression): Expression[] {
-    const inputExpr = typeof input === 'number' ? Expression.literal(input) : input;
+    const inputExpr = Expression.arg<number>(input);
     const outputExpr = output instanceof Expression ? output : Expression.literal(output as number);
     return [inputExpr, outputExpr];
   }
@@ -1650,7 +1628,7 @@ export class Expression<T = Object> {
     number: Expression<number> | number,
     ...options: Expression[]
   ): Expression<string> {
-    const numberExpr = typeof number === 'number' ? Expression.literal(number) : number;
+    const numberExpr = Expression.arg<number>(number);
     const args: Expression[] = [numberExpr, ...options];
     return new Expression<string>('number-format', ...args);
   }
@@ -1719,7 +1697,7 @@ export class Expression<T = Object> {
    * Implementation helper for image expressions.
    */
   public static image(imageName: Expression<string> | string): Expression<Object> {
-    const imageNameExpr = typeof imageName === 'string' ? Expression.literal(imageName) : imageName;
+    const imageNameExpr = Expression.arg<string>(imageName);
     return new Expression<Object>('image', imageNameExpr);
   }
 
@@ -1741,7 +1719,8 @@ export class Expression<T = Object> {
     const map = new Map<string, Expression<Object>>();
     const polyObj = polygon as Record<string, Object>;
     const typeValue = polyObj['type'];
-    // Choose the appropriate literal overload based on the type of typeValue.
+    // Guard kept so a missing or null 'type' skips the entry entirely; split
+    // by runtime type because literal()'s overloads take one concrete type.
     if (typeof typeValue === 'string') {
       map.set('type', Expression.literal(typeValue));
     } else if (typeof typeValue === 'number') {

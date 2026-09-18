@@ -3,6 +3,7 @@
 #include "utils/logger.h"
 #include "napi/core/napi_args.hpp"
 #include "geometry/lat_lng_harmony.hpp"
+#include "napi/bindings/annotation_napi_common.hpp"
 
 namespace mbgl {
 namespace harmony {
@@ -75,28 +76,10 @@ napi_value PolylineNAPI::Init(napi_env env, napi_value exports) {
         { "setMapLibreMap", nullptr, SetMapLibreMap, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "Polyline", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("PolylineNAPI", "Failed to define Polyline class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("PolylineNAPI", "Failed to create reference to Polyline constructor");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "Polyline", cons);
-    if (status != napi_ok) {
-        Logger::error("PolylineNAPI", "Failed to export Polyline class");
-        return nullptr;
-    }
-    
-    return exports;
+    napi_value cons = RegisterNapiClass(env, exports, "Polyline", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "PolylineNAPI");
+    return cons ? exports : nullptr;
 }
 
 napi_value PolylineNAPI::New(napi_env env, napi_callback_info info) {
@@ -119,34 +102,13 @@ napi_value PolylineNAPI::New(napi_env env, napi_callback_info info) {
         // Parse points (required)
         napi_value pointsValue;
         if (napi_get_named_property(env, optionsObj, "points", &pointsValue) == napi_ok) {
-            bool isArray = false;
-            napi_is_array(env, pointsValue, &isArray);
-            if (isArray) {
-                uint32_t length = 0;
-                napi_get_array_length(env, pointsValue, &length);
-                
-                for (uint32_t i = 0; i < length; i++) {
-                    napi_value pointValue;
-                    napi_get_element(env, pointsValue, i, &pointValue);
-                    
-                    mbgl::LatLng latLng;
-                    if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-                        polyline->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
-                    }
-                }
-            }
+            polyline->points = ParseLatLngArrayToPoints(env, pointsValue);
         }
         
         // Parse color (optional)
         std::string colorStr = args.GetStringProperty(optionsObj, "color", "#000000");
         if (!colorStr.empty() && colorStr[0] == '#') {
-            try {
-                unsigned int colorValue = std::stoul(colorStr.substr(1), nullptr, 16);
-                float r = ((colorValue >> 16) & 0xFF) / 255.0f;
-                float g = ((colorValue >> 8) & 0xFF) / 255.0f;
-                float b = (colorValue & 0xFF) / 255.0f;
-                polyline->color = mbgl::Color(r, g, b, 1.0f);
-            } catch (...) {
+            if (!ParseHexColor(colorStr, polyline->color)) {
                 Logger::error("PolylineNAPI", "Failed to parse color: %s", colorStr.c_str());
             }
         }
@@ -225,24 +187,7 @@ napi_value PolylineNAPI::GetPoints(napi_env env, napi_callback_info info) {
     
     if (!polyline) return nullptr;
     
-    napi_value result;
-    napi_create_array_with_length(env, polyline->points.size(), &result);
-    
-    for (size_t i = 0; i < polyline->points.size(); i++) {
-        napi_value point;
-        napi_create_object(env, &point);
-        
-        napi_value lat, lng;
-        napi_create_double(env, polyline->points[i].y, &lat);
-        napi_create_double(env, polyline->points[i].x, &lng);
-        
-        napi_set_named_property(env, point, "latitude", lat);
-        napi_set_named_property(env, point, "longitude", lng);
-        
-        napi_set_element(env, result, i, point);
-    }
-    
-    return result;
+    return PointArrayToJs(env, polyline->points);
 }
 
 napi_value PolylineNAPI::GetColor(napi_env env, napi_callback_info info) {
@@ -255,14 +200,10 @@ napi_value PolylineNAPI::GetColor(napi_env env, napi_callback_info info) {
     if (!polyline) return nullptr;
     
     // Convert color to hex string
-    char colorStr[8];
-    snprintf(colorStr, sizeof(colorStr), "#%02X%02X%02X",
-             static_cast<int>(polyline->color.r * 255),
-             static_cast<int>(polyline->color.g * 255),
-             static_cast<int>(polyline->color.b * 255));
+    const std::string colorStr = ColorToHex(polyline->color);
     
     napi_value result;
-    napi_create_string_utf8(env, colorStr, NAPI_AUTO_LENGTH, &result);
+    napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
 }
 
@@ -407,19 +348,7 @@ napi_value PolylineNAPI::SetPoints(napi_env env, napi_callback_info info) {
     napi_is_array(env, pointsValue, &isArray);
     
     if (isArray) {
-        polyline->points.clear();
-        uint32_t length = 0;
-        napi_get_array_length(env, pointsValue, &length);
-        
-        for (uint32_t i = 0; i < length; i++) {
-            napi_value pointValue;
-            napi_get_element(env, pointsValue, i, &pointValue);
-            
-            mbgl::LatLng latLng;
-            if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-                polyline->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
-            }
-        }
+        polyline->points = ParseLatLngArrayToPoints(env, pointsValue);
     }
     
     return thisVar;
@@ -439,13 +368,7 @@ napi_value PolylineNAPI::SetColor(napi_env env, napi_callback_info info) {
     
     std::string colorStr = args.GetString(0, "color");
     if (!colorStr.empty() && colorStr[0] == '#') {
-        try {
-            unsigned int colorValue = std::stoul(colorStr.substr(1), nullptr, 16);
-            float r = ((colorValue >> 16) & 0xFF) / 255.0f;
-            float g = ((colorValue >> 8) & 0xFF) / 255.0f;
-            float b = (colorValue & 0xFF) / 255.0f;
-            polyline->color = mbgl::Color(r, g, b, 1.0f);
-        } catch (...) {
+        if (!ParseHexColor(colorStr, polyline->color)) {
             Logger::error("PolylineNAPI", "Failed to parse color: %s", colorStr.c_str());
         }
     }
@@ -611,9 +534,9 @@ napi_value PolylineNAPI::AddPoint(napi_env env, napi_callback_info info) {
     
     napi_value pointValue = args.GetObject(0, "point");
     if (!args.HasError()) {
-        mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-            polyline->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
+        mbgl::Point<double> point;
+        if (ParseLatLngToPoint(env, pointValue, point)) {
+            polyline->points.push_back(point);
         }
     }
     
@@ -642,10 +565,9 @@ napi_value PolylineNAPI::InsertPoint(napi_env env, napi_callback_info info) {
     napi_value pointValue = args.GetObject(1, "point");
     
     if (!args.HasError() && index >= 0 && static_cast<size_t>(index) <= polyline->points.size()) {
-        mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-            polyline->points.insert(polyline->points.begin() + index, 
-                                   mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
+        mbgl::Point<double> point;
+        if (ParseLatLngToPoint(env, pointValue, point)) {
+            polyline->points.insert(polyline->points.begin() + index, point);
         }
     }
     
@@ -677,17 +599,7 @@ napi_value PolylineNAPI::RemovePoint(napi_env env, napi_callback_info info) {
         polyline->points.erase(polyline->points.begin() + index);
         
         // Return the removed point
-        napi_value result;
-        napi_create_object(env, &result);
-        
-        napi_value lat, lng;
-        napi_create_double(env, removedPoint.y, &lat);
-        napi_create_double(env, removedPoint.x, &lng);
-        
-        napi_set_named_property(env, result, "latitude", lat);
-        napi_set_named_property(env, result, "longitude", lng);
-        
-        return result;
+        return LatLngHarmony::CreateLatLngObject(env, mbgl::LatLng(removedPoint.y, removedPoint.x));
     }
     
     napi_value null;

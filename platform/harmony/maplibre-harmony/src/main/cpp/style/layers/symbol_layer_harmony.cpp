@@ -6,6 +6,7 @@
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
 #include "style/layers/layer_property_utils.hpp"
+#include "layer_property_macros.hpp"
 #include "style/harmony_symbol_layer_properties.hpp"
 #include <mbgl/style/layers/symbol_layer.hpp>
 #include <mbgl/style/expression/formatted.hpp>
@@ -64,39 +65,16 @@ void SymbolLayerNAPI::Destructor(napi_env env, void* nativeObject, void* finaliz
 //
 // Every Set*/Get* below forwards to the shared setLayoutProperty /
 // setPaintProperty / setDataDrivenLayoutProperty / getProperty helpers; the
-// bodies used to be hand-duplicated per property (~2400 lines). The macros
-// take the helper, the property key and the native member functions, and the
-// value type as a variadic tail so comma-bearing types like
-// std::array<float, 2> survive.
+// bodies used to be hand-duplicated per property (~2400 lines). The shared
+// macros live in layer_property_macros.hpp; these local aliases only pin the
+// NAPI class and the native layer type.
 // ============================================================================
 
 #define DEFINE_SYMBOL_SETTER(Fn, Helper, PropName, SetFn, ...)                 \
-    napi_value SymbolLayerNAPI::Fn(napi_env env, napi_callback_info info) {    \
-        napi_value thisVar;                                                    \
-        size_t argc = 1;                                                       \
-        napi_value argv[1];                                                    \
-        napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);           \
-        auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);      \
-        if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;    \
-        mbgl::harmony::Helper<mbgl::style::SymbolLayer, __VA_ARGS__>(          \
-            env, layerObj->getLayer(), argv[0], PropName,                      \
-            &mbgl::style::SymbolLayer::SetFn);                                 \
-        return thisVar;                                                        \
-    }
+    DEFINE_LAYER_SETTER(SymbolLayerNAPI, mbgl::style::SymbolLayer, Fn, Helper, PropName, SetFn, __VA_ARGS__)
 
 #define DEFINE_SYMBOL_GETTER(Fn, GetFn, ...)                                   \
-    napi_value SymbolLayerNAPI::Fn(napi_env env, napi_callback_info info) {    \
-        napi_value thisVar;                                                    \
-        napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);      \
-        auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);      \
-        if (!layerObj || !layerObj->getLayer()) {                              \
-            napi_value null_value;                                             \
-            napi_get_null(env, &null_value);                                   \
-            return null_value;                                                 \
-        }                                                                      \
-        return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, __VA_ARGS__>( \
-            env, layerObj->getLayer(), &mbgl::style::SymbolLayer::GetFn);      \
-    }
+    DEFINE_LAYER_GETTER(SymbolLayerNAPI, mbgl::style::SymbolLayer, Fn, GetFn, __VA_ARGS__)
 
 // --- Generated property accessors ---
 
@@ -369,27 +347,11 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "SymbolLayer", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("SymbolLayerNAPI", "Failed to define SymbolLayer class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("SymbolLayerNAPI", "Failed to create constructor reference");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "SymbolLayer", cons);
-    if (status != napi_ok) {
-        Logger::error("SymbolLayerNAPI", "Failed to set SymbolLayer property");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "SymbolLayer", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "SymbolLayerNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("SymbolLayerNAPI", "SymbolLayer NAPI class initialized successfully");
     return exports;
 }

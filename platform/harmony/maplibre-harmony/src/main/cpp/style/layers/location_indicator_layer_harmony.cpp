@@ -9,6 +9,7 @@
 #include <mbgl/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "layer_property_macros.hpp"
 namespace mbgl {
 namespace harmony {
 
@@ -85,17 +86,10 @@ napi_value LocationIndicatorLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
 
-    napi_value cons;
-    napi_status status = napi_define_class(env, "LocationIndicatorLayer", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-
-    if (status != napi_ok) {
-        Logger::error("LocationIndicatorLayerNAPI", "Failed to define LocationIndicatorLayer class");
-        return nullptr;
-    }
-
-    mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    napi_set_named_property(env, exports, "LocationIndicatorLayer", cons);
+    napi_value cons = RegisterNapiClass(env, exports, "LocationIndicatorLayer", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "LocationIndicatorLayerNAPI");
+    if (!cons) return nullptr;
 
     Logger::info("LocationIndicatorLayerNAPI", "LocationIndicatorLayer NAPI class registered");
     return exports;
@@ -131,451 +125,61 @@ napi_value LocationIndicatorLayerNAPI::CreateInstance(napi_env env, mbgl::style:
 // Layout Properties (images)
 // ============================================================================
 
-napi_value LocationIndicatorLayerNAPI::SetBearingImage(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetBearingImage, setDataDrivenLayoutProperty, "bearing-image", setBearingImage, mbgl::style::expression::Image)
 
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetBearingImage, getBearingImage, mbgl::style::expression::Image)
 
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetShadowImage, setDataDrivenLayoutProperty, "shadow-image", setShadowImage, mbgl::style::expression::Image)
 
-    mbgl::harmony::setDataDrivenLayoutProperty<mbgl::style::LocationIndicatorLayer, mbgl::style::expression::Image>(
-        env, layerObj->getLayer(), argv[0], "bearing-image",
-        &mbgl::style::LocationIndicatorLayer::setBearingImage
-    );
-    return thisVar;
-}
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetShadowImage, getShadowImage, mbgl::style::expression::Image)
 
-napi_value LocationIndicatorLayerNAPI::GetBearingImage(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetTopImage, setDataDrivenLayoutProperty, "top-image", setTopImage, mbgl::style::expression::Image)
 
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, mbgl::style::expression::Image>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getBearingImage
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetShadowImage(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setDataDrivenLayoutProperty<mbgl::style::LocationIndicatorLayer, mbgl::style::expression::Image>(
-        env, layerObj->getLayer(), argv[0], "shadow-image",
-        &mbgl::style::LocationIndicatorLayer::setShadowImage
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetShadowImage(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, mbgl::style::expression::Image>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getShadowImage
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetTopImage(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setDataDrivenLayoutProperty<mbgl::style::LocationIndicatorLayer, mbgl::style::expression::Image>(
-        env, layerObj->getLayer(), argv[0], "top-image",
-        &mbgl::style::LocationIndicatorLayer::setTopImage
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetTopImage(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, mbgl::style::expression::Image>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getTopImage
-    );
-}
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetTopImage, getTopImage, mbgl::style::expression::Image)
 
 // ============================================================================
 // Paint Properties
 // ============================================================================
 
-napi_value LocationIndicatorLayerNAPI::SetAccuracyRadius(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), argv[0], "accuracy-radius",
-        &mbgl::style::LocationIndicatorLayer::setAccuracyRadius
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetAccuracyRadius(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getAccuracyRadius
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetAccuracyRadiusBorderColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::LocationIndicatorLayer, mbgl::Color>(
-        env, layerObj->getLayer(), argv[0], "accuracy-radius-border-color",
-        &mbgl::style::LocationIndicatorLayer::setAccuracyRadiusBorderColor
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetAccuracyRadiusBorderColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, mbgl::Color>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getAccuracyRadiusBorderColor
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetAccuracyRadiusColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::LocationIndicatorLayer, mbgl::Color>(
-        env, layerObj->getLayer(), argv[0], "accuracy-radius-color",
-        &mbgl::style::LocationIndicatorLayer::setAccuracyRadiusColor
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetAccuracyRadiusColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, mbgl::Color>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getAccuracyRadiusColor
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetBearing(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::LocationIndicatorLayer, mbgl::style::Rotation>(
-        env, layerObj->getLayer(), argv[0], "bearing",
-        &mbgl::style::LocationIndicatorLayer::setBearing
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetBearing(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, mbgl::style::Rotation>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getBearing
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetBearingImageSize(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), argv[0], "bearing-image-size",
-        &mbgl::style::LocationIndicatorLayer::setBearingImageSize
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetBearingImageSize(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getBearingImageSize
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetImageTiltDisplacement(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), argv[0], "image-tilt-displacement",
-        &mbgl::style::LocationIndicatorLayer::setImageTiltDisplacement
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetImageTiltDisplacement(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getImageTiltDisplacement
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetLocation(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::LocationIndicatorLayer, std::array<double, 3>>(
-        env, layerObj->getLayer(), argv[0], "location",
-        &mbgl::style::LocationIndicatorLayer::setLocation
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetLocation(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, std::array<double, 3>>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getLocation
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetPerspectiveCompensation(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), argv[0], "perspective-compensation",
-        &mbgl::style::LocationIndicatorLayer::setPerspectiveCompensation
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetPerspectiveCompensation(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getPerspectiveCompensation
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetShadowImageSize(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), argv[0], "shadow-image-size",
-        &mbgl::style::LocationIndicatorLayer::setShadowImageSize
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetShadowImageSize(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getShadowImageSize
-    );
-}
-
-napi_value LocationIndicatorLayerNAPI::SetTopImageSize(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), argv[0], "top-image-size",
-        &mbgl::style::LocationIndicatorLayer::setTopImageSize
-    );
-    return thisVar;
-}
-
-napi_value LocationIndicatorLayerNAPI::GetTopImageSize(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::LocationIndicatorLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::LocationIndicatorLayer::getTopImageSize
-    );
-}
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetAccuracyRadius, setPaintProperty, "accuracy-radius", setAccuracyRadius, float)
+
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetAccuracyRadius, getAccuracyRadius, float)
+
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetAccuracyRadiusBorderColor, setPaintProperty, "accuracy-radius-border-color", setAccuracyRadiusBorderColor, mbgl::Color)
+
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetAccuracyRadiusBorderColor, getAccuracyRadiusBorderColor, mbgl::Color)
+
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetAccuracyRadiusColor, setPaintProperty, "accuracy-radius-color", setAccuracyRadiusColor, mbgl::Color)
+
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetAccuracyRadiusColor, getAccuracyRadiusColor, mbgl::Color)
+
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetBearing, setPaintProperty, "bearing", setBearing, mbgl::style::Rotation)
+
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetBearing, getBearing, mbgl::style::Rotation)
+
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetBearingImageSize, setPaintProperty, "bearing-image-size", setBearingImageSize, float)
+
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetBearingImageSize, getBearingImageSize, float)
+
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetImageTiltDisplacement, setPaintProperty, "image-tilt-displacement", setImageTiltDisplacement, float)
+
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetImageTiltDisplacement, getImageTiltDisplacement, float)
+
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetLocation, setPaintProperty, "location", setLocation, std::array<double,3>)
+
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetLocation, getLocation, std::array<double,3>)
+
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetPerspectiveCompensation, setPaintProperty, "perspective-compensation", setPerspectiveCompensation, float)
+
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetPerspectiveCompensation, getPerspectiveCompensation, float)
+
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetShadowImageSize, setPaintProperty, "shadow-image-size", setShadowImageSize, float)
+
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetShadowImageSize, getShadowImageSize, float)
+
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetTopImageSize, setPaintProperty, "top-image-size", setTopImageSize, float)
+
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetTopImageSize, getTopImageSize, float)
 
 // ============================================================================
 // Base Layer Methods

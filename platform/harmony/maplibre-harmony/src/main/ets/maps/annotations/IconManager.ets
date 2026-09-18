@@ -92,83 +92,6 @@ export class IconManager {
   }
 
   /**
-   * Load the icon for a marker.
-   *
-   * The process is fully automated:
-   * 1. If the marker already has an icon ID, fetch it from the cache.
-   * 2. If no icon is set, load and assign the default icon.
-   * 3. Increment the icon reference count.
-   * 4. Load the icon into the native map on first use.
-   *
-   * @param marker Marker instance.
-   * @returns Promise that resolves to the wrapped `Icon` instance.
-   * @throws Error When the icon is not cached or the load fails.
-   */
-  public async loadIconForMarker(marker: maplibre.Marker): Promise<Icon> {
-    try {
-      // Fetch the marker icon ID
-      let iconId: string | null = marker.getIcon();
-      let icon: Icon;
-
-      if (!iconId) {
-        // Marker has no icon; load the default icon
-        icon = await this.loadDefaultIconForMarker(marker);
-        iconId = icon.getId();
-      } else {
-        // Retrieve the cached icon
-        const cached = this.iconMap.get(iconId);
-        if (cached) {
-          icon = cached.icon;
-        } else {
-          // Icon not found in cache; this usually indicates misuse
-          throw new Error(
-            `[IconManager] Icon '${iconId}' not found in cache. ` +
-              'Make sure to call addIconToManager() before using the icon.'
-          );
-        }
-        // Update the maximum icon dimensions
-        this.updateHighestIconSize(icon);
-      }
-
-      // Add the icon (increase ref-count and load to native on first use)
-      await this.addIcon(icon);
-
-      return icon;
-    } catch (error) {
-      hilog.error(DOMAIN, 'IconManager', '[IconManager] Failed to load icon for marker: %{public}s', error);
-      throw new Error(`[IconManager] Failed to load icon for marker: ${error}`);
-    }
-  }
-
-  /**
-   * Load the default icon (private helper).
-   *
-   * Retrieves the default icon from `IconFactory` and assigns it to the marker.
-   *
-   * @param marker Marker instance.
-   * @returns Promise resolving to the default wrapped `Icon`.
-   * @throws Error When `IconFactory` is not initialized or the load fails.
-   */
-  private async loadDefaultIconForMarker(marker: maplibre.Marker): Promise<Icon> {
-    if (!this.iconFactory) {
-      throw new Error('[IconManager] IconFactory is not initialized');
-    }
-
-    // Acquire the default icon from the factory
-    const icon = await this.iconFactory.defaultMarker();
-
-    // Update maximum icon dimensions (Android parity: height / 2)
-    const width = icon.getWidth();
-    const height = icon.getHeight() / 2;
-    this.updateHighestIconSize(width, height);
-
-    // Assign the default icon ID to the marker
-    marker.setIcon(icon.getId());
-
-    return icon;
-  }
-
-  /**
    * Add an icon to the cache (private helper).
    *
    * **Reference counting**:
@@ -257,52 +180,6 @@ export class IconManager {
     }
 
     return icon || null;
-  }
-
-  /**
-   * Get or load the icon assigned to a marker.
-   *
-   * Automatically handles icon reuse and default icon fallback.
-   *
-   * @param marker Marker instance.
-   * @param defaultIconProvider Optional provider for a default icon.
-   * @returns Promise resolving to the wrapped `Icon`.
-   */
-  public async getOrLoadIcon(marker: maplibre.Marker, defaultIconProvider?: () => Promise<Icon>): Promise<Icon> {
-    try {
-      let iconId: string | null = marker.getIcon();
-      let icon: Icon;
-
-      if (!iconId) {
-        // No icon present: use the supplied or default icon
-        if (defaultIconProvider) {
-          icon = await defaultIconProvider();
-        } else {
-          if (!this.iconFactory) {
-            throw new Error('[IconManager] IconFactory is not initialized');
-          }
-          icon = await this.iconFactory.defaultMarker();
-        }
-        marker.setIcon(icon.getId());
-        iconId = icon.getId();
-      } else {
-        // Check whether the icon is already cached
-        const cached = this.iconMap.get(iconId);
-        if (cached) {
-          icon = cached.icon;
-        } else {
-          throw new Error(`Icon ${iconId} not found in cache`);
-        }
-      }
-
-      // Update the maximum icon dimensions
-      this.updateHighestIconSize(icon);
-
-      return icon;
-    } catch (error) {
-      hilog.error(DOMAIN, 'IconManager', '[IconManager] Failed to get or load icon: %{public}s', error);
-      throw new Error('Failed to get or load icon: ' + error);
-    }
   }
 
   /**
@@ -461,71 +338,6 @@ export class IconManager {
   }
 
   /**
-   * Reload every icon.
-   *
-   * Useful when the map is restored or reinitialized.
-   */
-  public async reloadIcons(): Promise<void> {
-
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const cached of this.iconMap.values()) {
-      try {
-        await this.loadIconToNative(cached.icon);
-        successCount++;
-      } catch (error) {
-        hilog.error(DOMAIN, 'IconManager', '%{public}s', `[IconManager] Failed to reload icon ${cached.icon.getId()}: ${error}`);
-        failCount++;
-      }
-    }
-
-  }
-
-  /**
-   * Ensure the marker's icon is loaded.
-   *
-   * Guarantees the icon exists when updating a marker.
-   *
-   * @param marker Marker instance.
-   */
-  public async ensureIconLoaded(marker: maplibre.Marker): Promise<void> {
-    const iconId: string | null = marker.getIcon();
-    if (!iconId) {
-      const icon = await this.loadDefaultIconForMarker(marker);
-      marker.setIcon(icon.getId());
-      await this.addIcon(icon);
-    } else {
-      // Icon ID exists; ensure it is loaded
-      const cached = this.iconMap.get(iconId);
-      if (cached) {
-        await this.addIcon(cached.icon);
-      }
-    }
-  }
-
-  /**
-   * Get the top offset for an icon (used for anchor calculations).
-   *
-   * @param icon Wrapped `Icon` instance.
-   * @returns Top offset in pixels.
-   */
-  public getTopOffsetPixelsForIcon(icon: Icon): number {
-    try {
-      if (!this.nativeMapView) {
-        throw new Error('[IconManager] NativeMapView is not initialized');
-      }
-      // TODO: `NativeMapView` has no `getPixelRatio()` method; fall back to the default value
-      const pixelRatio: number = 1.0;
-      const topOffset: number = this.nativeMapView.getTopOffsetPixelsForAnnotationSymbol(icon.getId());
-      return topOffset * pixelRatio;
-    } catch (error) {
-      hilog.warn(DOMAIN, 'IconManager', '%{public}s', `[IconManager] Failed to get top offset for icon ${icon.getId()}: ${error}`);
-      return 0;
-    }
-  }
-
-  /**
    * Get the maximum icon width.
    *
    * @returns Maximum width in pixels.
@@ -664,26 +476,6 @@ export class IconManager {
     this.highestIconWidth = 0;
     this.highestIconHeight = 0;
 
-  }
-
-  /**
-   * Get the number of cached icons.
-   *
-   * @returns Icon count.
-   */
-  public getIconCount(): number {
-    return this.iconMap.size;
-  }
-
-  /**
-   * Get the reference count for a specific icon.
-   *
-   * @param icon Wrapped icon object.
-   * @returns Reference count; returns 0 when the icon is missing.
-   */
-  public getRefCount(icon: Icon): number {
-    const cached = this.iconMap.get(icon.getId());
-    return cached ? cached.refCount : 0;
   }
 }
 

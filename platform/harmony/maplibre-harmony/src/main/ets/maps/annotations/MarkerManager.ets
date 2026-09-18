@@ -14,7 +14,7 @@ import type { OnMarkerSelectListener } from '../listeners/OnMarkerSelectListener
 import type { InfoWindowAdapter } from './InfoWindowAdapter';
 import { InfoWindowManager } from './InfoWindowManager';
 import type { AnnotationViewConfig, AnnotationViewDelegate } from './AnnotationViewDelegate';
-import type { ViewAnnotationManager } from './ViewAnnotationManager';
+import type { ViewAnnotationAddOptions, ViewAnnotationManager, ViewAnnotationUpdateOptions } from './ViewAnnotationManager';
 import { createMarkerViewContent } from './MarkerViewContent';
 import { CenterOffset } from './ViewAnnotationUtils';
 import { IconManager } from './IconManager';
@@ -33,6 +33,18 @@ import type {
 } from '../gestures/GestureListeners';
 import type { OnStyleLoadedListener } from '../listeners/OnStyleLoadedListener';
 import type { Style } from '../style/Style';
+
+/**
+ * InternalListenerEntry - describes how to detach one internal map listener:
+ * the stored listener reference, the typed remover callable, a field reset
+ * closure and the log name.
+ */
+interface InternalListenerEntry {
+  listener: Object | null;
+  remove: (listener: Object) => void;
+  clear: () => void;
+  name: string;
+}
 
 /**
  * MarkerManager - Marker management facade
@@ -155,37 +167,44 @@ export class MarkerManager {
    *   them synchronously on the main thread. Or protect the core style collections
    *   with a mutex.
    */
+  // Internal listener bridges: ArkTS object literals cannot implement
+  // interfaces with method members and constructor parameter properties are
+  // not allowed, so these are file-level classes holding a bound handler
+  // (see bottom of file).
+
   private setupStyleLoadedListener(): void {
-    const manager = this;
-
-    class StyleLoadedListenerImpl implements OnStyleLoadedListener {
-      onStyleLoaded(style: Style | null): void {
-        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', '[MarkerManager] Warning: style reloaded, reinitializing MarkerLayerManager...');
-
-        // Reinitialize MarkerLayerManager
-        manager.markerLayerManager.initialize();
-
-        // Restore all markers
-        if (manager.markerMap.size > 0) {
-
-          // Collect markers explicitly - iterate directly to avoid unnecessary array creation
-          for (const marker of manager.markerMap.values()) {
-            manager.markerLayerManager.addMarker(marker, true); // skipUpdate=true
-
-            // Recreate custom view annotations
-            manager.syncMarkerViewAnnotation(marker);
-          }
-
-          // Sync source in one shot
-          manager.markerLayerManager.updateSource();
-
-        }
-      }
-    }
+    // ArkTS object literals cannot implement interfaces with method members,
+    // so the internal listeners stay as compact bridge classes; the arrow-free
+    // one-line forwards keep `this` bound via the owner parameter.
+    const styleLoadedListener: OnStyleLoadedListener =
+      new StyleLoadedBridge((style: Style | null): void => this.onStyleLoadedInternal(style));
 
     // Store listener reference for cleanup
-    this.styleLoadedListener = new StyleLoadedListenerImpl();
-    this.mapLibreMap.addOnStyleLoadedListener(this.styleLoadedListener);
+    this.styleLoadedListener = styleLoadedListener;
+    this.mapLibreMap.addOnStyleLoadedListener(styleLoadedListener);
+  }
+
+  private onStyleLoadedInternal(style: Style | null): void {
+    hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', '[MarkerManager] Warning: style reloaded, reinitializing MarkerLayerManager...');
+
+    // Reinitialize MarkerLayerManager
+    this.markerLayerManager.initialize();
+
+    // Restore all markers
+    if (this.markerMap.size > 0) {
+
+      // Collect markers explicitly - iterate directly to avoid unnecessary array creation
+      for (const marker of this.markerMap.values()) {
+        this.markerLayerManager.addMarker(marker, true); // skipUpdate=true
+
+        // Recreate custom view annotations
+        this.syncMarkerViewAnnotation(marker);
+      }
+
+      // Sync source in one shot
+      this.markerLayerManager.updateSource();
+
+    }
   }
 
   /**
@@ -199,74 +218,38 @@ export class MarkerManager {
    * - iOS: UILongPressGestureRecognizer + UIPanGestureRecognizer
    */
   private setupMapClickListener(): void {
-
     // Tap listener
-    class MapClickListenerImpl implements OnMapClickListener {
-      manager: MarkerManager;
-
-      constructor(manager: MarkerManager) {
-        this.manager = manager;
-      }
-
-      onMapClick(x: number, y: number): boolean {
-        return this.manager.handleMapClick(x, y);
-      }
-    }
+    const mapClickListener: OnMapClickListener =
+      new MapClickBridge((x: number, y: number): boolean => this.handleMapClick(x, y));
 
     // Store listener reference for cleanup
-    this.mapClickListener = new MapClickListenerImpl(this);
-    this.mapLibreMap.addOnMapClickListener(this.mapClickListener);
+    this.mapClickListener = mapClickListener;
+    this.mapLibreMap.addOnMapClickListener(mapClickListener);
 
     // Long-press listener (start dragging)
-    class MapLongClickListenerImpl implements OnMapLongClickListener {
-      manager: MarkerManager;
-
-      constructor(manager: MarkerManager) {
-        this.manager = manager;
-      }
-
-      onMapLongClick(x: number, y: number): boolean {
-        return this.manager.handleMapLongClick(x, y);
-      }
-    }
+    const mapLongClickListener: OnMapLongClickListener =
+      new MapLongClickBridge((x: number, y: number): boolean => this.handleMapLongClick(x, y));
 
     // Store listener reference for cleanup
-    this.mapLongClickListener = new MapLongClickListenerImpl(this);
-    this.mapLibreMap.addOnMapLongClickListener(this.mapLongClickListener);
+    this.mapLongClickListener = mapLongClickListener;
+    this.mapLibreMap.addOnMapLongClickListener(mapLongClickListener);
 
     // Touch-move listener (drag updates) - mirrors Android MoveGestureDetector.onMove
-    class TouchMoveListenerImpl implements OnTouchMoveListener {
-      manager: MarkerManager;
-
-      constructor(manager: MarkerManager) {
-        this.manager = manager;
-      }
-
-      onTouchMove(x: number, y: number): boolean {
-        return this.manager.handleTouchMove(x, y);
-      }
-    }
+    const touchMoveListener: OnTouchMoveListener =
+      new TouchMoveBridge((x: number, y: number): boolean => this.handleTouchMove(x, y));
 
     // Store listener reference for cleanup
-    this.touchMoveListener = new TouchMoveListenerImpl(this);
-    this.mapLibreMap.addOnTouchMoveListener(this.touchMoveListener);
+    this.touchMoveListener = touchMoveListener;
+    this.mapLibreMap.addOnTouchMoveListener(touchMoveListener);
 
     // Touch-up listener (drag end) - mirrors Android onMoveEnd and iOS UIGestureRecognizerStateEnded
-    class TouchUpListenerImpl implements OnTouchUpListener {
-      manager: MarkerManager;
-
-      constructor(manager: MarkerManager) {
-        this.manager = manager;
-      }
-
-      onTouchUp(x: number, y: number): boolean {
-        return this.manager.handleTouchUp(x, y);
-      }
-    }
+    const touchUpListener: OnTouchUpListener =
+      new TouchUpBridge((x: number, y: number): boolean => this.handleTouchUp(x, y));
 
     // Store listener reference for cleanup
-    this.touchUpListener = new TouchUpListenerImpl(this);
-    this.mapLibreMap.addOnTouchUpListener(this.touchUpListener);
+    this.touchUpListener = touchUpListener;
+    this.mapLibreMap.addOnTouchUpListener(touchUpListener);
+
 
   }
 
@@ -491,8 +474,9 @@ export class MarkerManager {
       }
     }
 
-    if (closestMarker) {
-      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] resolveMarkerHit result: "${closestMarker.getTitle()}"`);
+    const hit = closestMarker;
+    if (hit) {
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] resolveMarkerHit result: "${hit.getTitle()}"`);
     } else {
       hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] resolveMarkerHit result: null (no marker hit)`);
     }
@@ -634,6 +618,42 @@ export class MarkerManager {
   // ========== Marker management ==========
 
   /**
+   * Resolve the icon for a marker's options: an explicitly set icon first,
+   * then (single-add path only) the dequeue reuse queue, then the default
+   * marker icon. A defaulted icon is written back onto the options.
+   *
+   * @param options MarkerOptions to resolve the icon for.
+   * @param allowReuse Whether the icon reuse queue may be consulted.
+   * @returns Resolved icon.
+   * @throws Error when no icon can be resolved (IconFactory uninitialized).
+   */
+  private async ensureIcon(options: MarkerOptions, allowReuse: boolean): Promise<Icon> {
+    let icon: Icon | undefined = options.getIcon();
+
+    if (!icon && allowReuse) {
+      // Try pulling from icon reuse queue
+      const reuseIdentifier = options.getReuseIdentifier();
+      if (reuseIdentifier) {
+        const reusedIcon = this.iconManager.dequeueReusableIcon(reuseIdentifier);
+        if (reusedIcon) {
+          icon = reusedIcon;
+        }
+      }
+    }
+
+    if (!icon) {
+      // Load default icon when none specified
+      if (!this.iconManager.iconFactory) {
+        throw new Error('[MarkerManager] IconFactory is not initialized');
+      }
+      icon = await this.iconManager.iconFactory.defaultMarker();
+      options.icon(icon);
+    }
+
+    return icon;
+  }
+
+  /**
    * Add a single marker
    *
    * @param options MarkerOptions instance
@@ -648,25 +668,7 @@ export class MarkerManager {
       }
 
       // Fetch icon (prefer reuse identifier)
-      let icon: Icon | undefined = options.getIcon();
-      const reuseIdentifier = options.getReuseIdentifier();
-
-      if (!icon && reuseIdentifier) {
-        // Try pulling from icon reuse queue
-        const reusedIcon = this.iconManager.dequeueReusableIcon(reuseIdentifier);
-        if (reusedIcon) {
-          icon = reusedIcon;
-        }
-      }
-
-      if (!icon) {
-        // Load default icon when none specified
-        if (!this.iconManager.iconFactory) {
-          throw new Error('[MarkerManager] IconFactory is not initialized');
-        }
-        icon = await this.iconManager.iconFactory.defaultMarker();
-        options.icon(icon);
-      }
+      const icon: Icon = await this.ensureIcon(options, true);
 
       // Create marker (getMarker() passes icon id to NAPI)
       const marker = options.getMarker();
@@ -721,15 +723,8 @@ export class MarkerManager {
       const icons: Icon[] = [];
 
       for (const options of optionsList) {
-        // Obtain icon from options
-        let icon = options.getIcon();
-        if (!icon) {
-          if (!this.iconManager.iconFactory) {
-            throw new Error('[MarkerManager] IconFactory is not initialized');
-          }
-          icon = await this.iconManager.iconFactory.defaultMarker();
-          options.icon(icon);
-        }
+        // Obtain icon from options (no reuse queue on the batch path)
+        const icon: Icon = await this.ensureIcon(options, false);
 
         icons.push(icon);
 
@@ -996,54 +991,68 @@ export class MarkerManager {
    * - Touch up listener
    */
   private removeAllListeners(): void {
-    // Remove style loaded listener
-    if (this.styleLoadedListener) {
-      try {
-        this.mapLibreMap.removeOnStyleLoadedListener(this.styleLoadedListener);
-      } catch (error) {
-        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove style loaded listener: ${error}`);
+    const entries: InternalListenerEntry[] = [
+      {
+        listener: this.styleLoadedListener,
+        remove: (listener: Object): void => {
+          this.mapLibreMap.removeOnStyleLoadedListener(listener as OnStyleLoadedListener);
+        },
+        clear: (): void => {
+          this.styleLoadedListener = null;
+        },
+        name: 'style loaded listener'
+      },
+      {
+        listener: this.mapClickListener,
+        remove: (listener: Object): void => {
+          this.mapLibreMap.removeOnMapClickListener(listener as OnMapClickListener);
+        },
+        clear: (): void => {
+          this.mapClickListener = null;
+        },
+        name: 'map click listener'
+      },
+      {
+        listener: this.mapLongClickListener,
+        remove: (listener: Object): void => {
+          this.mapLibreMap.removeOnMapLongClickListener(listener as OnMapLongClickListener);
+        },
+        clear: (): void => {
+          this.mapLongClickListener = null;
+        },
+        name: 'map long-click listener'
+      },
+      {
+        listener: this.touchMoveListener,
+        remove: (listener: Object): void => {
+          this.mapLibreMap.removeOnTouchMoveListener(listener as OnTouchMoveListener);
+        },
+        clear: (): void => {
+          this.touchMoveListener = null;
+        },
+        name: 'touch move listener'
+      },
+      {
+        listener: this.touchUpListener,
+        remove: (listener: Object): void => {
+          this.mapLibreMap.removeOnTouchUpListener(listener as OnTouchUpListener);
+        },
+        clear: (): void => {
+          this.touchUpListener = null;
+        },
+        name: 'touch up listener'
       }
-      this.styleLoadedListener = null;
-    }
+    ];
 
-    // Remove map click listener
-    if (this.mapClickListener) {
-      try {
-        this.mapLibreMap.removeOnMapClickListener(this.mapClickListener);
-      } catch (error) {
-        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove map click listener: ${error}`);
+    for (const entry of entries) {
+      if (entry.listener) {
+        try {
+          entry.remove(entry.listener);
+        } catch (error) {
+          hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove ${entry.name}: ${error}`);
+        }
+        entry.clear();
       }
-      this.mapClickListener = null;
-    }
-
-    // Remove map long-click listener
-    if (this.mapLongClickListener) {
-      try {
-        this.mapLibreMap.removeOnMapLongClickListener(this.mapLongClickListener);
-      } catch (error) {
-        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove map long-click listener: ${error}`);
-      }
-      this.mapLongClickListener = null;
-    }
-
-    // Remove touch move listener
-    if (this.touchMoveListener) {
-      try {
-        this.mapLibreMap.removeOnTouchMoveListener(this.touchMoveListener);
-      } catch (error) {
-        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove touch move listener: ${error}`);
-      }
-      this.touchMoveListener = null;
-    }
-
-    // Remove touch up listener
-    if (this.touchUpListener) {
-      try {
-        this.mapLibreMap.removeOnTouchUpListener(this.touchUpListener);
-      } catch (error) {
-        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove touch up listener: ${error}`);
-      }
-      this.touchUpListener = null;
     }
   }
 
@@ -1463,6 +1472,67 @@ export class MarkerManager {
   }
 
   /**
+   * Build the ViewAnnotation option payload shared by the marker-view create
+   * and update paths.
+   *
+   * The two payloads intentionally differ in constraint semantics and the
+   * difference is preserved exactly:
+   * - create (addViewAnnotation) leaves width/height/centerOffset
+   *   `undefined` so the annotation runs in auto-size mode;
+   * - update (updateViewAnnotation) passes `null` to explicitly clear a
+   *   previously stored constraint.
+   *
+   * The add path also carries the `viewName` kind tag; the update payload
+   * omits it so the stored tag is never rewritten.
+   *
+   * @param marker Marker to position the annotation for.
+   * @param config Delegate-provided view configuration.
+   * @param forCreate True for the addViewAnnotation payload, false for the
+   *   updateViewAnnotation payload.
+   * @returns The matching option payload; cast at the call site.
+   */
+  private buildMarkerViewOptions(marker: Marker, config: AnnotationViewConfig, forCreate: boolean): ViewAnnotationAddOptions | ViewAnnotationUpdateOptions {
+    const anchor = marker.getAnchor();
+    const position = marker.getPosition();
+    const visible = marker.getVisible();
+    const scalesWithViewingDistance = config.scalesWithViewingDistance === true;
+    const rotatesWithCamera = config.rotatesToMatchCamera === true;
+    const anchorU = anchor ? anchor.u : 0.5;
+    const anchorV = anchor ? anchor.v : 1.0;
+    const zIndex = config.zIndex ?? (marker.getZIndex() || 1);
+
+    if (forCreate) {
+      const addOptions: ViewAnnotationAddOptions = {
+        anchor: position,
+        viewName: 'maplibre_marker_view',
+        centerOffset: config.centerOffset,
+        width: config.size ? config.size.width : undefined,
+        height: config.size ? config.size.height : undefined,
+        visible: visible,
+        scalesWithViewingDistance: scalesWithViewingDistance,
+        rotatesWithCamera: rotatesWithCamera,
+        anchorU: anchorU,
+        anchorV: anchorV,
+        zIndex: zIndex
+      };
+      return addOptions;
+    }
+    const updateOptions: ViewAnnotationUpdateOptions = {
+      anchor: position,
+      centerOffset: config.centerOffset ?? null,
+      width: config.size ? config.size.width : null,
+      height: config.size ? config.size.height : null,
+      visible: visible,
+      scalesWithViewingDistance: scalesWithViewingDistance,
+      rotatesWithCamera: rotatesWithCamera,
+      anchorU: anchorU,
+      anchorV: anchorV,
+      zIndex: zIndex
+    };
+    return updateOptions;
+  }
+
+  /**
    * Create a marker-anchored ViewAnnotation from a delegate config.
    *
    * Content creation is skipped when the UIContext has not propagated yet;
@@ -1470,23 +1540,13 @@ export class MarkerManager {
    */
   private createMarkerViewAnnotation(marker: Marker, config: AnnotationViewConfig): void {
     const markerId = marker.getId();
-    const anchor = marker.getAnchor();
     const builder = config.contentBuilder!;
     const content = createMarkerViewContent(this.uiContext, builder);
 
-    const handle = this.viewAnnotationManager.addViewAnnotation({
-      anchor: marker.getPosition(),
-      viewName: 'maplibre_marker_view',
-      centerOffset: config.centerOffset,
-      width: config.size ? config.size.width : undefined,
-      height: config.size ? config.size.height : undefined,
-      visible: marker.getVisible(),
-      scalesWithViewingDistance: config.scalesWithViewingDistance === true,
-      rotatesWithCamera: config.rotatesToMatchCamera === true,
-      anchorU: anchor ? anchor.u : 0.5,
-      anchorV: anchor ? anchor.v : 1.0,
-      zIndex: config.zIndex ?? (marker.getZIndex() || 1)
-    }, content ?? undefined);
+    const handle = this.viewAnnotationManager.addViewAnnotation(
+      this.buildMarkerViewOptions(marker, config, true) as ViewAnnotationAddOptions,
+      content ?? undefined
+    );
 
     if (!handle) {
       hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] addViewAnnotation for marker ${markerId} failed; falling back to default icon`);
@@ -1505,21 +1565,12 @@ export class MarkerManager {
    */
   private updateMarkerViewAnnotation(marker: Marker, viewAnnotationId: number, config: AnnotationViewConfig): void {
     const markerId = marker.getId();
-    const anchor = marker.getAnchor();
     const builder = config.contentBuilder!;
 
-    this.viewAnnotationManager.updateViewAnnotation(viewAnnotationId, {
-      anchor: marker.getPosition(),
-      centerOffset: config.centerOffset ?? null,
-      width: config.size ? config.size.width : null,
-      height: config.size ? config.size.height : null,
-      visible: marker.getVisible(),
-      scalesWithViewingDistance: config.scalesWithViewingDistance === true,
-      rotatesWithCamera: config.rotatesToMatchCamera === true,
-      anchorU: anchor ? anchor.u : 0.5,
-      anchorV: anchor ? anchor.v : 1.0,
-      zIndex: config.zIndex ?? (marker.getZIndex() || 1)
-    });
+    this.viewAnnotationManager.updateViewAnnotation(
+      viewAnnotationId,
+      this.buildMarkerViewOptions(marker, config, false) as ViewAnnotationUpdateOptions
+    );
 
     if (this.markerViewBuilders.get(markerId) !== builder) {
       const content = createMarkerViewContent(this.uiContext, builder);
@@ -1702,3 +1753,69 @@ export class MarkerManager {
   }
 }
 
+/**
+ * Internal listener bridges for MarkerManager.
+ *
+ * ArkTS object literals cannot implement interfaces with method members and
+ * constructor parameter properties are not allowed, so each bridge is a
+ * file-level class storing an already-bound handler function.
+ */
+class StyleLoadedBridge implements OnStyleLoadedListener {
+  private handler: (style: Style | null) => void;
+
+  constructor(handler: (style: Style | null) => void) {
+    this.handler = handler;
+  }
+
+  onStyleLoaded(style: Style | null): void {
+    this.handler(style);
+  }
+}
+
+class MapClickBridge implements OnMapClickListener {
+  private handler: (x: number, y: number) => boolean;
+
+  constructor(handler: (x: number, y: number) => boolean) {
+    this.handler = handler;
+  }
+
+  onMapClick(x: number, y: number): boolean {
+    return this.handler(x, y);
+  }
+}
+
+class MapLongClickBridge implements OnMapLongClickListener {
+  private handler: (x: number, y: number) => boolean;
+
+  constructor(handler: (x: number, y: number) => boolean) {
+    this.handler = handler;
+  }
+
+  onMapLongClick(x: number, y: number): boolean {
+    return this.handler(x, y);
+  }
+}
+
+class TouchMoveBridge implements OnTouchMoveListener {
+  private handler: (x: number, y: number) => boolean;
+
+  constructor(handler: (x: number, y: number) => boolean) {
+    this.handler = handler;
+  }
+
+  onTouchMove(x: number, y: number): boolean {
+    return this.handler(x, y);
+  }
+}
+
+class TouchUpBridge implements OnTouchUpListener {
+  private handler: (x: number, y: number) => boolean;
+
+  constructor(handler: (x: number, y: number) => boolean) {
+    this.handler = handler;
+  }
+
+  onTouchUp(x: number, y: number): boolean {
+    return this.handler(x, y);
+  }
+}

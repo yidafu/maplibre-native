@@ -7,7 +7,7 @@ namespace harmony {
 
 using Logger = mbgl::harmony::Logger;
 
-napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env, const mbgl::style::TransitionOptions& options) {
+napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env, const mbgl::style::TransitionOptions& options, double defaultDurationMs) {
     napi_value obj;
     napi_status status = napi_create_object(env, &obj);
     if (status != napi_ok) {
@@ -16,10 +16,11 @@ napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env,
         napi_get_undefined(env, &undefined);
         return undefined;
     }
-    
-    // Create duration property (converted to milliseconds)
+
+    // Create duration property (converted to milliseconds); unset durations
+    // fall back to defaultDurationMs.
     const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-        options.duration.value_or(mbgl::Duration::zero())
+        options.duration.value_or(mbgl::Duration(std::chrono::milliseconds(static_cast<int64_t>(defaultDurationMs))))
     ).count();
     napi_value durationValue;
     napi_create_double(env, static_cast<double>(durationMs), &durationValue);

@@ -43,6 +43,16 @@ private:
     std::shared_ptr<mbgl::DatabaseFileSource> fileSource_;
     napi_env env_;
     napi_ref wrapper_;
+
+    // Shared NAPI body for the DatabaseFileSource methods that take only a
+    // void(std::exception_ptr) completion callback (resetDatabase,
+    // packDatabase, invalidateAmbientCache, clearAmbientCache,
+    // setMaximumAmbientCacheSize). `invoke` receives the file source and the
+    // completion callback and issues the actual call. Defined in the .cpp.
+    template <typename Invoke>
+    static napi_value InvokeVoidDb(napi_env env, napi_callback_info info,
+                                   size_t minArgs, size_t callbackIndex,
+                                   const char* cbName, Invoke&& invoke);
 };
 
 } // namespace harmony

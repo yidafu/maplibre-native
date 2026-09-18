@@ -55,6 +55,19 @@ private:
     static napi_ref constructor;
     static napi_env constructorEnv;
 
+    // Unwraps the wrapper from `this` and returns the style's current light,
+    // or nullptr when either is gone; the NAPI methods return Undefined then.
+    static mbgl::style::Light* ResolveLight(napi_env env, napi_value jsThis);
+
+    // Shared bodies of the six *Transition bindings. The getter template takes
+    // a mbgl::style::Light member returning TransitionOptions, the setter
+    // template one accepting a const TransitionOptions&.
+    template <typename Getter>
+    static napi_value GetTransitionImpl(napi_env env, napi_callback_info info, Getter getter);
+
+    template <typename Setter>
+    static napi_value SetTransitionImpl(napi_env env, napi_callback_info info, Setter setter);
+
     // The Light is owned by the Style and is destroyed on style reload or map
     // teardown; holding a bare reference across calls is a dangling UAF. Keep
     // only the map and re-fetch the current light on every access.

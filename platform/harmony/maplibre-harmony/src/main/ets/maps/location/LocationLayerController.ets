@@ -15,6 +15,18 @@ import common from '@ohos.app.ability.common';
 import image from '@ohos.multimedia.image';
 
 /**
+ * Spec entry for one icon SymbolLayer (background / foreground / bearing).
+ */
+interface IconLayerSpec {
+  /** Style layer id. */
+  layerId: string;
+  /** Style image name added by loadLocationIcons(). */
+  iconName: string;
+  /** Fixed icon size. */
+  iconSize: number;
+}
+
+/**
  * Location layer controller.
  * Manages map layers related to user location.
  */
@@ -158,38 +170,33 @@ export class LocationLayerController {
       );
       this.style.addLayer(accuracyLayer);
 
-      // Add background icon layer (white circle, largest)
-      const backgroundLayer = new SymbolLayer(
-        LocationComponentConstants.BACKGROUND_LAYER,
-        LocationComponentConstants.LOCATION_SOURCE
-      );
-      backgroundLayer.setIconImage(LocationComponentConstants.BACKGROUND_ICON);
-      backgroundLayer.setIconSize(0.5);  // Adjust icon size
-      backgroundLayer.setIconAllowOverlap(true);
-      backgroundLayer.setIconIgnorePlacement(true);
-      this.style.addLayer(backgroundLayer);
-
-      // Add foreground icon layer (blue dot, medium)
-      const foregroundLayer = new SymbolLayer(
-        LocationComponentConstants.FOREGROUND_LAYER,
-        LocationComponentConstants.LOCATION_SOURCE
-      );
-      foregroundLayer.setIconImage(LocationComponentConstants.FOREGROUND_ICON);
-      foregroundLayer.setIconSize(0.35);  // Smaller than the background
-      foregroundLayer.setIconAllowOverlap(true);
-      foregroundLayer.setIconIgnorePlacement(true);
-      this.style.addLayer(foregroundLayer);
-
-      // Add bearing icon layer (blue arrow)
-      const bearingLayer = new SymbolLayer(
-        LocationComponentConstants.BEARING_LAYER,
-        LocationComponentConstants.LOCATION_SOURCE
-      );
-      bearingLayer.setIconImage(LocationComponentConstants.BEARING_ICON);
-      bearingLayer.setIconSize(0.4);  // Arrow size
-      bearingLayer.setIconAllowOverlap(true);
-      bearingLayer.setIconIgnorePlacement(true);
-      this.style.addLayer(bearingLayer);
+      // Add the three icon layers (white circle background, blue dot
+      // foreground, blue arrow bearing indicator)
+      const iconLayers: IconLayerSpec[] = [
+        {
+          layerId: LocationComponentConstants.BACKGROUND_LAYER,
+          iconName: LocationComponentConstants.BACKGROUND_ICON,
+          iconSize: 0.5 // Largest (white circle)
+        },
+        {
+          layerId: LocationComponentConstants.FOREGROUND_LAYER,
+          iconName: LocationComponentConstants.FOREGROUND_ICON,
+          iconSize: 0.35 // Smaller than the background
+        },
+        {
+          layerId: LocationComponentConstants.BEARING_LAYER,
+          iconName: LocationComponentConstants.BEARING_ICON,
+          iconSize: 0.4 // Arrow size
+        }
+      ];
+      for (const spec of iconLayers) {
+        const iconLayer = new SymbolLayer(spec.layerId, LocationComponentConstants.LOCATION_SOURCE);
+        iconLayer.setIconImage(spec.iconName);
+        iconLayer.setIconSize(spec.iconSize);
+        iconLayer.setIconAllowOverlap(true);
+        iconLayer.setIconIgnorePlacement(true);
+        this.style.addLayer(iconLayer);
+      }
 
       this.layersAdded = true;
 
@@ -320,6 +327,35 @@ export class LocationLayerController {
   }
 
   /**
+   * Toggle a symbol layer's visibility (no-op when the layer is absent or of
+   * an unexpected type).
+   */
+  private setSymbolVisible(layerId: string, visible: boolean): void {
+    if (!this.style) {
+      return;
+    }
+
+    const layer = this.style.getLayer(layerId);
+    if (layer && layer instanceof SymbolLayer) {
+      layer.setVisibility(visible ? 'visible' : 'none');
+    }
+  }
+
+  /**
+   * Toggle the accuracy circle layer's visibility (no-op when absent).
+   */
+  private setAccuracyVisible(visible: boolean): void {
+    if (!this.style) {
+      return;
+    }
+
+    const accuracyLayer = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER);
+    if (accuracyLayer && accuracyLayer instanceof CircleLayer) {
+      accuracyLayer.setVisibility(visible ? 'visible' : 'none');
+    }
+  }
+
+  /**
    * Update icon styling.
    */
   private updateIconStyles(): void {
@@ -329,20 +365,16 @@ export class LocationLayerController {
 
     try {
       // Toggle layers based on render mode
-      const foregroundLayer = this.style.getLayer(LocationComponentConstants.FOREGROUND_LAYER);
-      const backgroundLayer = this.style.getLayer(LocationComponentConstants.BACKGROUND_LAYER);
-      const bearingLayer = this.style.getLayer(LocationComponentConstants.BEARING_LAYER);
-
       if (this.renderMode === RenderMode.NORMAL) {
         // Normal mode: show foreground and background only
-        if (foregroundLayer && foregroundLayer instanceof SymbolLayer) foregroundLayer.setVisibility('visible');
-        if (backgroundLayer && backgroundLayer instanceof SymbolLayer) backgroundLayer.setVisibility('visible');
-        if (bearingLayer && bearingLayer instanceof SymbolLayer) bearingLayer.setVisibility('none');
+        this.setSymbolVisible(LocationComponentConstants.FOREGROUND_LAYER, true);
+        this.setSymbolVisible(LocationComponentConstants.BACKGROUND_LAYER, true);
+        this.setSymbolVisible(LocationComponentConstants.BEARING_LAYER, false);
       } else if (this.renderMode === RenderMode.COMPASS || this.renderMode === RenderMode.GPS) {
         // Compass/GPS mode: show all layers including the bearing arrow
-        if (foregroundLayer && foregroundLayer instanceof SymbolLayer) foregroundLayer.setVisibility('visible');
-        if (backgroundLayer && backgroundLayer instanceof SymbolLayer) backgroundLayer.setVisibility('visible');
-        if (bearingLayer && bearingLayer instanceof SymbolLayer) bearingLayer.setVisibility('visible');
+        this.setSymbolVisible(LocationComponentConstants.FOREGROUND_LAYER, true);
+        this.setSymbolVisible(LocationComponentConstants.BACKGROUND_LAYER, true);
+        this.setSymbolVisible(LocationComponentConstants.BEARING_LAYER, true);
       }
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to update icon styles: ${err}`);
@@ -409,22 +441,11 @@ export class LocationLayerController {
 
     try {
       // Make accuracy layer visible
-      const accuracyLayer = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER);
-      if (accuracyLayer && accuracyLayer instanceof CircleLayer) {
-        accuracyLayer.setVisibility('visible');
-      }
+      this.setAccuracyVisible(true);
 
-      // Make background layer visible
-      const backgroundLayer = this.style.getLayer(LocationComponentConstants.BACKGROUND_LAYER);
-      if (backgroundLayer && backgroundLayer instanceof SymbolLayer) {
-        backgroundLayer.setVisibility('visible');
-      }
-
-      // Make foreground layer visible
-      const foregroundLayer = this.style.getLayer(LocationComponentConstants.FOREGROUND_LAYER);
-      if (foregroundLayer && foregroundLayer instanceof SymbolLayer) {
-        foregroundLayer.setVisibility('visible');
-      }
+      // Make background and foreground layers visible
+      this.setSymbolVisible(LocationComponentConstants.BACKGROUND_LAYER, true);
+      this.setSymbolVisible(LocationComponentConstants.FOREGROUND_LAYER, true);
 
       // Bearing layer visibility is handled in updateIconStyles()
       this.updateIconStyles();
@@ -450,28 +471,16 @@ export class LocationLayerController {
 
     try {
       // Hide accuracy layer
-      const accuracyLayer = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER);
-      if (accuracyLayer && accuracyLayer instanceof CircleLayer) {
-        accuracyLayer.setVisibility('none');
-      }
+      this.setAccuracyVisible(false);
 
       // Hide background layer
-      const backgroundLayer = this.style.getLayer(LocationComponentConstants.BACKGROUND_LAYER);
-      if (backgroundLayer && backgroundLayer instanceof SymbolLayer) {
-        backgroundLayer.setVisibility('none');
-      }
+      this.setSymbolVisible(LocationComponentConstants.BACKGROUND_LAYER, false);
 
       // Hide foreground layer
-      const foregroundLayer = this.style.getLayer(LocationComponentConstants.FOREGROUND_LAYER);
-      if (foregroundLayer && foregroundLayer instanceof SymbolLayer) {
-        foregroundLayer.setVisibility('none');
-      }
+      this.setSymbolVisible(LocationComponentConstants.FOREGROUND_LAYER, false);
 
       // Hide bearing layer
-      const bearingLayer = this.style.getLayer(LocationComponentConstants.BEARING_LAYER);
-      if (bearingLayer && bearingLayer instanceof SymbolLayer) {
-        bearingLayer.setVisibility('none');
-      }
+      this.setSymbolVisible(LocationComponentConstants.BEARING_LAYER, false);
 
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to hide layers: ${err}`);

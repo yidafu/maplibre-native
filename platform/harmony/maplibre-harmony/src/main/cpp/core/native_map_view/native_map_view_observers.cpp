@@ -45,6 +45,61 @@ void notifyCameraChange(CallbackManager *callbacks, const char *event, bool anim
 }
 } // namespace
 
+// Helper macro: simplify listener registration code
+#define IMPLEMENT_ADD_LISTENER(MethodName, CallbackName) \
+napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
+    napi_value undefined; \
+    napi_get_undefined(env, &undefined); \
+    napi_value thisObj; \
+    size_t argc = 1; \
+    napi_value args[1]; \
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) { \
+        Logger::error("NativeMapView", #MethodName ": Failed to get callback argument"); \
+        return undefined; \
+    } \
+    NativeMapView* instance = nullptr; \
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) { \
+        Logger::error("NativeMapView", #MethodName ": Failed to unwrap instance"); \
+        return undefined; \
+    } \
+    if (!instance->callbackManager_) { \
+        Logger::error("NativeMapView", #MethodName ": CallbackManager not initialized"); \
+        return undefined; \
+    } \
+    if (instance->callbackManager_->RegisterCallback(CallbackName, args[0])) { \
+    } else { \
+        Logger::error("NativeMapView", #MethodName ": Failed to register callback"); \
+    } \
+    return undefined; \
+}
+
+#define IMPLEMENT_REMOVE_LISTENER(MethodName, CallbackName) \
+napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
+    napi_value undefined; \
+    napi_get_undefined(env, &undefined); \
+    napi_value thisObj; \
+    size_t argc = 1; \
+    napi_value args[1]; \
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) { \
+        Logger::error("NativeMapView", #MethodName ": Failed to get callback argument"); \
+        return undefined; \
+    } \
+    NativeMapView* instance = nullptr; \
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) { \
+        Logger::error("NativeMapView", #MethodName ": Failed to unwrap instance"); \
+        return undefined; \
+    } \
+    if (!instance->callbackManager_) { \
+        Logger::error("NativeMapView", #MethodName ": CallbackManager not initialized"); \
+        return undefined; \
+    } \
+    if (instance->callbackManager_->UnregisterCallback(CallbackName, args[0])) { \
+    } else { \
+        Logger::warn("NativeMapView", #MethodName ": Listener not found"); \
+    } \
+    return undefined; \
+}
+
 void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
@@ -436,122 +491,104 @@ napi_value NativeMapView::getImage(napi_env env, napi_callback_info info) {
     }
 }
 
-napi_value NativeMapView::setPrefetchTiles(napi_env env, napi_callback_info info) {
+// Shared skeleton for the single-argument Map property accessors below:
+// parse one scalar argument and apply it on the map thread (setter), or read
+// it on the map thread with a fallback (getter).
+inline bool ParseScalarArg(napi_env env, napi_value value, bool* out) { return napi_get_value_bool(env, value, out) == napi_ok; }
+inline bool ParseScalarArg(napi_env env, napi_value value, int32_t* out) { return napi_get_value_int32(env, value, out) == napi_ok; }
+inline bool ParseScalarArg(napi_env env, napi_value value, double* out) { return napi_get_value_double(env, value, out) == napi_ok; }
+
+inline void CreateScalarValue(napi_env env, bool v, napi_value* out) { napi_get_boolean(env, v, out); }
+inline void CreateScalarValue(napi_env env, int32_t v, napi_value* out) { napi_create_int32(env, v, out); }
+inline void CreateScalarValue(napi_env env, double v, napi_value* out) { napi_create_double(env, v, out); }
+
+inline void LogScalarSet(const char* label, bool v) { Logger::info("NativeMapView", "%s: Set to %s", label, v ? "enabled" : "disabled"); }
+inline void LogScalarSet(const char* label, int32_t v) { Logger::info("NativeMapView", "%s: Set to %d", label, v); }
+inline void LogScalarSet(const char* label, double v) { Logger::info("NativeMapView", "%s: Set to %f", label, v); }
+
+template <typename V, typename Apply>
+napi_value NativeMapView::SetMapScalarProperty(napi_env env, napi_callback_info info,
+                                               const char* label, const char* argName, Apply apply) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
-    
-        // Obtain the NativeMapView instance and arguments
+
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
     if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "setPrefetchTiles: Missing enable argument");
+        Logger::error("NativeMapView", "%s: Missing %s argument", label, argName);
         return undefined;
     }
-    
+
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setPrefetchTiles: Map not initialized");
+        Logger::error("NativeMapView", "%s: Map not initialized", label);
         return undefined;
     }
-    
-    bool enable;
-    if (napi_get_value_bool(env, args[0], &enable) != napi_ok) {
-        Logger::error("NativeMapView", "setPrefetchTiles: Failed to parse enable argument");
+
+    V value;
+    if (!ParseScalarArg(env, args[0], &value)) {
+        Logger::error("NativeMapView", "%s: Failed to parse %s argument", label, argName);
         return undefined;
     }
-    
+
     try {
-        // Align with Android: set the default zoom delta when enabled; otherwise set it to 0
-        instance->invokeOnMapThread([enable](mbgl::Map* m){ m->setPrefetchZoomDelta(enable ? mbgl::util::DEFAULT_PREFETCH_ZOOM_DELTA : uint8_t(0)); });
-        Logger::info("NativeMapView", "setPrefetchTiles: Set to %s", enable ? "enabled" : "disabled");
+        instance->invokeOnMapThread([apply, value](mbgl::Map* m) { apply(m, value); });
+        LogScalarSet(label, value);
     } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setPrefetchTiles: Failed - %s", e.what());
+        Logger::error("NativeMapView", "%s: Failed - %s", label, e.what());
     }
-    
+
     return undefined;
+}
+
+template <typename V, typename Read>
+napi_value NativeMapView::GetMapScalarProperty(napi_env env, napi_callback_info info,
+                                               const char* label, V defaultValue, Read read) {
+    napi_value result;
+    CreateScalarValue(env, defaultValue, &result);
+
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::warn("NativeMapView", "%s: Map not initialized", label);
+        return result;
+    }
+
+    try {
+        V value = instance->invokeOnMapThreadSync([&](mbgl::Map* m) { return read(m); }, defaultValue);
+        CreateScalarValue(env, value, &result);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "%s: Failed - %s", label, e.what());
+    }
+
+    return result;
+}
+
+napi_value NativeMapView::setPrefetchTiles(napi_env env, napi_callback_info info) {
+    // Align with Android: set the default zoom delta when enabled; otherwise set it to 0
+    return SetMapScalarProperty<bool>(env, info, "setPrefetchTiles", "enable",
+        [](mbgl::Map* m, bool enable) {
+            m->setPrefetchZoomDelta(enable ? mbgl::util::DEFAULT_PREFETCH_ZOOM_DELTA : uint8_t(0));
+        });
 }
 
 napi_value NativeMapView::getPrefetchTiles(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_get_boolean(env, false, &result);
-    
-    // Obtain the NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::warn("NativeMapView", "getPrefetchTiles: Map not initialized, returning false");
-        return result;
-    }
-    
-    try {
-        bool enabled = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getPrefetchZoomDelta() > 0; }, false);
-        napi_get_boolean(env, enabled, &result);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getPrefetchTiles: Failed - %s", e.what());
-    }
-    
-    return result;
+    return GetMapScalarProperty<bool>(env, info, "getPrefetchTiles", false,
+        [](mbgl::Map* m) { return m->getPrefetchZoomDelta() > 0; });
 }
 
 napi_value NativeMapView::setPrefetchZoomDelta(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Obtain the NativeMapView instance and arguments
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "setPrefetchZoomDelta: Missing delta argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setPrefetchZoomDelta: Map not initialized");
-        return undefined;
-    }
-    
-    int32_t delta;
-    if (napi_get_value_int32(env, args[0], &delta) != napi_ok) {
-        Logger::error("NativeMapView", "setPrefetchZoomDelta: Failed to parse delta argument");
-        return undefined;
-    }
-    
-    try {
-        instance->invokeOnMapThread([delta](mbgl::Map* m){ m->setPrefetchZoomDelta(static_cast<uint8_t>(delta)); });
-        Logger::info("NativeMapView", "setPrefetchZoomDelta: Set to %d", delta);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setPrefetchZoomDelta: Failed - %s", e.what());
-    }
-    
-    return undefined;
+    return SetMapScalarProperty<int32_t>(env, info, "setPrefetchZoomDelta", "delta",
+        [](mbgl::Map* m, int32_t delta) { m->setPrefetchZoomDelta(static_cast<uint8_t>(delta)); });
 }
 
 napi_value NativeMapView::getPrefetchZoomDelta(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_int32(env, 0, &result);
-    
-    // Obtain the NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::warn("NativeMapView", "getPrefetchZoomDelta: Map not initialized, returning 0");
-        return result;
-    }
-    
-    try {
-        int32_t delta = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return static_cast<int32_t>(m->getPrefetchZoomDelta()); }, 0);
-        napi_create_int32(env, delta, &result);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getPrefetchZoomDelta: Failed - %s", e.what());
-    }
-    
-    return result;
+    return GetMapScalarProperty<int32_t>(env, info, "getPrefetchZoomDelta", int32_t(0),
+        [](mbgl::Map* m) { return static_cast<int32_t>(m->getPrefetchZoomDelta()); });
 }
+
 
 napi_value NativeMapView::setTileCacheEnabled(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -620,238 +657,45 @@ napi_value NativeMapView::getTileCacheEnabled(napi_env env, napi_callback_info i
 }
 
 napi_value NativeMapView::setTileLodMinRadius(napi_env env, napi_callback_info info) {
-    // Tile LOD parameter control is implemented
-    // Tile LOD parameter control is implemented
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Obtain the NativeMapView instance and arguments
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "setTileLodMinRadius: Missing radius argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setTileLodMinRadius: Map not initialized");
-        return undefined;
-    }
-    
-    double radius;
-    if (napi_get_value_double(env, args[0], &radius) != napi_ok) {
-        Logger::error("NativeMapView", "setTileLodMinRadius: Failed to parse radius argument");
-        return undefined;
-    }
-    
-    try {
-        instance->invokeOnMapThread([radius](mbgl::Map* m){ m->setTileLodMinRadius(radius); });
-        Logger::info("NativeMapView", "setTileLodMinRadius: Set to %f", radius);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setTileLodMinRadius: Failed - %s", e.what());
-    }
-    
-    return undefined;
+    return SetMapScalarProperty<double>(env, info, "setTileLodMinRadius", "radius",
+        [](mbgl::Map* m, double radius) { m->setTileLodMinRadius(radius); });
 }
 
 napi_value NativeMapView::getTileLodMinRadius(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_double(env, 0.0, &result);
-    
-    // Obtain the NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::warn("NativeMapView", "getTileLodMinRadius: Map not initialized, returning 0.0");
-        return result;
-    }
-    
-    try {
-        double radius = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodMinRadius(); }, 0.0);
-        napi_create_double(env, radius, &result);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getTileLodMinRadius: Failed - %s", e.what());
-    }
-    
-    return result;
+    return GetMapScalarProperty<double>(env, info, "getTileLodMinRadius", 0.0,
+        [](mbgl::Map* m) { return m->getTileLodMinRadius(); });
 }
 
 napi_value NativeMapView::setTileLodScale(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Obtain the NativeMapView instance and arguments
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "setTileLodScale: Missing scale argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setTileLodScale: Map not initialized");
-        return undefined;
-    }
-    
-    double scale;
-    if (napi_get_value_double(env, args[0], &scale) != napi_ok) {
-        Logger::error("NativeMapView", "setTileLodScale: Failed to parse scale argument");
-        return undefined;
-    }
-    
-    try {
-        instance->invokeOnMapThread([scale](mbgl::Map* m){ m->setTileLodScale(scale); });
-        Logger::info("NativeMapView", "setTileLodScale: Set to %f", scale);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setTileLodScale: Failed - %s", e.what());
-    }
-    
-    return undefined;
+    return SetMapScalarProperty<double>(env, info, "setTileLodScale", "scale",
+        [](mbgl::Map* m, double scale) { m->setTileLodScale(scale); });
 }
 
 napi_value NativeMapView::getTileLodScale(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_double(env, 0.0, &result);
-    
-    // Obtain the NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::warn("NativeMapView", "getTileLodScale: Map not initialized, returning 0.0");
-        return result;
-    }
-    
-    try {
-        double scale = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodScale(); }, 0.0);
-        napi_create_double(env, scale, &result);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getTileLodScale: Failed - %s", e.what());
-    }
-    
-    return result;
+    return GetMapScalarProperty<double>(env, info, "getTileLodScale", 0.0,
+        [](mbgl::Map* m) { return m->getTileLodScale(); });
 }
 
 napi_value NativeMapView::setTileLodPitchThreshold(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Obtain the NativeMapView instance and arguments
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "setTileLodPitchThreshold: Missing threshold argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setTileLodPitchThreshold: Map not initialized");
-        return undefined;
-    }
-    
-    double threshold;
-    if (napi_get_value_double(env, args[0], &threshold) != napi_ok) {
-        Logger::error("NativeMapView", "setTileLodPitchThreshold: Failed to parse threshold argument");
-        return undefined;
-    }
-    
-    try {
-        instance->invokeOnMapThread([threshold](mbgl::Map* m){ m->setTileLodPitchThreshold(threshold); });
-        Logger::info("NativeMapView", "setTileLodPitchThreshold: Set to %f", threshold);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setTileLodPitchThreshold: Failed - %s", e.what());
-    }
-    
-    return undefined;
+    return SetMapScalarProperty<double>(env, info, "setTileLodPitchThreshold", "threshold",
+        [](mbgl::Map* m, double threshold) { m->setTileLodPitchThreshold(threshold); });
 }
 
 napi_value NativeMapView::getTileLodPitchThreshold(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_double(env, 0.0, &result);
-    
-    // Obtain the NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::warn("NativeMapView", "getTileLodPitchThreshold: Map not initialized, returning 0.0");
-        return result;
-    }
-    
-    try {
-        double threshold = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodPitchThreshold(); }, 0.0);
-        napi_create_double(env, threshold, &result);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getTileLodPitchThreshold: Failed - %s", e.what());
-    }
-    
-    return result;
+    return GetMapScalarProperty<double>(env, info, "getTileLodPitchThreshold", 0.0,
+        [](mbgl::Map* m) { return m->getTileLodPitchThreshold(); });
 }
 
 napi_value NativeMapView::setTileLodZoomShift(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Obtain the NativeMapView instance and arguments
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "setTileLodZoomShift: Missing shift argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setTileLodZoomShift: Map not initialized");
-        return undefined;
-    }
-    
-    double shift;
-    if (napi_get_value_double(env, args[0], &shift) != napi_ok) {
-        Logger::error("NativeMapView", "setTileLodZoomShift: Failed to parse shift argument");
-        return undefined;
-    }
-    
-    try {
-        instance->invokeOnMapThread([shift](mbgl::Map* m){ m->setTileLodZoomShift(shift); });
-        Logger::info("NativeMapView", "setTileLodZoomShift: Set to %f", shift);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setTileLodZoomShift: Failed - %s", e.what());
-    }
-    
-    return undefined;
+    return SetMapScalarProperty<double>(env, info, "setTileLodZoomShift", "shift",
+        [](mbgl::Map* m, double shift) { m->setTileLodZoomShift(shift); });
 }
 
 napi_value NativeMapView::getTileLodZoomShift(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_double(env, 0.0, &result);
-    
-    // Obtain the NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::warn("NativeMapView", "getTileLodZoomShift: Map not initialized, returning 0.0");
-        return result;
-    }
-    
-    try {
-        double shift = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodZoomShift(); }, 0.0);
-        napi_create_double(env, shift, &result);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getTileLodZoomShift: Failed - %s", e.what());
-    }
-    
-    return result;
+    return GetMapScalarProperty<double>(env, info, "getTileLodZoomShift", 0.0,
+        [](mbgl::Map* m) { return m->getTileLodZoomShift(); });
 }
+
 
 napi_value NativeMapView::triggerRepaint(napi_env env, napi_callback_info info) {
     napi_value undefined;
@@ -951,61 +795,13 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
 }
 
 napi_value NativeMapView::isRenderingStatsViewEnabled(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_get_boolean(env, false, &result);
-
-    // Obtain the NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::warn("NativeMapView", "isRenderingStatsViewEnabled: Map not initialized, returning false");
-        return result;
-    }
-
-    try {
-        bool enabled = instance->invokeOnMapThreadSync([&](mbgl::Map* m) { return m->isRenderingStatsViewEnabled(); }, false);
-        napi_get_boolean(env, enabled, &result);
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "isRenderingStatsViewEnabled: Failed - %s", e.what());
-    }
-
-    return result;
+    return GetMapScalarProperty<bool>(env, info, "isRenderingStatsViewEnabled", false,
+        [](mbgl::Map* m) { return m->isRenderingStatsViewEnabled(); });
 }
 
 napi_value NativeMapView::enableRenderingStatsView(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-
-    // Obtain the NativeMapView instance and arguments
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "enableRenderingStatsView: Missing enable argument");
-        return undefined;
-    }
-
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "enableRenderingStatsView: Map not initialized");
-        return undefined;
-    }
-
-    bool enable;
-    if (napi_get_value_bool(env, args[0], &enable) != napi_ok) {
-        Logger::error("NativeMapView", "enableRenderingStatsView: Failed to parse enable argument");
-        return undefined;
-    }
-
-    try {
-        instance->invokeOnMapThread([enable](mbgl::Map* m) { m->enableRenderingStatsView(enable); });
-        Logger::info("NativeMapView", "enableRenderingStatsView: Set to %s", enable ? "enabled" : "disabled");
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "enableRenderingStatsView: Failed - %s", e.what());
-    }
-
-    return undefined;
+    return SetMapScalarProperty<bool>(env, info, "enableRenderingStatsView", "enable",
+        [](mbgl::Map* m, bool enable) { m->enableRenderingStatsView(enable); });
 }
 
 // NAPI method to set the native window with size
@@ -1060,6 +856,24 @@ napi_value NativeMapView::setNativeWindowWithSize(napi_env env, napi_callback_in
 
     return undefined;
 }
+
+namespace {
+
+// {x, y} coordinate object shared by the JS click callbacks; both coordinates
+// are bundled into a single object because ThreadSafeCallback only supports
+// 1 argument.
+napi_value MakeXYObject(napi_env env, double x, double y) {
+    napi_value obj;
+    napi_create_object(env, &obj);
+    napi_value xVal, yVal;
+    napi_create_double(env, x, &xVal);
+    napi_create_double(env, y, &yVal);
+    napi_set_named_property(env, obj, "x", xVal);
+    napi_set_named_property(env, obj, "y", yVal);
+    return obj;
+}
+
+} // anonymous namespace
 
 // NAPI method to initialize native gesture recognizers (replaces ArkTS MapGestureDetector)
 // Accepts a FrameNode napi_value and extracts ArkUI_NodeHandle via OH_ArkUI_GetNodeHandleFromNapiValue.
@@ -1125,14 +939,7 @@ napi_value NativeMapView::setupNativeGestures(napi_env env, napi_callback_info i
                     [x, y](napi_env env) -> napi_value {
                         // Pass both coordinates as a single object {x, y}
                         // because ThreadSafeCallback only supports 1 argument
-                        napi_value obj;
-                        napi_create_object(env, &obj);
-                        napi_value xVal, yVal;
-                        napi_create_double(env, x, &xVal);
-                        napi_create_double(env, y, &yVal);
-                        napi_set_named_property(env, obj, "x", xVal);
-                        napi_set_named_property(env, obj, "y", yVal);
-                        return obj;
+                        return MakeXYObject(env, x, y);
                     });
             });
 
@@ -1141,14 +948,7 @@ napi_value NativeMapView::setupNativeGestures(napi_env env, napi_callback_info i
                 instance->callbackManager_->InvokeCallback(
                     "onMapLongClick",
                     [x, y](napi_env env) -> napi_value {
-                        napi_value obj;
-                        napi_create_object(env, &obj);
-                        napi_value xVal, yVal;
-                        napi_create_double(env, x, &xVal);
-                        napi_create_double(env, y, &yVal);
-                        napi_set_named_property(env, obj, "x", xVal);
-                        napi_set_named_property(env, obj, "y", yVal);
-                        return obj;
+                        return MakeXYObject(env, x, y);
                     });
             });
     } else {
@@ -1161,124 +961,10 @@ napi_value NativeMapView::setupNativeGestures(napi_env env, napi_callback_info i
 
 // ========== Map click listener management ==========
 
-napi_value NativeMapView::addOnMapClickListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "addOnMapClickListener: Failed to get callback argument");
-        return undefined;
-    }
-
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addOnMapClickListener: Failed to unwrap instance");
-        return undefined;
-    }
-
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "addOnMapClickListener: CallbackManager not initialized");
-        return undefined;
-    }
-
-    // Register the callback under the "onMapClick" name
-    if (instance->callbackManager_->RegisterCallback("onMapClick", args[0])) {
-        Logger::info("NativeMapView", "addOnMapClickListener: registered");
-    } else {
-        Logger::error("NativeMapView", "addOnMapClickListener: Failed to register callback");
-    }
-
-    return undefined;
-}
-
-napi_value NativeMapView::removeOnMapClickListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "removeOnMapClickListener: Failed to get callback argument");
-        return undefined;
-    }
-
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "removeOnMapClickListener: Failed to unwrap instance");
-        return undefined;
-    }
-
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "removeOnMapClickListener: CallbackManager not initialized");
-        return undefined;
-    }
-
-    instance->callbackManager_->UnregisterCallback("onMapClick", args[0]);
-    return undefined;
-}
-
-napi_value NativeMapView::addOnMapLongClickListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "addOnMapLongClickListener: Failed to get callback argument");
-        return undefined;
-    }
-
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addOnMapLongClickListener: Failed to unwrap instance");
-        return undefined;
-    }
-
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "addOnMapLongClickListener: CallbackManager not initialized");
-        return undefined;
-    }
-
-    if (instance->callbackManager_->RegisterCallback("onMapLongClick", args[0])) {
-        Logger::info("NativeMapView", "addOnMapLongClickListener: registered");
-    } else {
-        Logger::error("NativeMapView", "addOnMapLongClickListener: Failed to register callback");
-    }
-
-    return undefined;
-}
-
-napi_value NativeMapView::removeOnMapLongClickListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "removeOnMapLongClickListener: Failed to get callback argument");
-        return undefined;
-    }
-
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "removeOnMapLongClickListener: Failed to unwrap instance");
-        return undefined;
-    }
-
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "removeOnMapLongClickListener: CallbackManager not initialized");
-        return undefined;
-    }
-
-    instance->callbackManager_->UnregisterCallback("onMapLongClick", args[0]);
-    return undefined;
-}
+IMPLEMENT_ADD_LISTENER(addOnMapClickListener, "onMapClick")
+IMPLEMENT_REMOVE_LISTENER(removeOnMapClickListener, "onMapClick")
+IMPLEMENT_ADD_LISTENER(addOnMapLongClickListener, "onMapLongClick")
+IMPLEMENT_REMOVE_LISTENER(removeOnMapLongClickListener, "onMapLongClick")
 
 // Other method implementations
 mbgl::Map& NativeMapView::getMap() {
@@ -1296,59 +982,62 @@ void NativeMapView::onRegisterShaders(mbgl::gfx::ShaderRegistry&) {
     Logger::info("NativeMapView", "onRegisterShaders called");
 }
 
+namespace {
+
+// Builds the (shaderId, backendType, defines) arguments shared by the three
+// shader-compilation events.
+std::vector<napi_value> MakeShaderEventArgs(napi_env env, int shaderId, int backendType,
+                                            const std::string& defines) {
+    std::vector<napi_value> argv(3);
+    napi_create_int32(env, shaderId, &argv[0]);
+    napi_create_int32(env, backendType, &argv[1]);
+    napi_create_string_utf8(env, defines.c_str(), defines.length(), &argv[2]);
+    return argv;
+}
+
+} // anonymous namespace
+
 void NativeMapView::onPreCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     if (callbackManager_) {
         int shaderId = static_cast<int>(shader);
         int backendType = static_cast<int>(backend);
         std::string defines = source; // Copy to avoid dangling references
-        
+
         callbackManager_->InvokeCallback("onPreCompileShader", [shaderId, backendType, defines](napi_env env) {
-            napi_value argv[3];
-            napi_create_int32(env, shaderId, &argv[0]);
-            napi_create_int32(env, backendType, &argv[1]);
-            napi_create_string_utf8(env, defines.c_str(), defines.length(), &argv[2]);
-            return argv[0];
+            return MakeShaderEventArgs(env, shaderId, backendType, defines)[0];
         });
     }
 }
 
 void NativeMapView::onPostCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     if (callbackManager_) {
         int shaderId = static_cast<int>(shader);
         int backendType = static_cast<int>(backend);
         std::string defines = source; // Copy to avoid dangling references
-        
+
         callbackManager_->InvokeCallback("onPostCompileShader", [shaderId, backendType, defines](napi_env env) {
-            napi_value argv[3];
-            napi_create_int32(env, shaderId, &argv[0]);
-            napi_create_int32(env, backendType, &argv[1]);
-            napi_create_string_utf8(env, defines.c_str(), defines.length(), &argv[2]);
-            return argv[0];
+            return MakeShaderEventArgs(env, shaderId, backendType, defines)[0];
         });
     }
 }
 
 void NativeMapView::onShaderCompileFailed(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
-    Logger::error("NativeMapView", "onShaderCompileFailed: shader=%d, backend=%d, source_length=%zu", 
+    Logger::error("NativeMapView", "onShaderCompileFailed: shader=%d, backend=%d, source_length=%zu",
                   static_cast<int>(shader), static_cast<int>(backend), source.length());
-    
+
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     if (callbackManager_) {
         int shaderId = static_cast<int>(shader);
         int backendType = static_cast<int>(backend);
         std::string defines = source; // Copy to avoid dangling references
-        
+
         callbackManager_->InvokeCallbackMulti("onShaderCompileFailed", [shaderId, backendType, defines](napi_env env) -> std::vector<napi_value> {
-            std::vector<napi_value> argv(3);
-            napi_create_int32(env, shaderId, &argv[0]);
-            napi_create_int32(env, backendType, &argv[1]);
-            napi_create_string_utf8(env, defines.c_str(), defines.length(), &argv[2]);
-            return argv;
+            return MakeShaderEventArgs(env, shaderId, backendType, defines);
         });
     }
 }
@@ -1375,6 +1064,20 @@ void invokeGlyphEvent(const std::shared_ptr<mbgl::harmony::CallbackManager>& cal
         napi_create_int32(env, rangeStart, &argv[1]);
         napi_create_int32(env, rangeEnd, &argv[2]);
         return argv;
+    });
+}
+
+// The three sprite events are identical apart from the event name: the
+// sprite id and URL (two JS arguments).
+void invokeSpriteEvent(const std::shared_ptr<mbgl::harmony::CallbackManager>& callbackManager,
+                       const char* event,
+                       const std::string& spriteId,
+                       const std::string& url) {
+    callbackManager->InvokeCallback(event, [spriteId, url](napi_env env) {
+        napi_value argv[2];
+        napi_create_string_utf8(env, spriteId.c_str(), NAPI_AUTO_LENGTH, &argv[0]);
+        napi_create_string_utf8(env, url.c_str(), NAPI_AUTO_LENGTH, &argv[1]);
+        return argv[0];
     });
 }
 } // anonymous namespace
@@ -1440,304 +1143,38 @@ void NativeMapView::onTileAction(mbgl::TileOperation op, const mbgl::OverscaledT
 // Sprite requests
 void NativeMapView::onSpriteLoaded(const std::optional<mbgl::style::Sprite>& sprite) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     if (callbackManager_ && sprite) {
-        std::string spriteId = sprite->id;
-        std::string url = sprite->spriteURL;
-        
-        callbackManager_->InvokeCallback("onSpriteLoaded", [spriteId, url](napi_env env) {
-            napi_value argv[2];
-            napi_create_string_utf8(env, spriteId.c_str(), NAPI_AUTO_LENGTH, &argv[0]);
-            napi_create_string_utf8(env, url.c_str(), NAPI_AUTO_LENGTH, &argv[1]);
-            return argv[0];
-        });
+        invokeSpriteEvent(callbackManager_, "onSpriteLoaded", sprite->id, sprite->spriteURL);
     }
 }
 
 void NativeMapView::onSpriteError(const std::optional<mbgl::style::Sprite>& sprite, std::exception_ptr) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     if (callbackManager_ && sprite) {
-        std::string spriteId = sprite->id;
-        std::string url = sprite->spriteURL;
-        
-        callbackManager_->InvokeCallback("onSpriteError", [spriteId, url](napi_env env) {
-            napi_value argv[2];
-            napi_create_string_utf8(env, spriteId.c_str(), NAPI_AUTO_LENGTH, &argv[0]);
-            napi_create_string_utf8(env, url.c_str(), NAPI_AUTO_LENGTH, &argv[1]);
-            return argv[0];
-        });
+        invokeSpriteEvent(callbackManager_, "onSpriteError", sprite->id, sprite->spriteURL);
     }
 }
 
 void NativeMapView::onSpriteRequested(const std::optional<mbgl::style::Sprite>& sprite) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     if (callbackManager_ && sprite) {
-        std::string spriteId = sprite->id;
-        std::string url = sprite->spriteURL;
-        
-        callbackManager_->InvokeCallback("onSpriteRequested", [spriteId, url](napi_env env) {
-            napi_value argv[2];
-            napi_create_string_utf8(env, spriteId.c_str(), NAPI_AUTO_LENGTH, &argv[0]);
-            napi_create_string_utf8(env, url.c_str(), NAPI_AUTO_LENGTH, &argv[1]);
-            return argv[0];
-        });
+        invokeSpriteEvent(callbackManager_, "onSpriteRequested", sprite->id, sprite->spriteURL);
     }
 }
 
 // ========== Camera listener implementations ==========
 
-napi_value NativeMapView::addOnCameraIdleListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Retrieve the this object and arguments
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "addOnCameraIdleListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    // Obtain the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addOnCameraIdleListener: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "addOnCameraIdleListener: CallbackManager not initialized");
-        return undefined;
-    }
-    
-    // Add the listener
-    if (instance->callbackManager_->RegisterCallback("onCameraIdle", args[0])) {
-    } else {
-        Logger::error("NativeMapView", "addOnCameraIdleListener: Failed to register callback");
-    }
-    
-    return undefined;
-}
-
-napi_value NativeMapView::removeOnCameraIdleListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "removeOnCameraIdleListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "removeOnCameraIdleListener: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "removeOnCameraIdleListener: CallbackManager not initialized");
-        return undefined;
-    }
-    
-    if (instance->callbackManager_->UnregisterCallback("onCameraIdle", args[0])) {
-    } else {
-        Logger::warn("NativeMapView", "removeOnCameraIdleListener: Listener not found");
-    }
-    
-    return undefined;
-}
-
-napi_value NativeMapView::addOnCameraMoveStartedListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "addOnCameraMoveStartedListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addOnCameraMoveStartedListener: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "addOnCameraMoveStartedListener: CallbackManager not initialized");
-        return undefined;
-    }
-    
-    if (instance->callbackManager_->RegisterCallback("onCameraMoveStarted", args[0])) {
-    } else {
-        Logger::error("NativeMapView", "addOnCameraMoveStartedListener: Failed to register callback");
-    }
-    
-    return undefined;
-}
-
-napi_value NativeMapView::removeOnCameraMoveStartedListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "removeOnCameraMoveStartedListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "removeOnCameraMoveStartedListener: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "removeOnCameraMoveStartedListener: CallbackManager not initialized");
-        return undefined;
-    }
-    
-    if (instance->callbackManager_->UnregisterCallback("onCameraMoveStarted", args[0])) {
-    } else {
-        Logger::warn("NativeMapView", "removeOnCameraMoveStartedListener: Listener not found");
-    }
-    
-    return undefined;
-}
-
-napi_value NativeMapView::addOnCameraMoveListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "addOnCameraMoveListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addOnCameraMoveListener: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "addOnCameraMoveListener: CallbackManager not initialized");
-        return undefined;
-    }
-    
-    if (instance->callbackManager_->RegisterCallback("onCameraMove", args[0])) {
-    } else {
-        Logger::error("NativeMapView", "addOnCameraMoveListener: Failed to register callback");
-    }
-    
-    return undefined;
-}
-
-napi_value NativeMapView::removeOnCameraMoveListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "removeOnCameraMoveListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "removeOnCameraMoveListener: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "removeOnCameraMoveListener: CallbackManager not initialized");
-        return undefined;
-    }
-    
-    if (instance->callbackManager_->UnregisterCallback("onCameraMove", args[0])) {
-    } else {
-        Logger::warn("NativeMapView", "removeOnCameraMoveListener: Listener not found");
-    }
-    
-    return undefined;
-}
-
-napi_value NativeMapView::addOnCameraMoveCanceledListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "addOnCameraMoveCanceledListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addOnCameraMoveCanceledListener: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "addOnCameraMoveCanceledListener: CallbackManager not initialized");
-        return undefined;
-    }
-    
-    if (instance->callbackManager_->RegisterCallback("onCameraMoveCanceled", args[0])) {
-    } else {
-        Logger::error("NativeMapView", "addOnCameraMoveCanceledListener: Failed to register callback");
-    }
-    
-    return undefined;
-}
-
-napi_value NativeMapView::removeOnCameraMoveCanceledListener(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "removeOnCameraMoveCanceledListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "removeOnCameraMoveCanceledListener: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    if (!instance->callbackManager_) {
-        Logger::error("NativeMapView", "removeOnCameraMoveCanceledListener: CallbackManager not initialized");
-        return undefined;
-    }
-    
-    if (instance->callbackManager_->UnregisterCallback("onCameraMoveCanceled", args[0])) {
-    } else {
-        Logger::warn("NativeMapView", "removeOnCameraMoveCanceledListener: Listener not found");
-    }
-    
-    return undefined;
-}
+IMPLEMENT_ADD_LISTENER(addOnCameraIdleListener, "onCameraIdle")
+IMPLEMENT_REMOVE_LISTENER(removeOnCameraIdleListener, "onCameraIdle")
+IMPLEMENT_ADD_LISTENER(addOnCameraMoveStartedListener, "onCameraMoveStarted")
+IMPLEMENT_REMOVE_LISTENER(removeOnCameraMoveStartedListener, "onCameraMoveStarted")
+IMPLEMENT_ADD_LISTENER(addOnCameraMoveListener, "onCameraMove")
+IMPLEMENT_REMOVE_LISTENER(removeOnCameraMoveListener, "onCameraMove")
+IMPLEMENT_ADD_LISTENER(addOnCameraMoveCanceledListener, "onCameraMoveCanceled")
+IMPLEMENT_REMOVE_LISTENER(removeOnCameraMoveCanceledListener, "onCameraMoveCanceled")
 
 // ========== Map lifecycle listener implementations ==========
 
@@ -1977,61 +1414,6 @@ void NativeMapView::notifyStyleLoadError(const std::string& error) {
 }
 
 // ========== Android/iOS style listener NAPI implementations ==========
-
-// Helper macro: simplify listener registration code
-#define IMPLEMENT_ADD_LISTENER(MethodName, CallbackName) \
-napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
-    napi_value undefined; \
-    napi_get_undefined(env, &undefined); \
-    napi_value thisObj; \
-    size_t argc = 1; \
-    napi_value args[1]; \
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) { \
-        Logger::error("NativeMapView", #MethodName ": Failed to get callback argument"); \
-        return undefined; \
-    } \
-    NativeMapView* instance = nullptr; \
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) { \
-        Logger::error("NativeMapView", #MethodName ": Failed to unwrap instance"); \
-        return undefined; \
-    } \
-    if (!instance->callbackManager_) { \
-        Logger::error("NativeMapView", #MethodName ": CallbackManager not initialized"); \
-        return undefined; \
-    } \
-    if (instance->callbackManager_->RegisterCallback(CallbackName, args[0])) { \
-    } else { \
-        Logger::error("NativeMapView", #MethodName ": Failed to register callback"); \
-    } \
-    return undefined; \
-}
-
-#define IMPLEMENT_REMOVE_LISTENER(MethodName, CallbackName) \
-napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
-    napi_value undefined; \
-    napi_get_undefined(env, &undefined); \
-    napi_value thisObj; \
-    size_t argc = 1; \
-    napi_value args[1]; \
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) { \
-        Logger::error("NativeMapView", #MethodName ": Failed to get callback argument"); \
-        return undefined; \
-    } \
-    NativeMapView* instance = nullptr; \
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) { \
-        Logger::error("NativeMapView", #MethodName ": Failed to unwrap instance"); \
-        return undefined; \
-    } \
-    if (!instance->callbackManager_) { \
-        Logger::error("NativeMapView", #MethodName ": CallbackManager not initialized"); \
-        return undefined; \
-    } \
-    if (instance->callbackManager_->UnregisterCallback(CallbackName, args[0])) { \
-    } else { \
-        Logger::warn("NativeMapView", #MethodName ": Listener not found"); \
-    } \
-    return undefined; \
-}
 
 // ===== Camera event listeners =====
 IMPLEMENT_ADD_LISTENER(addOnCameraWillChangeListener, "onCameraWillChange")

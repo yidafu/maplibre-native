@@ -152,11 +152,16 @@ std::unordered_map<std::string, Value> napiObjectToValueMap(
     for (uint32_t i = 0; i < length; i++) {
         napi_value keyValue;
         napi_get_element(env, propertyNames, i, &keyValue);
-        
-        size_t keyLength;
-        napi_get_value_string_utf8(env, keyValue, nullptr, 0, &keyLength);
+
+        size_t keyLength = 0;
+        if (napi_get_value_string_utf8(env, keyValue, nullptr, 0, &keyLength) != napi_ok) {
+            continue;  // not a string property name — skip
+        }
         std::string key(keyLength, '\0');
-        napi_get_value_string_utf8(env, keyValue, &key[0], keyLength + 1, nullptr);
+        if (keyLength > 0 &&
+            napi_get_value_string_utf8(env, keyValue, &key[0], keyLength + 1, nullptr) != napi_ok) {
+            continue;
+        }
         
         napi_value propValue;
         napi_get_property(env, object, keyValue, &propValue);

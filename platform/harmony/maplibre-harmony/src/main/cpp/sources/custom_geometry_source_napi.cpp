@@ -16,6 +16,9 @@
 #include <mutex>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "source_napi_utils.hpp"
+#include "query_source_features.hpp"
+#include "geojson/napi_geojson_value.hpp"
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 using ThreadSafeCallback = mbgl::harmony::ThreadSafeCallback;
@@ -26,6 +29,25 @@ using mbgl::harmony::napi::NapiArgs;
 namespace harmony {
 
 using namespace mbgl::harmony::geojson;
+
+namespace {
+
+// Build the {z, x, y} object handed to the JS fetchTile/cancelTile callbacks
+// (shared by both callbacks).
+napi_value MakeTileIDObject(napi_env env, uint32_t z, uint32_t x, uint32_t y) {
+    napi_value result;
+    napi_create_object(env, &result);
+    napi_value zv, xv, yv;
+    napi_create_uint32(env, z, &zv);
+    napi_create_uint32(env, x, &xv);
+    napi_create_uint32(env, y, &yv);
+    napi_set_named_property(env, result, "z", zv);
+    napi_set_named_property(env, result, "x", xv);
+    napi_set_named_property(env, result, "y", yv);
+    return result;
+}
+
+} // namespace
 
 // Static member initialization
 napi_ref CustomGeometrySourceNAPI::constructor = nullptr;
@@ -94,26 +116,10 @@ napi_value CustomGeometrySourceNAPI::Init(napi_env env, napi_value exports) {
         { "querySourceFeatures", nullptr, QuerySourceFeatures, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
 
-    napi_value cons;
-    napi_status status = napi_define_class(env, "CustomGeometrySource", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-
-    if (status != napi_ok) {
-        Logger::error("CustomGeometrySourceNAPI", "Failed to define CustomGeometrySource class");
-        return nullptr;
-    }
-
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("CustomGeometrySourceNAPI", "Failed to create constructor reference");
-        return nullptr;
-    }
-
-    status = napi_set_named_property(env, exports, "CustomGeometrySource", cons);
-    if (status != napi_ok) {
-        Logger::error("CustomGeometrySourceNAPI", "Failed to set CustomGeometrySource property");
-        return nullptr;
-    }
+    napi_value cons = RegisterNapiClass(env, exports, "CustomGeometrySource", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "CustomGeometrySourceNAPI");
+    if (!cons) return nullptr;
 
     Logger::info("CustomGeometrySourceNAPI", "CustomGeometrySource NAPI class initialized successfully");
     return exports;
@@ -161,16 +167,7 @@ napi_value CustomGeometrySourceNAPI::New(napi_env env, napi_callback_info info) 
                         options.fetchTileFunction = [sharedCb](const mbgl::CanonicalTileID& tileID) {
                             const uint32_t z = tileID.z, x = tileID.x, y = tileID.y;
                             sharedCb->Call([z, x, y](napi_env env) -> napi_value {
-                                napi_value result;
-                                napi_create_object(env, &result);
-                                napi_value zv, xv, yv;
-                                napi_create_uint32(env, z, &zv);
-                                napi_create_uint32(env, x, &xv);
-                                napi_create_uint32(env, y, &yv);
-                                napi_set_named_property(env, result, "z", zv);
-                                napi_set_named_property(env, result, "x", xv);
-                                napi_set_named_property(env, result, "y", yv);
-                                return result;
+                                return MakeTileIDObject(env, z, x, y);
                             });
                         };
                     }
@@ -187,16 +184,7 @@ napi_value CustomGeometrySourceNAPI::New(napi_env env, napi_callback_info info) 
                         options.cancelTileFunction = [sharedCb](const mbgl::CanonicalTileID& tileID) {
                             const uint32_t z = tileID.z, x = tileID.x, y = tileID.y;
                             sharedCb->Call([z, x, y](napi_env env) -> napi_value {
-                                napi_value result;
-                                napi_create_object(env, &result);
-                                napi_value zv, xv, yv;
-                                napi_create_uint32(env, z, &zv);
-                                napi_create_uint32(env, x, &xv);
-                                napi_create_uint32(env, y, &yv);
-                                napi_set_named_property(env, result, "z", zv);
-                                napi_set_named_property(env, result, "x", xv);
-                                napi_set_named_property(env, result, "y", yv);
-                                return result;
+                                return MakeTileIDObject(env, z, x, y);
                             });
                         };
                     }
@@ -234,18 +222,7 @@ napi_value CustomGeometrySourceNAPI::CreateInstance(napi_env env, mbgl::style::C
                                 sourcePtr ? new CustomGeometrySourceNAPI(sourcePtr) : nullptr);
 }
 
-napi_value CustomGeometrySourceNAPI::GetId(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-
-    CustomGeometrySourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-
-    if (!sourceNapi) {
-        return CreateStringValue(env, "");
-    }
-
-    return CreateStringValue(env, sourceNapi->id);
-}
+DEFINE_SOURCE_GET_ID(CustomGeometrySourceNAPI)
 
 napi_value CustomGeometrySourceNAPI::SetTileData(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -274,44 +251,11 @@ napi_value CustomGeometrySourceNAPI::SetTileData(napi_env env, napi_callback_inf
     napi_value dataValue = args.GetValue(3);
 
     try {
-        mbgl::GeoJSON geoJson;
-        napi_valuetype dataType = napi_undefined;
-        napi_typeof(env, dataValue, &dataType);
-
-        if (dataType == napi_string) {
-            std::string geoJsonString = args.GetString(3, "data");
-            if (args.HasError()) return nullptr;
-
-            mbgl::style::conversion::Error error;
-            auto parsed = mbgl::style::conversion::convertJSON<mbgl::GeoJSON>(geoJsonString, error);
-            if (!parsed) {
-                napi_throw_error(env, nullptr, error.message.c_str());
-                return nullptr;
-            }
-            geoJson = std::move(*parsed);
-        } else if (dataType == napi_object) {
-            // Object payload: FeatureCollection, Feature, or Geometry
-            std::string type;
-            if (HasProperty(env, dataValue, "type")) {
-                type = GetStringProperty(env, dataValue, "type");
-            }
-
-            if (type == "Feature") {
-                auto feature = GeoJsonConverter::JsObjectToFeature(env, dataValue);
-                mbgl::GeoJSONFeature geoJsonFeature;
-                geoJsonFeature.geometry = feature.geometry;
-                geoJsonFeature.properties = feature.properties;
-                geoJsonFeature.id = feature.id;
-                geoJson = mbgl::GeoJSON(std::move(geoJsonFeature));
-            } else if (type == "FeatureCollection") {
-                geoJson = mbgl::GeoJSON(GeoJsonConverter::JsObjectToFeatureCollection(env, dataValue));
-            } else {
-                geoJson = mbgl::GeoJSON(GeoJsonConverter::JsObjectToGeometry(env, dataValue));
-            }
-        } else {
-            napi_throw_error(env, nullptr, "Tile data must be a GeoJSON string or object");
+        GeoJSONValueConversion conversion;
+        if (!NapiValueToGeoJSON(env, dataValue, conversion, "Tile data must be a GeoJSON string or object")) {
             return nullptr;
         }
+        mbgl::GeoJSON geoJson = std::move(conversion.value);
 
         source->setTileData(mbgl::CanonicalTileID(static_cast<uint8_t>(z),
                                                   static_cast<uint32_t>(x),
@@ -401,65 +345,25 @@ napi_value CustomGeometrySourceNAPI::InvalidateRegion(napi_env env, napi_callbac
 }
 
 napi_value CustomGeometrySourceNAPI::QuerySourceFeatures(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
+    napi_value jsThis;
+    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
 
-    CustomGeometrySourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-
+    CustomGeometrySourceNAPI* sourceNapi = NapiArgs::Unwrap<CustomGeometrySourceNAPI>(env, jsThis);
     if (!sourceNapi) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
+        return CreateEmptyArray(env);
     }
 
     auto* source = sourceNapi->getSource();
     if (!source) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
+        return CreateEmptyArray(env);
     }
 
-    try {
-        if (!querySourceFeaturesFn()) {
-            Logger::warn("CustomGeometrySourceNAPI",
-                         "QuerySourceFeatures: query callback not set - renderer not ready");
-            napi_value result;
-            napi_create_array(env, &result);
-            return result;
-        }
-
-        mbgl::SourceQueryOptions options;
-        if (args.Count() >= 1) {
-            napi_value filterValue = args.GetValue(0);
-            napi_valuetype type = napi_undefined;
-            napi_typeof(env, filterValue, &type);
-            if (type == napi_object) {
-                bool isArray = false;
-                napi_is_array(env, filterValue, &isArray);
-                if (isArray) {
-                    auto filter = mbgl::harmony::napiArrayToFilter(env, filterValue);
-                    if (filter.has_value()) {
-                        options.filter = std::move(*filter);
-                    } else {
-                        Logger::warn("CustomGeometrySourceNAPI", "QuerySourceFeatures: Failed to parse filter");
-                    }
-                }
-            }
-        }
-
-        std::vector<mbgl::Feature> features = querySourceFeaturesFn()(source->getID(), options);
-
-        Logger::info("CustomGeometrySourceNAPI", "QuerySourceFeatures: %zu features from source '%s'",
-                     features.size(), source->getID().c_str());
-
-        return GeoJsonConverter::FeatureArrayToJsArray(env, features);
-    } catch (const std::exception& e) {
-        Logger::error("CustomGeometrySourceNAPI", "QuerySourceFeatures failed: %s", e.what());
-        napi_throw_error(env, nullptr, e.what());
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
-    }
+    // Shared with GeoJsonSourceNAPI; the trailing strings keep the historical
+    // per-wrapper log wording.
+    return QuerySourceFeaturesImpl(env, info, source, querySourceFeaturesFn(),
+                                   "CustomGeometrySourceNAPI",
+                                   "query callback not set - renderer not ready",
+                                   "Failed to parse filter");
 }
 
 } // namespace harmony

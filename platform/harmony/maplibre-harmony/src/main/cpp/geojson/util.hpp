@@ -6,6 +6,10 @@
 #include <vector>
 #include <string>
 
+// Shared mbgl::Value <-> napi_value conversion (single implementation for the
+// style and geojson paths).
+#include "../style/value_conversion.hpp"
+
 namespace mbgl {
 namespace harmony {
 namespace geojson {
@@ -60,25 +64,15 @@ napi_value LinearRingVectorToNapiArray(napi_env env, const std::vector<mbgl::Lin
  */
 napi_value PolygonVectorToNapiArray(napi_env env, const std::vector<mbgl::Polygon<double>>& polygons);
 
-/**
- * Convert an mbgl::PropertyMap to a NAPI object.
- */
-napi_value PropertyMapToNapiObject(napi_env env, const mbgl::PropertyMap& properties);
+// Aliases over the shared Value conversion (style/value_conversion.hpp),
+// keeping the historical geojson:: spellings used by geojson_converter.cpp.
+inline napi_value PropertyMapToNapiObject(napi_env env, const mbgl::PropertyMap& properties) {
+    return mbgl::harmony::valueMapToNapiObject(env, properties);
+}
 
-/**
- * Convert a NAPI object to an mbgl::PropertyMap.
- */
-mbgl::PropertyMap NapiObjectToPropertyMap(napi_env env, napi_value obj);
-
-/**
- * Convert an mbgl::Value to a NAPI value.
- */
-napi_value MbglValueToNapiValue(napi_env env, const mbgl::Value& value);
-
-/**
- * Convert a NAPI value to an mbgl::Value.
- */
-mbgl::Value NapiValueToMbglValue(napi_env env, napi_value value);
+inline mbgl::PropertyMap NapiObjectToPropertyMap(napi_env env, napi_value obj) {
+    return mbgl::harmony::napiObjectToValueMap(env, obj);
+}
 
 /**
  * Get a string property from an object.

@@ -17,6 +17,9 @@
 #include <sstream>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "source_napi_utils.hpp"
+#include "query_source_features.hpp"
+#include "geojson/napi_geojson_value.hpp"
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 using namespace mbgl::harmony::geojson;
@@ -171,29 +174,11 @@ napi_value GeoJsonSourceNAPI::Init(napi_env env, napi_value exports) {
         { "getClusterExpansionZoom", nullptr, GetClusterExpansionZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "GeoJsonSource", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("GeoJsonSourceNAPI", "Failed to define GeoJsonSource class");
-        return nullptr;
-    }
-    
-    // Create the constructor reference
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("GeoJsonSourceNAPI", "Failed to create constructor reference");
-        return nullptr;
-    }
-    
-    // Add the constructor to exports
-    status = napi_set_named_property(env, exports, "GeoJsonSource", cons);
-    if (status != napi_ok) {
-        Logger::error("GeoJsonSourceNAPI", "Failed to set GeoJsonSource property");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "GeoJsonSource", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "GeoJsonSourceNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("GeoJsonSourceNAPI", "GeoJsonSource NAPI class initialized successfully");
     return exports;
 }
@@ -229,78 +214,23 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
             napi_typeof(env, optionsObj, &type);
             
             if (type == napi_object) {
-                // Parse cluster option
-                if (HasProperty(env, optionsObj, "cluster")) {
-                    bool cluster = false;
-                    napi_value clusterValue;
-                    napi_get_named_property(env, optionsObj, "cluster", &clusterValue);
-                    napi_get_value_bool(env, clusterValue, &cluster);
-                    options.cluster = cluster;
-                }
-                
-                // Parse clusterRadius
-                if (HasProperty(env, optionsObj, "clusterRadius")) {
-                    int32_t radius = 50;
-                    napi_value radiusValue;
-                    napi_get_named_property(env, optionsObj, "clusterRadius", &radiusValue);
-                    napi_get_value_int32(env, radiusValue, &radius);
-                    options.clusterRadius = static_cast<uint16_t>(radius);
-                }
-                
-                // Parse clusterMaxZoom
+                // Parse simple scalar options; a missing or mistyped property
+                // yields the historical default via the NapiArgs helpers.
+                options.cluster = napiArgs.GetBoolProperty(optionsObj, "cluster", false);
+                options.clusterRadius = static_cast<uint16_t>(napiArgs.GetInt32Property(optionsObj, "clusterRadius", 50));
+                // clusterMaxZoom keeps the guarded form: the GeoJSONOptions
+                // default (17) differs from the historical local fallback (16),
+                // so the field must stay untouched when the property is absent.
                 if (HasProperty(env, optionsObj, "clusterMaxZoom")) {
-                    int32_t maxZoom = 16;
-                    napi_value maxZoomValue;
-                    napi_get_named_property(env, optionsObj, "clusterMaxZoom", &maxZoomValue);
-                    napi_get_value_int32(env, maxZoomValue, &maxZoom);
-                    options.clusterMaxZoom = static_cast<uint8_t>(maxZoom);
+                    options.clusterMaxZoom = static_cast<uint8_t>(
+                        napiArgs.GetInt32Property(optionsObj, "clusterMaxZoom", 16));
                 }
-                
-                // Parse minzoom
-                if (HasProperty(env, optionsObj, "minzoom")) {
-                    int32_t minzoom = 0;
-                    napi_value minzoomValue;
-                    napi_get_named_property(env, optionsObj, "minzoom", &minzoomValue);
-                    napi_get_value_int32(env, minzoomValue, &minzoom);
-                    options.minzoom = static_cast<uint8_t>(minzoom);
-                }
-                
-                // Parse maxzoom
-                if (HasProperty(env, optionsObj, "maxzoom")) {
-                    int32_t maxzoom = 18;
-                    napi_value maxzoomValue;
-                    napi_get_named_property(env, optionsObj, "maxzoom", &maxzoomValue);
-                    napi_get_value_int32(env, maxzoomValue, &maxzoom);
-                    options.maxzoom = static_cast<uint8_t>(maxzoom);
-                }
-                
-                // Parse buffer
-                if (HasProperty(env, optionsObj, "buffer")) {
-                    int32_t buffer = 128;
-                    napi_value bufferValue;
-                    napi_get_named_property(env, optionsObj, "buffer", &bufferValue);
-                    napi_get_value_int32(env, bufferValue, &buffer);
-                    options.buffer = static_cast<uint16_t>(buffer);
-                }
-                
-                // Parse tolerance
-                if (HasProperty(env, optionsObj, "tolerance")) {
-                    double tolerance = 0.375;
-                    napi_value toleranceValue;
-                    napi_get_named_property(env, optionsObj, "tolerance", &toleranceValue);
-                    napi_get_value_double(env, toleranceValue, &tolerance);
-                    options.tolerance = tolerance;
-                }
-                
-                // Parse lineMetrics
-                if (HasProperty(env, optionsObj, "lineMetrics")) {
-                    bool lineMetrics = false;
-                    napi_value lineMetricsValue;
-                    napi_get_named_property(env, optionsObj, "lineMetrics", &lineMetricsValue);
-                    napi_get_value_bool(env, lineMetricsValue, &lineMetrics);
-                    options.lineMetrics = lineMetrics;
-                }
-                
+                options.minzoom = static_cast<uint8_t>(napiArgs.GetInt32Property(optionsObj, "minzoom", 0));
+                options.maxzoom = static_cast<uint8_t>(napiArgs.GetInt32Property(optionsObj, "maxzoom", 18));
+                options.buffer = static_cast<uint16_t>(napiArgs.GetInt32Property(optionsObj, "buffer", 128));
+                options.tolerance = napiArgs.GetDoubleProperty(optionsObj, "tolerance", 0.375);
+                options.lineMetrics = napiArgs.GetBoolProperty(optionsObj, "lineMetrics", false);
+
                 // Parse clusterProperties
                 if (HasProperty(env, optionsObj, "clusterProperties")) {
                     napi_value clusterPropsValue;
@@ -433,19 +363,7 @@ napi_value GeoJsonSourceNAPI::CreateInstance(napi_env env, mbgl::style::GeoJSONS
 
 // ==================== Getters ====================
 
-napi_value GeoJsonSourceNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    GeoJsonSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        return CreateStringValue(env, "");
-    }
-    
-    return CreateStringValue(env, sourceNapi->id);
-}
+DEFINE_SOURCE_GET_ID(GeoJsonSourceNAPI)
 
 // ==================== Data management ====================
 
@@ -475,56 +393,25 @@ napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) 
     }
     
     try {
-        // Detect the argument type
-        if (IsString(env, args[0])) {
-            // String type: parse JSON
-            NapiArgs napiArgs(env, info);
-            std::string geoJsonString = napiArgs.GetString(0, "geoJson");
-            
-            if (napiArgs.HasError()) {
-                return nullptr;
-            }
-            
-            mbgl::style::conversion::Error error;
-            auto geoJson = mbgl::style::conversion::convertJSON<mbgl::GeoJSON>(geoJsonString, error);
-            
-            if (geoJson) {
-                source->setGeoJSON(std::move(*geoJson));
-                Logger::info("GeoJsonSourceNAPI", "SetGeoJson (string): %s", sourceNapi->id.c_str());
-            } else {
-                napi_throw_error(env, nullptr, error.message.c_str());
-            }
-        } else if (IsObject(env, args[0])) {
-            // Object type: inspect the type property
-            std::string type;
-            if (HasProperty(env, args[0], "type")) {
-                type = GetStringProperty(env, args[0], "type");
-            }
-            
-            if (type == "FeatureCollection") {
-                // FeatureCollection object
-                auto collection = GeoJsonConverter::JsObjectToFeatureCollection(env, args[0]);
-                source->setGeoJSON(mbgl::GeoJSON(std::move(collection)));
-                Logger::info("GeoJsonSourceNAPI", "SetGeoJson (FeatureCollection): %s", sourceNapi->id.c_str());
-            } else if (type == "Feature") {
-                // Feature object
-                auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
-                // Convert to GeoJSONFeature
-                mbgl::GeoJSONFeature geoJsonFeature;
-                geoJsonFeature.geometry = feature.geometry;
-                geoJsonFeature.properties = feature.properties;
-                geoJsonFeature.id = feature.id;
-                source->setGeoJSON(mbgl::GeoJSON(std::move(geoJsonFeature)));
-                Logger::info("GeoJsonSourceNAPI", "SetGeoJson (Feature): %s", sourceNapi->id.c_str());
-            } else {
-                // Geometry object
-                auto geometry = GeoJsonConverter::JsObjectToGeometry(env, args[0]);
-                source->setGeoJSON(mbgl::GeoJSON(std::move(geometry)));
-                Logger::info("GeoJsonSourceNAPI", "SetGeoJson (Geometry): %s, type: %s", 
-                           sourceNapi->id.c_str(), type.c_str());
-            }
+        // Detect the argument type and convert (string or object payload)
+        GeoJSONValueConversion conversion;
+        if (!NapiValueToGeoJSON(env, args[0], conversion, "GeoJson data must be a string or object")) {
+            return nullptr;
+        }
+
+        source->setGeoJSON(std::move(conversion.value));
+
+        // Preserve the per-branch success logs of the original dispatch
+        const std::string& type = conversion.kind;
+        if (type == "string") {
+            Logger::info("GeoJsonSourceNAPI", "SetGeoJson (string): %s", sourceNapi->id.c_str());
+        } else if (type == "FeatureCollection") {
+            Logger::info("GeoJsonSourceNAPI", "SetGeoJson (FeatureCollection): %s", sourceNapi->id.c_str());
+        } else if (type == "Feature") {
+            Logger::info("GeoJsonSourceNAPI", "SetGeoJson (Feature): %s", sourceNapi->id.c_str());
         } else {
-            napi_throw_error(env, nullptr, "GeoJson data must be a string or object");
+            Logger::info("GeoJsonSourceNAPI", "SetGeoJson (Geometry): %s, type: %s",
+                       sourceNapi->id.c_str(), type.c_str());
         }
     } catch (const std::exception& e) {
         Logger::error("GeoJsonSourceNAPI", "SetGeoJson failed: %s", e.what());
@@ -575,103 +462,30 @@ napi_value GeoJsonSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     return nullptr;
 }
 
-napi_value GeoJsonSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    GeoJsonSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        return CreateStringValue(env, "");
-    }
-    
-    auto* source = sourceNapi->getSource();
-    if (!source) {
-        return CreateStringValue(env, "");
-    }
-    
-    try {
-        auto url = source->getURL();
-        if (url) {
-            return CreateStringValue(env, *url);
-        }
-    } catch (const std::exception& e) {
-        Logger::error("GeoJsonSourceNAPI", "GetUrl failed: %s", e.what());
-    }
-    
-    return CreateStringValue(env, "");
-}
+DEFINE_SOURCE_GET_URL(GeoJsonSourceNAPI)
 
 // ==================== Query features ====================
 
 napi_value GeoJsonSourceNAPI::QuerySourceFeatures(napi_env env, napi_callback_info info) {
     napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
-    GeoJsonSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
+    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+
+    GeoJsonSourceNAPI* sourceNapi = NapiArgs::Unwrap<GeoJsonSourceNAPI>(env, jsThis);
     if (!sourceNapi) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
+        return CreateEmptyArray(env);
     }
-    
+
     auto* source = sourceNapi->getSource();
     if (!source) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
+        return CreateEmptyArray(env);
     }
-    
-    try {
-        if (!querySourceFeaturesFn()) {
-            Logger::warn("GeoJsonSourceNAPI",
-                         "QuerySourceFeatures: querySourceFeatures callback not set - renderer not ready");
-            napi_value result;
-            napi_create_array(env, &result);
-            return result;
-        }
 
-        // Build query options from the optional filter argument.
-        // The ArkTS layer passes `undefined` when no filter is given, so
-        // skip undefined/null values before parsing the expression array.
-        mbgl::SourceQueryOptions options;
-        if (argc >= 1) {
-            napi_valuetype type = napi_undefined;
-            napi_typeof(env, args[0], &type);
-            if (type == napi_object) {
-                bool isArray = false;
-                napi_is_array(env, args[0], &isArray);
-                if (isArray) {
-                    auto filter = mbgl::harmony::napiArrayToFilter(env, args[0]);
-                    if (filter.has_value()) {
-                        options.filter = std::move(*filter);
-                    } else {
-                        Logger::warn("GeoJsonSourceNAPI", "QuerySourceFeatures: Failed to parse filter expression");
-                    }
-                }
-            }
-        }
-
-        // Query the features through the renderer (same path as the Map-level query)
-        std::vector<mbgl::Feature> features = querySourceFeaturesFn()(source->getID(), options);
-
-        Logger::info("GeoJsonSourceNAPI", "QuerySourceFeatures: %zu features from source '%s'",
-                     features.size(), source->getID().c_str());
-
-        // Convert the results into a NAPI array
-        return GeoJsonConverter::FeatureArrayToJsArray(env, features);
-    } catch (const std::exception& e) {
-        Logger::error("GeoJsonSourceNAPI", "QuerySourceFeatures failed: %s", e.what());
-        napi_throw_error(env, nullptr, e.what());
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
-    }
+    // Shared with CustomGeometrySourceNAPI; the trailing strings keep the
+    // historical per-wrapper log wording.
+    return QuerySourceFeaturesImpl(env, info, source, querySourceFeaturesFn(),
+                                   "GeoJsonSourceNAPI",
+                                   "querySourceFeatures callback not set - renderer not ready",
+                                   "Failed to parse filter expression");
 }
 
 // ==================== Clustering utilities ====================

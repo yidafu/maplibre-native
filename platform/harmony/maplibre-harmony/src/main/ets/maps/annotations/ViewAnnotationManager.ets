@@ -15,6 +15,7 @@ import { ComponentContentRegistry } from './ComponentContentRegistry';
 import { CenterOffset } from './ViewAnnotationUtils';
 import { ViewAnnotationHandle } from './ViewAnnotationHandle';
 import { normalizeOpacity, resolveFramePixelRatio } from './ViewAnnotationUtils';
+import { safePixelRatio } from '../common/MapUtils';
 
 /**
  * Configuration options for creating a ViewAnnotation via ViewAnnotationManager.
@@ -616,19 +617,6 @@ export class ViewAnnotationManager {
   }
 
   private readPixelRatio(mapView: NativeMapView | null): number {
-    if (!mapView) {
-      return 1;
-    }
-
-    try {
-      const ratio = mapView.getPixelRatio?.();
-      if (typeof ratio === 'number' && Number.isFinite(ratio) && ratio > 0) {
-        return ratio;
-      }
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : `${error}`;
-      hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] readPixelRatio failed: ${reason}`);
-    }
-    return 1;
+    return safePixelRatio(mapView, 'ViewAnnotationManager');
   }
 }

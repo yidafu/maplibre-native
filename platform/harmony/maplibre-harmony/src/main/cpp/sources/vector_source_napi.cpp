@@ -5,6 +5,7 @@
 #include "utils/logger.h"
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "source_napi_utils.hpp"
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
@@ -51,27 +52,11 @@ napi_value VectorSourceNAPI::Init(napi_env env, napi_value exports) {
         { "setTiles", nullptr, SetTiles, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "VectorSource", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("VectorSourceNAPI", "Failed to define VectorSource class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("VectorSourceNAPI", "Failed to create constructor reference");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "VectorSource", cons);
-    if (status != napi_ok) {
-        Logger::error("VectorSourceNAPI", "Failed to set VectorSource property");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "VectorSource", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "VectorSourceNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("VectorSourceNAPI", "VectorSource NAPI class initialized successfully");
     return exports;
 }
@@ -124,45 +109,9 @@ napi_value VectorSourceNAPI::CreateInstance(napi_env env, mbgl::style::VectorSou
                                 sourcePtr ? new VectorSourceNAPI(sourcePtr) : nullptr);
 }
 
-napi_value VectorSourceNAPI::GetId(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    VectorSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        return CreateStringValue(env, "");
-    }
-    
-    return CreateStringValue(env, sourceNapi->id);
-}
+DEFINE_SOURCE_GET_ID(VectorSourceNAPI)
 
-napi_value VectorSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    VectorSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        return CreateStringValue(env, "");
-    }
-    
-    auto* source = sourceNapi->getSource();
-    if (!source) {
-        return CreateStringValue(env, "");
-    }
-    
-    try {
-        auto url = source->getURL();
-        if (url) {
-            return CreateStringValue(env, *url);
-        }
-    } catch (const std::exception& e) {
-        Logger::error("VectorSourceNAPI", "GetUrl failed: %s", e.what());
-    }
-    
-    return CreateStringValue(env, "");
-}
+DEFINE_SOURCE_GET_URL(VectorSourceNAPI)
 
 napi_value VectorSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -217,34 +166,15 @@ napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // Parse the tiles array
+    // Parse the tiles array through the shared string-array reader; strict
+    // mode keeps the historical error for non-string elements.
     napi_value tilesArray = args.GetArray(0, "tiles");
     if (args.HasError()) return nullptr;
-    
-    uint32_t arrayLength = 0;
-    napi_get_array_length(env, tilesArray, &arrayLength);
-    
-    std::vector<std::string> tiles;
-    tiles.reserve(arrayLength);
-    
-    for (uint32_t i = 0; i < arrayLength; ++i) {
-        napi_value element;
-        napi_get_element(env, tilesArray, i, &element);
-        
-        size_t strSize = 0;
-        if (napi_get_value_string_utf8(env, element, nullptr, 0, &strSize) != napi_ok) {
-            napi_throw_error(env, nullptr, "tiles must be an array of strings");
-            return nullptr;
-        }
-        std::string tile(strSize, '\0');
-        if (strSize > 0 &&
-            napi_get_value_string_utf8(env, element, &tile[0], strSize + 1, nullptr) != napi_ok) {
-            napi_throw_error(env, nullptr, "Failed to read tiles element");
-            return nullptr;
-        }
-        tile.resize(strSize);
 
-        tiles.push_back(std::move(tile));
+    std::vector<std::string> tiles;
+    if (!ReadStringArray(args, tilesArray, tiles, /*strict=*/true)) {
+        napi_throw_error(env, nullptr, "tiles must be an array of strings");
+        return nullptr;
     }
     
     try {

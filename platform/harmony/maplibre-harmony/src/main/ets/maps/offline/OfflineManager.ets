@@ -87,7 +87,7 @@ export class OfflineManager {
       const dbPath = context.cacheDir + '/maplibre-offline.db';
       this.nativeManager = new maplibre.OfflineManager(dbPath);
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorMsg = OfflineManager.describeError(error);
       hilog.error(DOMAIN, 'OfflineManager', `Failed to create OfflineManager: ${errorMsg}`);
       throw new Error(`Failed to create OfflineManager: ${errorMsg}`);
     }
@@ -107,30 +107,117 @@ export class OfflineManager {
   }
 
   /**
+   * Extract a message from a caught NAPI exception.
+   */
+  private static describeError(error: Object): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  /**
+   * Shared promise wrapper for native calls that settle through a NAPI
+   * callback carrying either a result payload or an error string.
+   *
+   * @param failLabel Callback-failure log label, e.g. 'list offline regions'.
+   * @param syncErrorLabel Synchronous-exception log label, e.g. 'listing offline regions'.
+   * @param invoke Invokes the native call, forwarding the result callback.
+   * @param wrap Converts the native payload to the wrapper type.
+   */
+  private nativeStringCallback<N, R>(
+    failLabel: string,
+    syncErrorLabel: string,
+    invoke: (onResult: (result: N | string) => void) => void,
+    wrap: (native: N) => R
+  ): Promise<R> {
+    return new Promise((resolve, reject) => {
+      try {
+        invoke((result: N | string) => {
+          if (typeof result === 'string') {
+            // Error case.
+            hilog.error(DOMAIN, 'OfflineManager', `Failed to ${failLabel}: ${result}`);
+            reject(new Error(result));
+          } else {
+            // Success case - convert to wrapper type.
+            resolve(wrap(result));
+          }
+        });
+      } catch (error) {
+        const errorMsg = OfflineManager.describeError(error);
+        hilog.error(DOMAIN, 'OfflineManager', `Error ${syncErrorLabel}: ${errorMsg}`);
+        reject(new Error(errorMsg));
+      }
+    });
+  }
+
+  /**
+   * Shared promise wrapper for native calls that settle through an
+   * `(error?: string)` NAPI callback.
+   *
+   * @param failLabel Callback-failure log label, e.g. 'pack database'; pass
+   *   null to suppress the failure log (deleteOfflineRegion is silent).
+   * @param syncErrorLabel Synchronous-exception log label; null suppresses.
+   * @param invoke Invokes the native call, forwarding the completion callback.
+   * @param onSuccess Optional success hook (extra logging, etc.).
+   */
+  private nativeVoidCallback(
+    failLabel: string | null,
+    syncErrorLabel: string | null,
+    invoke: (onDone: (error?: string) => void) => void,
+    onSuccess?: () => void
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        invoke((error?: string) => {
+          if (error) {
+            if (failLabel !== null) {
+              hilog.error(DOMAIN, 'OfflineManager', `Failed to ${failLabel}: ${error}`);
+            }
+            reject(new Error(error));
+          } else {
+            if (onSuccess) {
+              onSuccess();
+            }
+            resolve();
+          }
+        });
+      } catch (error) {
+        const errorMsg = OfflineManager.describeError(error);
+        if (syncErrorLabel !== null) {
+          hilog.error(DOMAIN, 'OfflineManager', `Error ${syncErrorLabel}: ${errorMsg}`);
+        }
+        reject(new Error(errorMsg));
+      }
+    });
+  }
+
+  /**
+   * Shared synchronous wrapper: runs the native call and rethrows NAPI
+   * exceptions with the given label.
+   */
+  private syncNativeCall(syncErrorLabel: string, invoke: () => void): void {
+    try {
+      invoke();
+    } catch (error) {
+      const errorMsg = OfflineManager.describeError(error);
+      hilog.error(DOMAIN, 'OfflineManager', `Error ${syncErrorLabel}: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+  }
+
+  /**
    * List all offline regions.
    *
    * @returns Promise<OfflineRegion[]> Wrapped offline regions.
    */
   public async listOfflineRegions(): Promise<OfflineRegion[]> {
-    return new Promise((resolve, reject) => {
-      try {
-        this.nativeManager.listOfflineRegions((result: maplibre.OfflineRegion[] | string) => {
-          if (typeof result === 'string') {
-            // Error case.
-            hilog.error(DOMAIN, 'OfflineManager', `Failed to list offline regions: ${result}`);
-            reject(new Error(result));
-          } else {
-            // Success case - convert to wrapper type.
-            const wrappedRegions = result.map(nativeRegion => OfflineRegion.fromNative(nativeRegion));
-            resolve(wrappedRegions);
-          }
-        });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        hilog.error(DOMAIN, 'OfflineManager', `Error listing offline regions: ${errorMsg}`);
-        reject(new Error(errorMsg));
-      }
-    });
+    return this.nativeStringCallback<maplibre.OfflineRegion[], OfflineRegion[]>(
+      'list offline regions',
+      'listing offline regions',
+      (onResult: (result: maplibre.OfflineRegion[] | string) => void) => {
+        this.nativeManager.listOfflineRegions(onResult);
+      },
+      (nativeRegions: maplibre.OfflineRegion[]): OfflineRegion[] =>
+        nativeRegions.map(nativeRegion => OfflineRegion.fromNative(nativeRegion))
+    );
   }
 
   /**
@@ -144,30 +231,14 @@ export class OfflineManager {
     definition: maplibre.OfflineTilePyramidRegionDefinition,
     metadata: ArrayBuffer = new ArrayBuffer(0)
   ): Promise<OfflineRegion> {
-    return new Promise((resolve, reject) => {
-      try {
-        const metadataBuffer = metadata;
-
-        this.nativeManager.createOfflineRegion(
-          definition,
-          metadataBuffer,
-          (result: maplibre.OfflineRegion | string) => {
-            if (typeof result === 'string') {
-              hilog.error(DOMAIN, 'OfflineManager', `Failed to create offline region: ${result}`);
-              reject(new Error(result));
-            } else {
-              // Convert to wrapper type.
-              const wrappedRegion = OfflineRegion.fromNative(result);
-              resolve(wrappedRegion);
-            }
-          }
-        );
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        hilog.error(DOMAIN, 'OfflineManager', `Error creating offline region: ${errorMsg}`);
-        reject(new Error(errorMsg));
-      }
-    });
+    return this.nativeStringCallback<maplibre.OfflineRegion, OfflineRegion>(
+      'create offline region',
+      'creating offline region',
+      (onResult: (result: maplibre.OfflineRegion | string) => void) => {
+        this.nativeManager.createOfflineRegion(definition, metadata, onResult);
+      },
+      (nativeRegion: maplibre.OfflineRegion): OfflineRegion => OfflineRegion.fromNative(nativeRegion)
+    );
   }
 
   /**
@@ -176,21 +247,14 @@ export class OfflineManager {
    * @param region Offline region to remove (wrapped type).
    */
   public async deleteOfflineRegion(region: OfflineRegion): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
+    return this.nativeVoidCallback(
+      null,
+      null,
+      (onDone: (error?: string) => void) => {
         // Invoke the wrapper method directly.
-        region.delete((error?: string) => {
-          if (error) {
-            reject(new Error(error));
-          } else {
-            resolve();
-          }
-        });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        reject(new Error(errorMsg));
+        region.delete(onDone);
       }
-    });
+    );
   }
 
   /**
@@ -201,13 +265,9 @@ export class OfflineManager {
    * @param limit Maximum tile count (0 means unlimited).
    */
   public setOfflineMapboxTileCountLimit(limit: number): void {
-    try {
+    this.syncNativeCall('setting tile count limit', () => {
       this.nativeManager.setOfflineMapboxTileCountLimit(limit);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'OfflineManager', `Error setting tile count limit: ${errorMsg}`);
-      throw new Error(errorMsg);
-    }
+    });
   }
 
   /**
@@ -217,23 +277,16 @@ export class OfflineManager {
    * Warning: this operation is irreversible.
    */
   public async resetDatabase(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        this.nativeManager.resetDatabase((error?: string) => {
-          if (error) {
-            hilog.error(DOMAIN, 'OfflineManager', `Failed to reset database: ${error}`);
-            reject(new Error(error));
-          } else {
-            hilog.warn(DOMAIN, 'OfflineManager', 'Database reset successfully');
-            resolve();
-          }
-        });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        hilog.error(DOMAIN, 'OfflineManager', `Error resetting database: ${errorMsg}`);
-        reject(new Error(errorMsg));
+    return this.nativeVoidCallback(
+      'reset database',
+      'resetting database',
+      (onDone: (error?: string) => void) => {
+        this.nativeManager.resetDatabase(onDone);
+      },
+      (): void => {
+        hilog.warn(DOMAIN, 'OfflineManager', 'Database reset successfully');
       }
-    });
+    );
   }
 
   /**
@@ -242,22 +295,13 @@ export class OfflineManager {
    * Removes cached data that does not belong to any offline region.
    */
   public async clearAmbientCache(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        this.nativeManager.clearAmbientCache((error?: string) => {
-          if (error) {
-            hilog.error(DOMAIN, 'OfflineManager', `Failed to clear ambient cache: ${error}`);
-            reject(new Error(error));
-          } else {
-            resolve();
-          }
-        });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        hilog.error(DOMAIN, 'OfflineManager', `Error clearing ambient cache: ${errorMsg}`);
-        reject(new Error(errorMsg));
+    return this.nativeVoidCallback(
+      'clear ambient cache',
+      'clearing ambient cache',
+      (onDone: (error?: string) => void) => {
+        this.nativeManager.clearAmbientCache(onDone);
       }
-    });
+    );
   }
 
   /**
@@ -266,37 +310,24 @@ export class OfflineManager {
    * @param size Maximum size in bytes.
    */
   public setMaximumAmbientCacheSize(size: number): void {
-    try {
+    this.syncNativeCall('setting maximum ambient cache size', () => {
       this.nativeManager.setMaximumAmbientCacheSize(size, () => {
         // Callback placeholder.
       });
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'OfflineManager', `Error setting maximum ambient cache size: ${errorMsg}`);
-      throw new Error(errorMsg);
-    }
+    });
   }
 
   /**
    * Invalidate the ambient cache.
    */
   public async invalidateAmbientCache(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        this.nativeManager.invalidateAmbientCache((error?: string) => {
-          if (error) {
-            hilog.error(DOMAIN, 'OfflineManager', `Failed to invalidate ambient cache: ${error}`);
-            reject(new Error(error));
-          } else {
-            resolve();
-          }
-        });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        hilog.error(DOMAIN, 'OfflineManager', `Error invalidating ambient cache: ${errorMsg}`);
-        reject(new Error(errorMsg));
+    return this.nativeVoidCallback(
+      'invalidate ambient cache',
+      'invalidating ambient cache',
+      (onDone: (error?: string) => void) => {
+        this.nativeManager.invalidateAmbientCache(onDone);
       }
-    });
+    );
   }
 
   /**
@@ -326,26 +357,18 @@ export class OfflineManager {
    * ```
    */
   public async mergeOfflineRegions(path: string): Promise<OfflineRegion[]> {
-    return new Promise((resolve, reject) => {
-      try {
-        this.nativeManager.mergeOfflineRegions(path, (result: maplibre.OfflineRegion[] | string) => {
-          if (typeof result === 'string') {
-            // Error case.
-            hilog.error(DOMAIN, 'OfflineManager', `Failed to merge offline regions: ${result}`);
-            reject(new Error(result));
-          } else {
-            // Success case - convert to wrapper type.
-            const wrappedRegions = result.map(nativeRegion => OfflineRegion.fromNative(nativeRegion));
-            hilog.info(DOMAIN, 'OfflineManager', `Successfully merged ${wrappedRegions.length} offline regions`);
-            resolve(wrappedRegions);
-          }
-        });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        hilog.error(DOMAIN, 'OfflineManager', `Error merging offline regions: ${errorMsg}`);
-        reject(new Error(errorMsg));
+    return this.nativeStringCallback<maplibre.OfflineRegion[], OfflineRegion[]>(
+      'merge offline regions',
+      'merging offline regions',
+      (onResult: (result: maplibre.OfflineRegion[] | string) => void) => {
+        this.nativeManager.mergeOfflineRegions(path, onResult);
+      },
+      (nativeRegions: maplibre.OfflineRegion[]): OfflineRegion[] => {
+        const wrappedRegions = nativeRegions.map(nativeRegion => OfflineRegion.fromNative(nativeRegion));
+        hilog.info(DOMAIN, 'OfflineManager', `Successfully merged ${wrappedRegions.length} offline regions`);
+        return wrappedRegions;
       }
-    });
+    );
   }
 
   /**
@@ -376,23 +399,16 @@ export class OfflineManager {
    * ```
    */
   public async packDatabase(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        this.nativeManager.packDatabase((error?: string) => {
-          if (error) {
-            hilog.error(DOMAIN, 'OfflineManager', `Failed to pack database: ${error}`);
-            reject(new Error(error));
-          } else {
-            hilog.info(DOMAIN, 'OfflineManager', 'Database packed successfully');
-            resolve();
-          }
-        });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        hilog.error(DOMAIN, 'OfflineManager', `Error packing database: ${errorMsg}`);
-        reject(new Error(errorMsg));
+    return this.nativeVoidCallback(
+      'pack database',
+      'packing database',
+      (onDone: (error?: string) => void) => {
+        this.nativeManager.packDatabase(onDone);
+      },
+      (): void => {
+        hilog.info(DOMAIN, 'OfflineManager', 'Database packed successfully');
       }
-    });
+    );
   }
 
   /**
@@ -430,13 +446,9 @@ export class OfflineManager {
    * ```
    */
   public runPackDatabaseAutomatically(autopack: boolean): void {
-    try {
+    this.syncNativeCall('setting auto-pack', () => {
       this.nativeManager.runPackDatabaseAutomatically(autopack);
-      hilog.info(DOMAIN, 'OfflineManager', `Auto-pack database set to: ${autopack}`);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'OfflineManager', `Error setting auto-pack: ${errorMsg}`);
-      throw new Error(errorMsg);
-    }
+    });
+    hilog.info(DOMAIN, 'OfflineManager', `Auto-pack database set to: ${autopack}`);
   }
 }

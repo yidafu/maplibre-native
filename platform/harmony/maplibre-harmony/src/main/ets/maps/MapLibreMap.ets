@@ -90,6 +90,8 @@ import {
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { ListenerGroup, NativeListenerBinding, listenerErrorMessage } from './listeners/ListenerRegistry';
+import { safePixelRatio } from './common/MapUtils';
+import { pixelMapFromSnapshotData } from './snapshot/MapSnapshotter';
 
 function logListenerError(eventName: string, message: string): void {
   hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `${eventName}: ${message}`);
@@ -252,7 +254,7 @@ export class MapLibreMap {
     // Bind the floating-layer engine to the native map view
     this.viewAnnotationManager.setNativeMapView(nativeMapView);
     this.infoWindowManager.setViewAnnotationManager(this.viewAnnotationManager);
-    this.viewAnnotationManager.updatePixelRatio(this.readPixelRatioSafe(nativeMapView));
+    this.viewAnnotationManager.updatePixelRatio(safePixelRatio(nativeMapView, 'MapLibreMap'));
     this.viewAnnotationManager.setRenderCallback((states: ViewAnnotationRenderState[]) => {
       if (this.viewAnnotationRenderCallback) {
         this.viewAnnotationRenderCallback(states);
@@ -446,47 +448,20 @@ export class MapLibreMap {
     this.cameraChangeDispatcher.addOnCameraMoveListener(new ConsolidatedMoveListenerImpl(this));
   }
 
-  private readPixelRatioSafe(mapView: NativeMapView): number {
-    try {
-      const ratioCandidate = mapView.getPixelRatio?.();
-      if (typeof ratioCandidate === 'number' && Number.isFinite(ratioCandidate) && ratioCandidate > 0) {
-        return ratioCandidate;
-      }
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : `${error}`;
-      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] readPixelRatioSafe failed: ${reason}`);
-    }
-    return 1;
-  }
-
   /**
    * Register camera event callbacks from the NAPI layer
    *
-   * Wires up native camera callbacks (onCameraWillChange, onCameraIsChanging,
-   * onCameraDidChange) and translates them to the Android-style events used
-   * internally by CameraChangeDispatcher.
+   * Wires up the eager native camera callbacks (onCameraWillChange,
+   * onCameraIsChanging, onCameraDidChange) via the shared bridge table and
+   * translates them to the Android-style events used internally by
+   * CameraChangeDispatcher.
    *
    * @private
    */
   private setupNativeCameraCallbacks(): void {
-    // Camera move started callback — translated from native onCameraWillChange
-    // animated=true  → DEVELOPER_ANIMATION (3), animated=false → GESTURE (1)
-    this.nativeMapView.addOnCameraWillChangeListener((animated: boolean) => {
-      const reason = animated ? CameraMoveReason.DEVELOPER_ANIMATION : CameraMoveReason.GESTURE;
-      this.cameraChangeDispatcher.notifyCameraMoveStarted(reason);
-    });
-
-    // Camera moving callback — translated from native onCameraIsChanging
-    // Clears the intra-frame camera state cache so each frame gets fresh data.
-    this.nativeMapView.addOnCameraIsChangingListener(() => {
-      this.cachedCameraState = null; // Invalidate previous frame's cache
-      this.cameraChangeDispatcher.notifyCameraMove();
-    });
-
-    // Camera idle callback — translated from native onCameraDidChange
-    this.nativeMapView.addOnCameraDidChangeListener(() => {
-      this.cameraChangeDispatcher.notifyCameraIdle();
-    });
+    this.ensureCameraDispatcherBridge('cameraWillChange');
+    this.ensureCameraDispatcherBridge('cameraIsChanging');
+    this.ensureCameraDispatcherBridge('cameraDidChange');
   }
 
   /**
@@ -1241,6 +1216,38 @@ export class MapLibreMap {
   }
 
   /**
+   * Shared implementation for the three getCameraForBounds* variants.
+   *
+   * @param bounds Bounds to fit
+   * @param padding Optional EdgeInsets padding (undefined = zero padding)
+   * @param bearing Optional bearing; falls back to the current camera bearing
+   * @param tilt Optional tilt; falls back to the current camera tilt
+   */
+  private getCameraForBoundsInternal(bounds: LatLngBounds, padding?: EdgeInsets, bearing?: number, tilt?: number): CameraPosition | null {
+    if (this.destroyed) {
+      return null;
+    }
+    let actualBearing = bearing;
+    let actualTilt = tilt;
+    if (actualBearing === undefined || actualTilt === undefined) {
+      // Carry over the current camera for any unspecified parameter
+      const currentCamera = this.getCameraPosition();
+      if (actualBearing === undefined) {
+        actualBearing = currentCamera ? currentCamera.bearing : 0;
+      }
+      if (actualTilt === undefined) {
+        actualTilt = currentCamera ? currentCamera.tilt : 0;
+      }
+    }
+    if (padding) {
+      // Deconstruct EdgeInsets into individual padding values
+      return this.getCameraForLatLngBounds(bounds, padding.top, padding.left, padding.bottom, padding.right, actualBearing, actualTilt);
+    }
+    // Use zero padding
+    return this.getCameraForLatLngBounds(bounds, 0, 0, 0, 0, actualBearing, actualTilt);
+  }
+
+  /**
    * Get a camera position that fits the provided bounds (using current bearing/tilt)
    * Mirrors Android getCameraForLatLngBounds(LatLngBounds)
    *
@@ -1248,16 +1255,7 @@ export class MapLibreMap {
    * @return Camera position that fits the bounds, or null if the map is destroyed
    */
   public getCameraForBounds(bounds: LatLngBounds): CameraPosition | null {
-    if (this.destroyed) {
-      return null;
-    }
-    // Use the current camera to carry over bearing and tilt
-    const currentCamera = this.getCameraPosition();
-    const bearing = currentCamera ? currentCamera.bearing : 0;
-    const tilt = currentCamera ? currentCamera.tilt : 0;
-    
-    // Use zero padding
-    return this.getCameraForLatLngBounds(bounds, 0, 0, 0, 0, bearing, tilt);
+    return this.getCameraForBoundsInternal(bounds);
   }
 
   /**
@@ -1269,16 +1267,7 @@ export class MapLibreMap {
    * @return Camera position that fits the bounds/padding, or null if the map is destroyed
    */
   public getCameraForBoundsWithPadding(bounds: LatLngBounds, padding: EdgeInsets): CameraPosition | null {
-    if (this.destroyed) {
-      return null;
-    }
-    // Use the current camera to carry over bearing and tilt
-    const currentCamera = this.getCameraPosition();
-    const bearing = currentCamera ? currentCamera.bearing : 0;
-    const tilt = currentCamera ? currentCamera.tilt : 0;
-    
-    // Deconstruct EdgeInsets into individual padding values
-    return this.getCameraForLatLngBounds(bounds, padding.top, padding.left, padding.bottom, padding.right, bearing, tilt);
+    return this.getCameraForBoundsInternal(bounds, padding);
   }
 
   /**
@@ -1292,11 +1281,31 @@ export class MapLibreMap {
    * @return Camera position that satisfies all parameters, or null if the map is destroyed
    */
   public getCameraForBoundsWithOptions(bounds: LatLngBounds, padding: EdgeInsets, bearing: number, tilt: number): CameraPosition | null {
-    if (this.destroyed) {
-      return null;
+    return this.getCameraForBoundsInternal(bounds, padding, bearing, tilt);
+  }
+
+  /**
+   * Shared implementation for the three setCameraForBounds* variants.
+   *
+   * @param bounds Bounds to fit
+   * @param padding Optional EdgeInsets padding (undefined = zero padding)
+   * @param bearing Optional bearing (falls back to the current camera)
+   * @param tilt Optional tilt (falls back to the current camera)
+   * @param animated Whether to animate
+   * @param duration Animation duration in milliseconds
+   */
+  private fitBounds(bounds: LatLngBounds, padding: EdgeInsets | undefined, bearing: number | undefined,
+    tilt: number | undefined, animated: boolean, duration: number): void {
+    const camera = this.getCameraForBoundsInternal(bounds, padding, bearing, tilt);
+    if (!camera) {
+      return;
     }
-    // Deconstruct EdgeInsets into individual padding values
-    return this.getCameraForLatLngBounds(bounds, padding.top, padding.left, padding.bottom, padding.right, bearing, tilt);
+
+    if (animated) {
+      this.animateCamera(camera, duration);
+    } else {
+      this.jumpTo(camera.bearing, camera.target.latitude, camera.target.longitude, camera.tilt, camera.zoom);
+    }
   }
 
   /**
@@ -1308,20 +1317,7 @@ export class MapLibreMap {
    * @param duration Animation duration in milliseconds, default 300ms
    */
   public setCameraForBounds(bounds: LatLngBounds, animated: boolean = true, duration: number = 300): void {
-    if (this.destroyed) {
-      return;
-    }
-    
-    const camera = this.getCameraForBounds(bounds);
-    if (!camera) {
-      return;
-    }
-    
-    if (animated) {
-      this.animateCamera(camera, duration);
-    } else {
-      this.jumpTo(camera.bearing, camera.target.latitude, camera.target.longitude, camera.tilt, camera.zoom);
-    }
+    this.fitBounds(bounds, undefined, undefined, undefined, animated, duration);
   }
 
   /**
@@ -1334,20 +1330,7 @@ export class MapLibreMap {
    * @param duration Animation duration in milliseconds, default 300ms
    */
   public setCameraForBoundsWithPadding(bounds: LatLngBounds, padding: EdgeInsets, animated: boolean = true, duration: number = 300): void {
-    if (this.destroyed) {
-      return;
-    }
-    
-    const camera = this.getCameraForBoundsWithPadding(bounds, padding);
-    if (!camera) {
-      return;
-    }
-    
-    if (animated) {
-      this.animateCamera(camera, duration);
-    } else {
-      this.jumpTo(camera.bearing, camera.target.latitude, camera.target.longitude, camera.tilt, camera.zoom);
-    }
+    this.fitBounds(bounds, padding, undefined, undefined, animated, duration);
   }
 
   /**
@@ -1361,20 +1344,7 @@ export class MapLibreMap {
    * @param duration Animation duration in milliseconds, default 300ms
    */
   public setCameraForBoundsWithOptions(bounds: LatLngBounds, padding: EdgeInsets, bearing: number, tilt: number, animated: boolean = true, duration: number = 300): void {
-    if (this.destroyed) {
-      return;
-    }
-    
-    const camera = this.getCameraForBoundsWithOptions(bounds, padding, bearing, tilt);
-    if (!camera) {
-      return;
-    }
-    
-    if (animated) {
-      this.animateCamera(camera, duration);
-    } else {
-      this.jumpTo(camera.bearing, camera.target.latitude, camera.target.longitude, camera.tilt, camera.zoom);
-    }
+    this.fitBounds(bounds, padding, bearing, tilt, animated, duration);
   }
 
   public getCameraForGeometry(geometry: Geometry, top: number, left: number, bottom: number, right: number,
@@ -1583,7 +1553,7 @@ export class MapLibreMap {
       readyListener = async (payload: MapViewSnapshotPayload): Promise<void> => {
         cleanup();
         try {
-          const pixelMap = await this.createPixelMapFromSnapshot(payload);
+          const pixelMap = await pixelMapFromSnapshotData(payload.data, payload.width, payload.height);
           resolve(pixelMap);
         } catch (error) {
           reject(error instanceof Error ? error : new Error(`${error}`));
@@ -1606,32 +1576,6 @@ export class MapLibreMap {
       }
     });
   }
-  private async createPixelMapFromSnapshot(payload: MapViewSnapshotPayload): Promise<image.PixelMap> {
-    return new Promise((resolve, reject) => {
-      try {
-        const imageInfo: image.ImageInfo = {
-          size: { width: payload.width, height: payload.height },
-          pixelFormat: image.PixelMapFormat.RGBA_8888,
-          alphaType: image.AlphaType.PREMUL,
-          density: 160,
-          stride: payload.width * 4,
-          mimeType: 'image/png',
-          isHdr: false,
-        };
-
-        image.createPixelMap(payload.data, imageInfo, (err, pixelMap) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(pixelMap);
-          }
-        });
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
   // Camera position
   public getCameraPosition(): CameraPosition | null {
     if (this.destroyed) {
@@ -1900,17 +1844,18 @@ export class MapLibreMap {
    *
    * Used for ArkUI component positioning (InfoWindow, custom overlays, etc.)
    *
+   * Delegates to Projection.toScreenLocation: identical conversion
+   * (physical pixels / pixelRatio → logical pixels).
+   *
    * @param latitude Latitude
    * @param longitude Longitude
    * @returns Logical pixel coordinates
    */
   public pixelForLatLng(latitude: number, longitude: number): Point {
-    const physicalPixel = this.pixelForLatLngPhysical(latitude, longitude);
-    const pixelRatio = this.nativeMapView.getPixelRatio();
-    return new PixelCoordinate(
-      physicalPixel.x / pixelRatio,
-      physicalPixel.y / pixelRatio
-    );
+    if (this.destroyed) {
+      return new PixelCoordinate(0, 0);
+    }
+    return this.projection.toScreenLocation(new LatLng(latitude, longitude));
   }
 
   public pixelsForLatLngs(input: number[], output: number[]): void {
@@ -1918,7 +1863,7 @@ export class MapLibreMap {
       return;
     }
     this.nativeMapView.pixelsForLatLngs(input, output);
-    const pixelRatio = this.readPixelRatioSafe(this.nativeMapView);
+    const pixelRatio = safePixelRatio(this.nativeMapView, 'MapLibreMap');
     const safeRatio = pixelRatio === 0 ? 1 : pixelRatio;
     for (let i = 0; i + 1 < output.length; i += 2) {
       output[i] = output[i] / safeRatio;
@@ -1957,22 +1902,25 @@ export class MapLibreMap {
    *
    * Used for ArkUI component coordinate conversion
    *
+   * Delegates to Projection.fromScreenLocation: identical conversion
+   * (logical pixels * pixelRatio → physical pixels).
+   *
    * @param x Logical pixel X coordinate
    * @param y Logical pixel Y coordinate
    * @returns Geographic coordinates
    */
   public latLngForPixel(x: number, y: number): LatLng {
-    const pixelRatio = this.nativeMapView.getPixelRatio();
-    const physicalX = x * pixelRatio;
-    const physicalY = y * pixelRatio;
-    return this.latLngForPixelPhysical(physicalX, physicalY);
+    if (this.destroyed) {
+      return LatLng.create(0, 0);
+    }
+    return this.projection.fromScreenLocation(new PixelCoordinate(x, y));
   }
 
   public latLngsForPixels(input: number[], output: number[]): void {
     if (this.destroyed) {
       return;
     }
-    const pixelRatio = this.readPixelRatioSafe(this.nativeMapView);
+    const pixelRatio = safePixelRatio(this.nativeMapView, 'MapLibreMap');
     const safeRatio = pixelRatio === 0 ? 1 : pixelRatio;
     const physicalInput: number[] = input.slice();
     for (let i = 0; i + 1 < physicalInput.length; i += 2) {
@@ -2481,16 +2429,54 @@ export class MapLibreMap {
 // ========== Marker selection management ==========
 
   /**
+   * Shared marker-selection implementation.
+   *
+   * @param marker Marker to select
+   * @param notifyDelegate When true the AnnotationViewDelegate is notified
+   * instead of showing the InfoWindow (selectAnnotation semantics); when false
+   * the MarkerManager shows the InfoWindow (selectMarker semantics).
+   */
+  private selectMarkerInternal(marker: Marker, notifyDelegate: boolean): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.markerManager.selectMarker(marker, !notifyDelegate);
+    if (notifyDelegate) {
+      const delegate = this.markerManager.getAnnotationViewDelegate();
+      if (delegate?.didSelectAnnotationView) {
+        delegate.didSelectAnnotationView(marker);
+      }
+    }
+  }
+
+  /**
+   * Shared marker-deselection implementation.
+   *
+   * @param marker Marker to deselect
+   * @param notifyDelegate When true the AnnotationViewDelegate is notified
+   * (deselectAnnotation semantics).
+   */
+  private deselectMarkerInternal(marker: Marker, notifyDelegate: boolean): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.markerManager.deselectMarker(marker);
+    if (notifyDelegate) {
+      const delegate = this.markerManager.getAnnotationViewDelegate();
+      if (delegate?.didDeselectAnnotationView) {
+        delegate.didDeselectAnnotationView(marker);
+      }
+    }
+  }
+
+  /**
    * Select a marker
    *
    * @param marker Marker to select
    * @param animated Whether to animate (not yet implemented)
    */
   public selectMarker(marker: Marker, animated: boolean = true): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.markerManager.selectMarker(marker, true);
+    this.selectMarkerInternal(marker, false);
   }
 
   /**
@@ -2499,10 +2485,7 @@ export class MapLibreMap {
    * @param marker Marker to deselect
    */
   public deselectMarker(marker: Marker): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.markerManager.deselectMarker(marker);
+    this.deselectMarkerInternal(marker, false);
   }
 
   /**
@@ -2889,6 +2872,66 @@ export class MapLibreMap {
   // native callback on every add made each event fire once per listener ever
   // added; per-listener fan-out/removal is CameraChangeDispatcher's job.)
   private cameraBridgeEvents: Set<string> = new Set();
+  /**
+   * Table-driven native bridge registrations for camera events.
+   *
+   * Key -> registrar that binds one native listener feeding
+   * CameraChangeDispatcher. Single source of truth for both the eager
+   * constructor bridges (cameraWillChange / cameraIsChanging / cameraDidChange)
+   * and the lazily registered dispatcher bridges (idle / moveStarted / move /
+   * moveCanceled). Built on first use (closures capture `this`).
+   */
+  private cameraBridgeRegistrars: Map<string, () => void> | null = null;
+
+  private getCameraBridgeRegistrars(): Map<string, () => void> {
+    if (this.cameraBridgeRegistrars === null) {
+      const registrars = new Map<string, () => void>();
+      // Camera move started — translated from native onCameraWillChange:
+      // animated=true → DEVELOPER_ANIMATION (3), animated=false → GESTURE (1)
+      registrars.set('cameraWillChange', (): void => {
+        this.nativeMapView.addOnCameraWillChangeListener((animated: boolean) => {
+          const reason = animated ? CameraMoveReason.DEVELOPER_ANIMATION : CameraMoveReason.GESTURE;
+          this.cameraChangeDispatcher.notifyCameraMoveStarted(reason);
+        });
+      });
+      // Camera moving — clears the intra-frame camera state cache so each
+      // frame gets fresh data.
+      registrars.set('cameraIsChanging', (): void => {
+        this.nativeMapView.addOnCameraIsChangingListener(() => {
+          this.cachedCameraState = null; // Invalidate previous frame's cache
+          this.cameraChangeDispatcher.notifyCameraMove();
+        });
+      });
+      // Camera idle — translated from native onCameraDidChange
+      registrars.set('cameraDidChange', (): void => {
+        this.nativeMapView.addOnCameraDidChangeListener(() => {
+          this.cameraChangeDispatcher.notifyCameraIdle();
+        });
+      });
+      registrars.set('idle', (): void => {
+        this.nativeMapView.addOnCameraIdleListener(() => {
+          this.cameraChangeDispatcher.notifyCameraIdle();
+        });
+      });
+      registrars.set('moveStarted', (): void => {
+        this.nativeMapView.addOnCameraMoveStartedListener((reason: number) => {
+          this.cameraChangeDispatcher.notifyCameraMoveStarted(reason as CameraMoveReason);
+        });
+      });
+      registrars.set('move', (): void => {
+        this.nativeMapView.addOnCameraMoveListener(() => {
+          this.cameraChangeDispatcher.notifyCameraMove();
+        });
+      });
+      registrars.set('moveCanceled', (): void => {
+        this.nativeMapView.addOnCameraMoveCanceledListener(() => {
+          this.cameraChangeDispatcher.notifyCameraMoveCanceled();
+        });
+      });
+      this.cameraBridgeRegistrars = registrars;
+    }
+    return this.cameraBridgeRegistrars;
+  }
 
   /**
    * Register a listener for a wrapper-based native event.
@@ -2959,37 +3002,19 @@ export class MapLibreMap {
   }
 
   /**
-   * Lazily register the permanent native bridge for one camera-dispatcher event.
+   * Lazily register the permanent native bridge for one camera-dispatcher
+   * event (table lookup, see getCameraBridgeRegistrars()).
    */
   private ensureCameraDispatcherBridge(event: string): void {
     if (this.cameraBridgeEvents.has(event)) {
       return;
     }
-    this.cameraBridgeEvents.add(event);
-    switch (event) {
-      case 'idle':
-        this.nativeMapView.addOnCameraIdleListener(() => {
-          this.cameraChangeDispatcher.notifyCameraIdle();
-        });
-        break;
-      case 'moveStarted':
-        this.nativeMapView.addOnCameraMoveStartedListener((reason: number) => {
-          this.cameraChangeDispatcher.notifyCameraMoveStarted(reason as CameraMoveReason);
-        });
-        break;
-      case 'move':
-        this.nativeMapView.addOnCameraMoveListener(() => {
-          this.cameraChangeDispatcher.notifyCameraMove();
-        });
-        break;
-      case 'moveCanceled':
-        this.nativeMapView.addOnCameraMoveCanceledListener(() => {
-          this.cameraChangeDispatcher.notifyCameraMoveCanceled();
-        });
-        break;
-      default:
-        break;
+    const registrar = this.getCameraBridgeRegistrars().get(event);
+    if (registrar === undefined) {
+      return;
     }
+    this.cameraBridgeEvents.add(event);
+    registrar();
   }
 
 
@@ -3077,88 +3102,83 @@ export class MapLibreMap {
    * Camera dispatcher listeners: fan-out/removal is handled by CameraChangeDispatcher;
    * the native bridge is registered once per event via ensureCameraDispatcherBridge().
    */
+
+  /**
+   * Guarded dispatcher add: binds the native bridge lazily, then registers the
+   * listener on CameraChangeDispatcher.
+   */
+  private addCameraDispatcherListener(bridgeEvent: string, add: (dispatcher: CameraChangeDispatcher) => void): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.ensureCameraDispatcherBridge(bridgeEvent);
+    add(this.cameraChangeDispatcher);
+  }
+
+  /**
+   * Guarded dispatcher remove.
+   */
+  private removeCameraDispatcherListener(remove: (dispatcher: CameraChangeDispatcher) => void): void {
+    if (this.destroyed) {
+      return;
+    }
+    remove(this.cameraChangeDispatcher);
+  }
+
   /**
    * Add a on camera idle listener
    */
   public addOnCameraIdleListener(listener: OnCameraIdleListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.ensureCameraDispatcherBridge('idle');
-    this.cameraChangeDispatcher.addOnCameraIdleListener(listener);
+    this.addCameraDispatcherListener('idle', (dispatcher) => dispatcher.addOnCameraIdleListener(listener));
   }
 
   /**
    * Remove the on camera idle listener
    */
   public removeOnCameraIdleListener(listener: OnCameraIdleListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.cameraChangeDispatcher.removeOnCameraIdleListener(listener);
+    this.removeCameraDispatcherListener((dispatcher) => dispatcher.removeOnCameraIdleListener(listener));
   }
 
   /**
    * Add a on camera move started listener
    */
   public addOnCameraMoveStartedListener(listener: OnCameraMoveStartedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.ensureCameraDispatcherBridge('moveStarted');
-    this.cameraChangeDispatcher.addOnCameraMoveStartedListener(listener);
+    this.addCameraDispatcherListener('moveStarted', (dispatcher) => dispatcher.addOnCameraMoveStartedListener(listener));
   }
 
   /**
    * Remove the on camera move started listener
    */
   public removeOnCameraMoveStartedListener(listener: OnCameraMoveStartedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.cameraChangeDispatcher.removeOnCameraMoveStartedListener(listener);
+    this.removeCameraDispatcherListener((dispatcher) => dispatcher.removeOnCameraMoveStartedListener(listener));
   }
 
   /**
    * Add a on camera move listener
    */
   public addOnCameraMoveListener(listener: OnCameraMoveListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.ensureCameraDispatcherBridge('move');
-    this.cameraChangeDispatcher.addOnCameraMoveListener(listener);
+    this.addCameraDispatcherListener('move', (dispatcher) => dispatcher.addOnCameraMoveListener(listener));
   }
 
   /**
    * Remove the on camera move listener
    */
   public removeOnCameraMoveListener(listener: OnCameraMoveListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.cameraChangeDispatcher.removeOnCameraMoveListener(listener);
+    this.removeCameraDispatcherListener((dispatcher) => dispatcher.removeOnCameraMoveListener(listener));
   }
 
   /**
    * Add a on camera move canceled listener
    */
   public addOnCameraMoveCanceledListener(listener: OnCameraMoveCanceledListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.ensureCameraDispatcherBridge('moveCanceled');
-    this.cameraChangeDispatcher.addOnCameraMoveCanceledListener(listener);
+    this.addCameraDispatcherListener('moveCanceled', (dispatcher) => dispatcher.addOnCameraMoveCanceledListener(listener));
   }
 
   /**
    * Remove the on camera move canceled listener
    */
   public removeOnCameraMoveCanceledListener(listener: OnCameraMoveCanceledListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.cameraChangeDispatcher.removeOnCameraMoveCanceledListener(listener);
+    this.removeCameraDispatcherListener((dispatcher) => dispatcher.removeOnCameraMoveCanceledListener(listener));
   }
 
 // ========== Map loading listener management ==========
@@ -3836,15 +3856,7 @@ export class MapLibreMap {
    * @param animated Whether to animate
    */
   public selectAnnotation(marker: Marker, animated: boolean = true): void {
-    if (this.destroyed) {
-      return;
-    }
-
-    this.markerManager.selectMarker(marker, false);
-
-    if (this.markerManager.getAnnotationViewDelegate()?.didSelectAnnotationView) {
-      this.markerManager.getAnnotationViewDelegate()!.didSelectAnnotationView!(marker);
-    }
+    this.selectMarkerInternal(marker, true);
   }
 
   /**
@@ -3854,15 +3866,7 @@ export class MapLibreMap {
    * @param animated Whether to animate
    */
   public deselectAnnotation(marker: Marker, animated: boolean = true): void {
-    if (this.destroyed) {
-      return;
-    }
-
-    this.markerManager.deselectMarker(marker);
-
-    if (this.markerManager.getAnnotationViewDelegate()?.didDeselectAnnotationView) {
-      this.markerManager.getAnnotationViewDelegate()!.didDeselectAnnotationView!(marker);
-    }
+    this.deselectMarkerInternal(marker, true);
   }
 
   /**
@@ -3886,10 +3890,7 @@ export class MapLibreMap {
    * @returns Array of selected markers
    */
   public getSelectedAnnotations(): Marker[] {
-    if (this.destroyed) {
-      return [];
-    }
-    return this.markerManager.getSelectedMarkers();
+    return this.getSelectedMarkers();
   }
 
   /**

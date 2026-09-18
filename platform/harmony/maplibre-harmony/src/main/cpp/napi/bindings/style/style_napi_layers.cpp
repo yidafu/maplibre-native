@@ -18,23 +18,8 @@
 #include <mbgl/style/layers/location_indicator_layer.hpp>
 #include <vector>
 
-// Helper function to convert SourceType enum to string
-static const char *sourceTypeToString(mbgl::style::SourceType type) {
-    switch (type) {
-    case mbgl::style::SourceType::Vector:
-        return "vector";
-    case mbgl::style::SourceType::Raster:
-        return "raster";
-    case mbgl::style::SourceType::RasterDEM:
-        return "raster-dem";
-    case mbgl::style::SourceType::GeoJSON:
-        return "geojson";
-    case mbgl::style::SourceType::Image:
-        return "image";
-    default:
-        return "unknown";
-    }
-}
+// Source-type-to-string rendering is shared: see
+// LayerSourceFactory::SourceTypeToString in style/layer_source_factory_harmony.hpp
 
 // Reads the _TYPE_ marker set by every layer NAPI constructor. Returns ""
 // when the value is missing — callers must treat that as "not a layer"
@@ -282,6 +267,81 @@ napi_value CreateLayerInstanceByType(napi_env env, const std::string &layerType,
     return null_value;
 }
 
+// Copy the NapiArgs arguments into a plain vector so napi_value*-style code
+// can index them. Returns an empty vector when argument retrieval failed
+// (napiArgs then carries the error for the caller to check).
+std::vector<napi_value> ArgsToVector(NapiArgs &napiArgs) {
+    const size_t argc = napiArgs.Count();
+    std::vector<napi_value> argsVec(argc);
+    for (size_t i = 0; i < argc; ++i) {
+        argsVec[i] = napiArgs.GetValue(i);
+        if (napiArgs.HasError()) {
+            return {};
+        }
+    }
+    return argsVec;
+}
+
+// Unwrap the StyleNAPI behind `this` and acquire the map lease. Returns
+// nullptr without reporting anything; callers return their own default value.
+StyleNAPI *UnwrapStyleWithMap(napi_env env, napi_value jsThis) {
+    StyleNAPI *style = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
+    if (!style || !style->acquireMap()) {
+        return nullptr;
+    }
+    return style;
+}
+
+// UnwrapStyleWithMap plus reporting for the Add* entry points: logs
+// "<logOp>: Invalid style or map" (pass nullptr logOp to skip the log, as
+// AddLayerAbove/AddLayerAt always did) and throws "Invalid style instance".
+StyleNAPI *RequireStyleWithMap(napi_env env, napi_value jsThis, const char *logOp) {
+    StyleNAPI *style = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
+    if (!style || !style->acquireMap()) {
+        if (logOp) {
+            Logger::error("StyleNAPI", "%s: Invalid style or map", logOp);
+        }
+        napi_throw_error(env, nullptr, "Invalid style instance");
+        return nullptr;
+    }
+    return style;
+}
+
+// Shared tail of AddLayer/AddLayerBelow/AddLayerAbove/AddLayerAt: verify the
+// _TYPE_ marker, extract the pending layer and commit it on the render thread.
+// Throws to JS and returns false on failure; on success the committed layer id
+// is written to outLayerId so the StyleNAPI member can update its private
+// layer bookkeeping (style->layers).
+bool ExtractAndCommitLayer(napi_env env, StyleNAPI *style, napi_value layerValue, const char *opName,
+                           std::optional<std::string> beforeLayerId, std::string &outLayerId) {
+    // napi_unwrap is type-agnostic: unwrapping an object of the wrong NAPI
+    // class reinterprets its native pointer, so the _TYPE_ marker is mandatory.
+    std::string layerType = ReadLayerType(env, layerValue);
+    if (layerType.empty()) {
+        const std::string message = std::string(opName) +
+                                    ": value is not a layer instance created by this SDK (missing _TYPE_)";
+        napi_throw_error(env, nullptr, message.c_str());
+        return false;
+    }
+
+    std::string layerId;
+    std::unique_ptr<mbgl::style::Layer> pendingLayer;
+    std::function<void(mbgl::style::Layer *)> pendingAttach;
+    LayerExtract result = DispatchLayerExtract(env, layerValue, layerType, pendingLayer, pendingAttach, layerId);
+    if (result != LayerExtract::Ok) {
+        if (result == LayerExtract::NotThisType) {
+            napi_throw_error(env, nullptr, "Invalid layer type or layer object");
+        }
+        return false;
+    }
+
+    outLayerId = layerId;
+    return CommitLayerAdd(env, style, layerId, std::move(pendingLayer), std::move(pendingAttach),
+                          std::move(beforeLayerId), opName);
+}
+
 napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
     NapiArgs napiArgs(env, info);
     napiArgs.RequireMinArgs(1);
@@ -294,37 +354,13 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    napi_value jsThis = napiArgs.This();
-    StyleNAPI *style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
-
-    if (!style || !style->acquireMap()) {
-        Logger::error("StyleNAPI", "AddLayer: Invalid style or map");
-        napi_throw_error(env, nullptr, "Invalid style instance");
-        return nullptr;
-    }
-
-    // napi_unwrap is type-agnostic: unwrapping an object of the wrong NAPI
-    // class reinterprets its native pointer, so the _TYPE_ marker is mandatory.
-    std::string layerType = ReadLayerType(env, layerValue);
-    if (layerType.empty()) {
-        napi_throw_error(env, nullptr, "AddLayer: value is not a layer instance created by this SDK (missing _TYPE_)");
+    StyleNAPI *style = RequireStyleWithMap(env, napiArgs.This(), "AddLayer");
+    if (!style) {
         return nullptr;
     }
 
     std::string layerId;
-    std::unique_ptr<mbgl::style::Layer> pendingLayer;
-    std::function<void(mbgl::style::Layer *)> pendingAttach;
-    LayerExtract result = DispatchLayerExtract(env, layerValue, layerType, pendingLayer, pendingAttach, layerId);
-    if (result != LayerExtract::Ok) {
-        if (result == LayerExtract::NotThisType) {
-            napi_throw_error(env, nullptr, "Invalid layer type or layer object");
-        }
-        return nullptr;
-    }
-
-    if (CommitLayerAdd(env, style, layerId, std::move(pendingLayer), std::move(pendingAttach),
-                       std::nullopt, "AddLayer")) {
+    if (ExtractAndCommitLayer(env, style, layerValue, "AddLayer", std::nullopt, layerId)) {
         style->layers[layerId] = true;
     }
     return nullptr;
@@ -344,35 +380,14 @@ napi_value StyleNAPI::AddLayerBelow(napi_env env, napi_callback_info info) {
     }
     std::string belowLayerId = GetStringFromValue(env, belowValue);
 
-    napi_value jsThis = napiArgs.This();
-    StyleNAPI *style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
-
-    if (!style || !style->acquireMap()) {
-        Logger::error("StyleNAPI", "AddLayerBelow: Invalid style or map");
-        napi_throw_error(env, nullptr, "Invalid style instance");
-        return nullptr;
-    }
-
-    std::string layerType = ReadLayerType(env, layerValue);
-    if (layerType.empty()) {
-        napi_throw_error(env, nullptr, "AddLayerBelow: value is not a layer instance created by this SDK (missing _TYPE_)");
+    StyleNAPI *style = RequireStyleWithMap(env, napiArgs.This(), "AddLayerBelow");
+    if (!style) {
         return nullptr;
     }
 
     std::string layerId;
-    std::unique_ptr<mbgl::style::Layer> pendingLayer;
-    std::function<void(mbgl::style::Layer *)> pendingAttach;
-    LayerExtract result = DispatchLayerExtract(env, layerValue, layerType, pendingLayer, pendingAttach, layerId);
-    if (result != LayerExtract::Ok) {
-        if (result == LayerExtract::NotThisType) {
-            napi_throw_error(env, nullptr, "Invalid layer type or layer object");
-        }
-        return nullptr;
-    }
-
-    if (CommitLayerAdd(env, style, layerId, std::move(pendingLayer), std::move(pendingAttach),
-                       std::optional<std::string>(belowLayerId), "AddLayerBelow")) {
+    if (ExtractAndCommitLayer(env, style, layerValue, "AddLayerBelow", std::optional<std::string>(belowLayerId),
+                              layerId)) {
         style->layers[layerId] = true;
     }
     return nullptr;
@@ -385,29 +400,21 @@ napi_value StyleNAPI::RemoveLayer(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    size_t argc = napiArgs.Count();
-    std::vector<napi_value> argsVec(argc);
-    for (size_t i = 0; i < argc; ++i) {
-        argsVec[i] = napiArgs.GetValue(i);
-        if (napiArgs.HasError()) {
-            return nullptr;
-        }
+    std::vector<napi_value> argsVec = ArgsToVector(napiArgs);
+    if (napiArgs.HasError()) {
+        return nullptr;
     }
-    napi_value* args = argsVec.data();
 
-    napi_value jsThis = napiArgs.This();
-    StyleNAPI *style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
-
-    if (!style || !style->acquireMap()) {
+    StyleNAPI *style = UnwrapStyleWithMap(env, napiArgs.This());
+    if (!style) {
         return CreateBoolValue(env, false);
     }
 
-    if (argc < 1) {
+    if (argsVec.empty()) {
         return CreateBoolValue(env, false);
     }
 
-    std::string layerId = GetStringFromValue(env, args[0]);
+    std::string layerId = GetStringFromValue(env, argsVec[0]);
 
     try {
         style->runOnMap([&](mbgl::Map &m) {
@@ -429,33 +436,25 @@ napi_value StyleNAPI::GetLayer(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    size_t argc = napiArgs.Count();
-    std::vector<napi_value> argsVec(argc);
-    for (size_t i = 0; i < argc; ++i) {
-        argsVec[i] = napiArgs.GetValue(i);
-        if (napiArgs.HasError()) {
-            return nullptr;
-        }
+    std::vector<napi_value> argsVec = ArgsToVector(napiArgs);
+    if (napiArgs.HasError()) {
+        return nullptr;
     }
-    napi_value* args = argsVec.data();
 
-    napi_value jsThis = napiArgs.This();
-    StyleNAPI *style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
-
-    if (!style || !style->acquireMap()) {
+    StyleNAPI *style = UnwrapStyleWithMap(env, napiArgs.This());
+    if (!style) {
         napi_value result;
         napi_get_null(env, &result);
         return result;
     }
 
-    if (argc < 1) {
+    if (argsVec.empty()) {
         napi_value result;
         napi_get_null(env, &result);
         return result;
     }
 
-    std::string layerId = GetStringFromValue(env, args[0]);
+    std::string layerId = GetStringFromValue(env, argsVec[0]);
 
     // Resolve the layer on the render thread (collection reads race the
     // renderer otherwise); the NAPI peer is then built on this thread.
@@ -497,14 +496,11 @@ napi_value StyleNAPI::GetLayers(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    napi_value jsThis = napiArgs.This();
-    StyleNAPI *style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
-
     napi_value result;
     napi_create_array(env, &result);
 
-    if (!style || !style->acquireMap()) {
+    StyleNAPI *style = UnwrapStyleWithMap(env, napiArgs.This());
+    if (!style) {
         return result;
     }
 
@@ -549,31 +545,23 @@ napi_value StyleNAPI::RemoveLayerAt(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    size_t argc = napiArgs.Count();
-    std::vector<napi_value> argsVec(argc);
-    for (size_t i = 0; i < argc; ++i) {
-        argsVec[i] = napiArgs.GetValue(i);
-        if (napiArgs.HasError()) {
-            return nullptr;
-        }
+    std::vector<napi_value> argsVec = ArgsToVector(napiArgs);
+    if (napiArgs.HasError()) {
+        return nullptr;
     }
-    napi_value* args = argsVec.data();
 
-    napi_value jsThis = napiArgs.This();
-    StyleNAPI *style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
-
-    if (!style || !style->acquireMap()) {
+    StyleNAPI *style = UnwrapStyleWithMap(env, napiArgs.This());
+    if (!style) {
         return CreateBoolValue(env, false);
     }
 
-    if (argc < 1) {
+    if (argsVec.empty()) {
         return CreateBoolValue(env, false);
     }
 
     // Retrieve the index
     uint32_t index = 0;
-    napi_get_value_uint32(env, args[0], &index);
+    napi_get_value_uint32(env, argsVec[0], &index);
 
     try {
         std::string layerId;
@@ -613,12 +601,8 @@ napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
     }
     std::string aboveLayerId = GetStringFromValue(env, aboveValue);
 
-    napi_value jsThis = napiArgs.This();
-    StyleNAPI *style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
-
-    if (!style || !style->acquireMap()) {
-        napi_throw_error(env, nullptr, "Invalid style instance");
+    StyleNAPI *style = RequireStyleWithMap(env, napiArgs.This(), nullptr);
+    if (!style) {
         return nullptr;
     }
 
@@ -651,25 +635,8 @@ napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
         return AddLayer(env, info);
     }
 
-    std::string layerType = ReadLayerType(env, layerValue);
-    if (layerType.empty()) {
-        napi_throw_error(env, nullptr, "AddLayerAbove: value is not a layer instance created by this SDK (missing _TYPE_)");
-        return nullptr;
-    }
-
     std::string layerId;
-    std::unique_ptr<mbgl::style::Layer> pendingLayer;
-    std::function<void(mbgl::style::Layer *)> pendingAttach;
-    LayerExtract result = DispatchLayerExtract(env, layerValue, layerType, pendingLayer, pendingAttach, layerId);
-    if (result != LayerExtract::Ok) {
-        if (result == LayerExtract::NotThisType) {
-            napi_throw_error(env, nullptr, "Invalid layer type or layer object");
-        }
-        return nullptr;
-    }
-
-    if (CommitLayerAdd(env, style, layerId, std::move(pendingLayer), std::move(pendingAttach),
-                       beforeLayerId, "AddLayerAbove")) {
+    if (ExtractAndCommitLayer(env, style, layerValue, "AddLayerAbove", beforeLayerId, layerId)) {
         style->layers[layerId] = true;
     }
     return nullptr;
@@ -690,12 +657,8 @@ napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
     uint32_t index = 0;
     napi_get_value_uint32(env, indexValue, &index);
 
-    napi_value jsThis = napiArgs.This();
-    StyleNAPI *style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
-
-    if (!style || !style->acquireMap()) {
-        napi_throw_error(env, nullptr, "Invalid style instance");
+    StyleNAPI *style = RequireStyleWithMap(env, napiArgs.This(), nullptr);
+    if (!style) {
         return nullptr;
     }
 
@@ -715,25 +678,8 @@ napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    std::string layerType = ReadLayerType(env, layerValue);
-    if (layerType.empty()) {
-        napi_throw_error(env, nullptr, "AddLayerAt: value is not a layer instance created by this SDK (missing _TYPE_)");
-        return nullptr;
-    }
-
     std::string layerId;
-    std::unique_ptr<mbgl::style::Layer> pendingLayer;
-    std::function<void(mbgl::style::Layer *)> pendingAttach;
-    LayerExtract result = DispatchLayerExtract(env, layerValue, layerType, pendingLayer, pendingAttach, layerId);
-    if (result != LayerExtract::Ok) {
-        if (result == LayerExtract::NotThisType) {
-            napi_throw_error(env, nullptr, "Invalid layer type or layer object");
-        }
-        return nullptr;
-    }
-
-    if (CommitLayerAdd(env, style, layerId, std::move(pendingLayer), std::move(pendingAttach),
-                       beforeLayerId, "AddLayerAt")) {
+    if (ExtractAndCommitLayer(env, style, layerValue, "AddLayerAt", beforeLayerId, layerId)) {
         style->layers[layerId] = true;
     }
     return nullptr;

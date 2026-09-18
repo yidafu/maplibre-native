@@ -3,6 +3,7 @@
 #include "utils/logger.h"
 #include "napi/core/napi_args.hpp"
 #include "geometry/lat_lng_harmony.hpp"
+#include "napi/bindings/annotation_napi_common.hpp"
 
 namespace mbgl {
 namespace harmony {
@@ -77,28 +78,10 @@ napi_value PolygonNAPI::Init(napi_env env, napi_value exports) {
         { "setMapLibreMap", nullptr, SetMapLibreMap, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "Polygon", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("PolygonNAPI", "Failed to define Polygon class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("PolygonNAPI", "Failed to create reference to Polygon constructor");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "Polygon", cons);
-    if (status != napi_ok) {
-        Logger::error("PolygonNAPI", "Failed to export Polygon class");
-        return nullptr;
-    }
-    
-    return exports;
+    napi_value cons = RegisterNapiClass(env, exports, "Polygon", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "PolygonNAPI");
+    return cons ? exports : nullptr;
 }
 
 napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
@@ -121,22 +104,7 @@ napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
         // Parse points (required)
         napi_value pointsValue;
         if (napi_get_named_property(env, optionsObj, "points", &pointsValue) == napi_ok) {
-            bool isArray = false;
-            napi_is_array(env, pointsValue, &isArray);
-            if (isArray) {
-                uint32_t length = 0;
-                napi_get_array_length(env, pointsValue, &length);
-                
-                for (uint32_t i = 0; i < length; i++) {
-                    napi_value pointValue;
-                    napi_get_element(env, pointsValue, i, &pointValue);
-                    
-                    mbgl::LatLng latLng;
-                    if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-                        polygon->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
-                    }
-                }
-            }
+            polygon->points = ParseLatLngArrayToPoints(env, pointsValue);
         }
         
         // Parse holes (optional)
@@ -152,26 +120,9 @@ napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
                     napi_value holeValue;
                     napi_get_element(env, holesValue, i, &holeValue);
                     
-                    bool isHoleArray = false;
-                    napi_is_array(env, holeValue, &isHoleArray);
-                    if (isHoleArray) {
-                        std::vector<mbgl::Point<double>> hole;
-                        uint32_t holeLength = 0;
-                        napi_get_array_length(env, holeValue, &holeLength);
-                        
-                        for (uint32_t j = 0; j < holeLength; j++) {
-                            napi_value pointValue;
-                            napi_get_element(env, holeValue, j, &pointValue);
-                            
-                            mbgl::LatLng latLng;
-                            if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-                                hole.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
-                            }
-                        }
-                        
-                        if (!hole.empty()) {
-                            polygon->holes.push_back(hole);
-                        }
+                    std::vector<mbgl::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
+                    if (!hole.empty()) {
+                        polygon->holes.push_back(std::move(hole));
                     }
                 }
             }
@@ -180,13 +131,7 @@ napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
         // Parse fillColor (optional)
         std::string fillColorStr = args.GetStringProperty(optionsObj, "fillColor", "#000000");
         if (!fillColorStr.empty() && fillColorStr[0] == '#') {
-            try {
-                unsigned int colorValue = std::stoul(fillColorStr.substr(1), nullptr, 16);
-                float r = ((colorValue >> 16) & 0xFF) / 255.0f;
-                float g = ((colorValue >> 8) & 0xFF) / 255.0f;
-                float b = (colorValue & 0xFF) / 255.0f;
-                polygon->fillColor = mbgl::Color(r, g, b, 1.0f);
-            } catch (...) {
+            if (!ParseHexColor(fillColorStr, polygon->fillColor)) {
                 Logger::error("PolygonNAPI", "Failed to parse fillColor: %s", fillColorStr.c_str());
             }
         }
@@ -194,13 +139,7 @@ napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
         // Parse strokeColor (optional)
         std::string strokeColorStr = args.GetStringProperty(optionsObj, "strokeColor", "#000000");
         if (!strokeColorStr.empty() && strokeColorStr[0] == '#') {
-            try {
-                unsigned int colorValue = std::stoul(strokeColorStr.substr(1), nullptr, 16);
-                float r = ((colorValue >> 16) & 0xFF) / 255.0f;
-                float g = ((colorValue >> 8) & 0xFF) / 255.0f;
-                float b = (colorValue & 0xFF) / 255.0f;
-                polygon->strokeColor = mbgl::Color(r, g, b, 1.0f);
-            } catch (...) {
+            if (!ParseHexColor(strokeColorStr, polygon->strokeColor)) {
                 Logger::error("PolygonNAPI", "Failed to parse strokeColor: %s", strokeColorStr.c_str());
             }
         }
@@ -272,24 +211,7 @@ napi_value PolygonNAPI::GetPoints(napi_env env, napi_callback_info info) {
     
     if (!polygon) return nullptr;
     
-    napi_value result;
-    napi_create_array_with_length(env, polygon->points.size(), &result);
-    
-    for (size_t i = 0; i < polygon->points.size(); i++) {
-        napi_value point;
-        napi_create_object(env, &point);
-        
-        napi_value lat, lng;
-        napi_create_double(env, polygon->points[i].y, &lat);
-        napi_create_double(env, polygon->points[i].x, &lng);
-        
-        napi_set_named_property(env, point, "latitude", lat);
-        napi_set_named_property(env, point, "longitude", lng);
-        
-        napi_set_element(env, result, i, point);
-    }
-    
-    return result;
+    return PointArrayToJs(env, polygon->points);
 }
 
 napi_value PolygonNAPI::GetHoles(napi_env env, napi_callback_info info) {
@@ -305,24 +227,7 @@ napi_value PolygonNAPI::GetHoles(napi_env env, napi_callback_info info) {
     napi_create_array_with_length(env, polygon->holes.size(), &result);
     
     for (size_t i = 0; i < polygon->holes.size(); i++) {
-        napi_value hole;
-        napi_create_array_with_length(env, polygon->holes[i].size(), &hole);
-        
-        for (size_t j = 0; j < polygon->holes[i].size(); j++) {
-            napi_value point;
-            napi_create_object(env, &point);
-            
-            napi_value lat, lng;
-            napi_create_double(env, polygon->holes[i][j].y, &lat);
-            napi_create_double(env, polygon->holes[i][j].x, &lng);
-            
-            napi_set_named_property(env, point, "latitude", lat);
-            napi_set_named_property(env, point, "longitude", lng);
-            
-            napi_set_element(env, hole, j, point);
-        }
-        
-        napi_set_element(env, result, i, hole);
+        napi_set_element(env, result, static_cast<uint32_t>(i), PointArrayToJs(env, polygon->holes[i]));
     }
     
     return result;
@@ -338,14 +243,10 @@ napi_value PolygonNAPI::GetFillColor(napi_env env, napi_callback_info info) {
     if (!polygon) return nullptr;
     
     // Convert color to hex string
-    char colorStr[8];
-    snprintf(colorStr, sizeof(colorStr), "#%02X%02X%02X",
-             static_cast<int>(polygon->fillColor.r * 255),
-             static_cast<int>(polygon->fillColor.g * 255),
-             static_cast<int>(polygon->fillColor.b * 255));
+    const std::string colorStr = ColorToHex(polygon->fillColor);
     
     napi_value result;
-    napi_create_string_utf8(env, colorStr, NAPI_AUTO_LENGTH, &result);
+    napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
 }
 
@@ -359,14 +260,10 @@ napi_value PolygonNAPI::GetStrokeColor(napi_env env, napi_callback_info info) {
     if (!polygon) return nullptr;
     
     // Convert color to hex string
-    char colorStr[8];
-    snprintf(colorStr, sizeof(colorStr), "#%02X%02X%02X",
-             static_cast<int>(polygon->strokeColor.r * 255),
-             static_cast<int>(polygon->strokeColor.g * 255),
-             static_cast<int>(polygon->strokeColor.b * 255));
+    const std::string colorStr = ColorToHex(polygon->strokeColor);
     
     napi_value result;
-    napi_create_string_utf8(env, colorStr, NAPI_AUTO_LENGTH, &result);
+    napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
 }
 
@@ -472,19 +369,7 @@ napi_value PolygonNAPI::SetPoints(napi_env env, napi_callback_info info) {
     napi_is_array(env, pointsValue, &isArray);
     
     if (isArray) {
-        polygon->points.clear();
-        uint32_t length = 0;
-        napi_get_array_length(env, pointsValue, &length);
-        
-        for (uint32_t i = 0; i < length; i++) {
-            napi_value pointValue;
-            napi_get_element(env, pointsValue, i, &pointValue);
-            
-            mbgl::LatLng latLng;
-            if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-                polygon->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
-            }
-        }
+        polygon->points = ParseLatLngArrayToPoints(env, pointsValue);
     }
     
     return thisVar;
@@ -515,26 +400,9 @@ napi_value PolygonNAPI::SetHoles(napi_env env, napi_callback_info info) {
             napi_value holeValue;
             napi_get_element(env, holesValue, i, &holeValue);
             
-            bool isHoleArray = false;
-            napi_is_array(env, holeValue, &isHoleArray);
-            if (isHoleArray) {
-                std::vector<mbgl::Point<double>> hole;
-                uint32_t holeLength = 0;
-                napi_get_array_length(env, holeValue, &holeLength);
-                
-                for (uint32_t j = 0; j < holeLength; j++) {
-                    napi_value pointValue;
-                    napi_get_element(env, holeValue, j, &pointValue);
-                    
-                    mbgl::LatLng latLng;
-                    if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-                        hole.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
-                    }
-                }
-                
-                if (!hole.empty()) {
-                    polygon->holes.push_back(hole);
-                }
+            std::vector<mbgl::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
+            if (!hole.empty()) {
+                polygon->holes.push_back(std::move(hole));
             }
         }
     }
@@ -556,13 +424,7 @@ napi_value PolygonNAPI::SetFillColor(napi_env env, napi_callback_info info) {
     
     std::string colorStr = args.GetString(0, "fillColor");
     if (!colorStr.empty() && colorStr[0] == '#') {
-        try {
-            unsigned int colorValue = std::stoul(colorStr.substr(1), nullptr, 16);
-            float r = ((colorValue >> 16) & 0xFF) / 255.0f;
-            float g = ((colorValue >> 8) & 0xFF) / 255.0f;
-            float b = (colorValue & 0xFF) / 255.0f;
-            polygon->fillColor = mbgl::Color(r, g, b, 1.0f);
-        } catch (...) {
+        if (!ParseHexColor(colorStr, polygon->fillColor)) {
             Logger::error("PolygonNAPI", "Failed to parse fillColor: %s", colorStr.c_str());
         }
     }
@@ -584,13 +446,7 @@ napi_value PolygonNAPI::SetStrokeColor(napi_env env, napi_callback_info info) {
     
     std::string colorStr = args.GetString(0, "strokeColor");
     if (!colorStr.empty() && colorStr[0] == '#') {
-        try {
-            unsigned int colorValue = std::stoul(colorStr.substr(1), nullptr, 16);
-            float r = ((colorValue >> 16) & 0xFF) / 255.0f;
-            float g = ((colorValue >> 8) & 0xFF) / 255.0f;
-            float b = (colorValue & 0xFF) / 255.0f;
-            polygon->strokeColor = mbgl::Color(r, g, b, 1.0f);
-        } catch (...) {
+        if (!ParseHexColor(colorStr, polygon->strokeColor)) {
             Logger::error("PolygonNAPI", "Failed to parse strokeColor: %s", colorStr.c_str());
         }
     }
@@ -697,9 +553,9 @@ napi_value PolygonNAPI::AddPoint(napi_env env, napi_callback_info info) {
     
     napi_value pointValue = args.GetObject(0, "point");
     if (!args.HasError()) {
-        mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-            polygon->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
+        mbgl::Point<double> point;
+        if (ParseLatLngToPoint(env, pointValue, point)) {
+            polygon->points.push_back(point);
         }
     }
     
@@ -728,10 +584,9 @@ napi_value PolygonNAPI::InsertPoint(napi_env env, napi_callback_info info) {
     napi_value pointValue = args.GetObject(1, "point");
     
     if (!args.HasError() && index >= 0 && static_cast<size_t>(index) <= polygon->points.size()) {
-        mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-            polygon->points.insert(polygon->points.begin() + index, 
-                                  mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
+        mbgl::Point<double> point;
+        if (ParseLatLngToPoint(env, pointValue, point)) {
+            polygon->points.insert(polygon->points.begin() + index, point);
         }
     }
     
@@ -763,17 +618,7 @@ napi_value PolygonNAPI::RemovePoint(napi_env env, napi_callback_info info) {
         polygon->points.erase(polygon->points.begin() + index);
         
         // Return the removed point
-        napi_value result;
-        napi_create_object(env, &result);
-        
-        napi_value lat, lng;
-        napi_create_double(env, removedPoint.y, &lat);
-        napi_create_double(env, removedPoint.x, &lng);
-        
-        napi_set_named_property(env, result, "latitude", lat);
-        napi_set_named_property(env, result, "longitude", lng);
-        
-        return result;
+        return LatLngHarmony::CreateLatLngObject(env, mbgl::LatLng(removedPoint.y, removedPoint.x));
     }
     
     napi_value null;
@@ -802,22 +647,9 @@ napi_value PolygonNAPI::AddHole(napi_env env, napi_callback_info info) {
     napi_is_array(env, holeValue, &isArray);
     
     if (isArray) {
-        std::vector<mbgl::Point<double>> hole;
-        uint32_t length = 0;
-        napi_get_array_length(env, holeValue, &length);
-        
-        for (uint32_t i = 0; i < length; i++) {
-            napi_value pointValue;
-            napi_get_element(env, holeValue, i, &pointValue);
-            
-            mbgl::LatLng latLng;
-            if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
-                hole.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
-            }
-        }
-        
+        std::vector<mbgl::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
         if (!hole.empty()) {
-            polygon->holes.push_back(hole);
+            polygon->holes.push_back(std::move(hole));
         }
     }
     
@@ -849,24 +681,7 @@ napi_value PolygonNAPI::RemoveHole(napi_env env, napi_callback_info info) {
         polygon->holes.erase(polygon->holes.begin() + index);
         
         // Return the removed hole as an array of points
-        napi_value result;
-        napi_create_array_with_length(env, removedHole.size(), &result);
-        
-        for (size_t i = 0; i < removedHole.size(); i++) {
-            napi_value point;
-            napi_create_object(env, &point);
-            
-            napi_value lat, lng;
-            napi_create_double(env, removedHole[i].y, &lat);
-            napi_create_double(env, removedHole[i].x, &lng);
-            
-            napi_set_named_property(env, point, "latitude", lat);
-            napi_set_named_property(env, point, "longitude", lng);
-            
-            napi_set_element(env, result, i, point);
-        }
-        
-        return result;
+        return PointArrayToJs(env, removedHole);
     }
     
     napi_value null;

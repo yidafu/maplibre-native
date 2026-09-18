@@ -11,6 +11,7 @@
 #include <mbgl/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "layer_property_macros.hpp"
 namespace mbgl {
 namespace harmony {
 
@@ -71,15 +72,11 @@ napi_value HillshadeLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "HillshadeLayer", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) return nullptr;
-    
-    mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    napi_set_named_property(env, exports, "HillshadeLayer", cons);
-    
+    napi_value cons = RegisterNapiClass(env, exports, "HillshadeLayer", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "HillshadeLayerNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("HillshadeLayerNAPI", "HillshadeLayer NAPI class registered");
     return exports;
 }
@@ -113,155 +110,21 @@ napi_value HillshadeLayerNAPI::CreateInstance(napi_env env, mbgl::style::Hillsha
 }
 
 
-napi_value HillshadeLayerNAPI::SetHillshadeIlluminationDirection(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, std::vector<float>>(
-        env, layerObj->getLayer(), argv[0], "hillshade-illumination-direction",
-        &mbgl::style::HillshadeLayer::setHillshadeIlluminationDirection
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeIlluminationDirection, setPaintProperty, "hillshade-illumination-direction", setHillshadeIlluminationDirection, std::vector<float>)
 
-napi_value HillshadeLayerNAPI::SetHillshadeIlluminationAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, mbgl::style::HillshadeIlluminationAnchorType>(
-        env, layerObj->getLayer(), argv[0], "hillshade-illumination-anchor",
-        &mbgl::style::HillshadeLayer::setHillshadeIlluminationAnchor
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeIlluminationAnchor, setPaintProperty, "hillshade-illumination-anchor", setHillshadeIlluminationAnchor, mbgl::style::HillshadeIlluminationAnchorType)
 
-napi_value HillshadeLayerNAPI::SetHillshadeExaggeration(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, float>(
-        env, layerObj->getLayer(), argv[0], "hillshade-exaggeration",
-        &mbgl::style::HillshadeLayer::setHillshadeExaggeration
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeExaggeration, setPaintProperty, "hillshade-exaggeration", setHillshadeExaggeration, float)
 
-napi_value HillshadeLayerNAPI::SetHillshadeShadowColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, std::vector<mbgl::Color>>(
-        env, layerObj->getLayer(), argv[0], "hillshade-shadow-color",
-        &mbgl::style::HillshadeLayer::setHillshadeShadowColor
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeShadowColor, setPaintProperty, "hillshade-shadow-color", setHillshadeShadowColor, std::vector<mbgl::Color>)
 
-napi_value HillshadeLayerNAPI::SetHillshadeHighlightColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, std::vector<mbgl::Color>>(
-        env, layerObj->getLayer(), argv[0], "hillshade-highlight-color",
-        &mbgl::style::HillshadeLayer::setHillshadeHighlightColor
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeHighlightColor, setPaintProperty, "hillshade-highlight-color", setHillshadeHighlightColor, std::vector<mbgl::Color>)
 
-napi_value HillshadeLayerNAPI::SetHillshadeAccentColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, mbgl::Color>(
-        env, layerObj->getLayer(), argv[0], "hillshade-accent-color",
-        &mbgl::style::HillshadeLayer::setHillshadeAccentColor
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeAccentColor, setPaintProperty, "hillshade-accent-color", setHillshadeAccentColor, mbgl::Color)
 
-napi_value HillshadeLayerNAPI::GetHillshadeIlluminationDirection(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::HillshadeLayer, std::vector<float>>(
-        env, layer, &mbgl::style::HillshadeLayer::getHillshadeIlluminationDirection
-    );
-}
+DEFINE_LAYER_GETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, GetHillshadeIlluminationDirection, getHillshadeIlluminationDirection, std::vector<float>)
 
-napi_value HillshadeLayerNAPI::GetHillshadeExaggeration(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::HillshadeLayer, float>(
-        env, layer, &mbgl::style::HillshadeLayer::getHillshadeExaggeration
-    );
-}
+DEFINE_LAYER_GETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, GetHillshadeExaggeration, getHillshadeExaggeration, float)
 
 napi_value HillshadeLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     return LayerGetId<HillshadeLayerNAPI>(env, info);

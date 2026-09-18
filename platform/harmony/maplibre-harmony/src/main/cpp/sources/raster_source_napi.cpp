@@ -7,6 +7,7 @@
 #include <mbgl/util/range.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "source_napi_utils.hpp"
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
@@ -53,27 +54,11 @@ napi_value RasterSourceNAPI::Init(napi_env env, napi_value exports) {
         { "setTileSize", nullptr, SetTileSize, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "RasterSource", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("RasterSourceNAPI", "Failed to define RasterSource class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("RasterSourceNAPI", "Failed to create constructor reference");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "RasterSource", cons);
-    if (status != napi_ok) {
-        Logger::error("RasterSourceNAPI", "Failed to set RasterSource property");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "RasterSource", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "RasterSourceNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("RasterSourceNAPI", "RasterSource NAPI class initialized successfully");
     return exports;
 }
@@ -90,89 +75,24 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // Parse the options argument
-        std::string url = "";
-        std::vector<std::string> tiles;
-        uint16_t tileSize = 512; // default value
-        uint8_t minzoom = 0;
-        uint8_t maxzoom = 22;
-        
+        // Parse the options argument (shared with RasterDemSourceNAPI)
+        TileCacheOptions cacheOptions;
         if (args.Count() >= 2) {
             napi_value optionsObj = args.GetObject(1, "options");
             if (!args.HasError() && optionsObj) {
-                // Read url
-                url = args.GetStringProperty(optionsObj, "url", "");
-                if (!url.empty()) {
-                    Logger::info("RasterSourceNAPI", "RasterSource URL: %s", url.c_str());
-                }
-                
-                // Read the tiles array
-                napi_value tilesValue;
-                napi_status status = napi_get_named_property(env, optionsObj, "tiles", &tilesValue);
-                if (status == napi_ok) {
-                    bool isArray;
-                    napi_is_array(env, tilesValue, &isArray);
-                    if (isArray) {
-                        uint32_t length;
-                        napi_get_array_length(env, tilesValue, &length);
-                        for (uint32_t i = 0; i < length; i++) {
-                            napi_value element;
-                            napi_get_element(env, tilesValue, i, &element);
-                            napi_valuetype elementType;
-                            napi_typeof(env, element, &elementType);
-                            if (elementType == napi_string) {
-                                size_t strLen;
-                                napi_get_value_string_utf8(env, element, nullptr, 0, &strLen);
-                                if (strLen > 0) {
-                                    char* buffer = new char[strLen + 1];
-                                    napi_get_value_string_utf8(env, element, buffer, strLen + 1, nullptr);
-                                    tiles.push_back(std::string(buffer));
-                                    delete[] buffer;
-                                }
-                            }
-                        }
-                        if (!tiles.empty()) {
-                            Logger::info("RasterSourceNAPI", "RasterSource tiles count: %zu", tiles.size());
-                            Logger::info("RasterSourceNAPI", "RasterSource tiles[0]: %s", tiles[0].c_str());
-                        }
-                    }
-                }
-                
-                // Read tileSize
-                int32_t tileSizeInt = args.GetInt32Property(optionsObj, "tileSize", 512);
-                if (tileSizeInt > 0) {
-                    tileSize = static_cast<uint16_t>(tileSizeInt);
-                    Logger::info("RasterSourceNAPI", "RasterSource tileSize: %d", tileSize);
-                }
-                
-                // Read minzoom
-                minzoom = static_cast<uint8_t>(args.GetInt32Property(optionsObj, "minzoom", 0));
-                
-                // Read maxzoom
-                maxzoom = static_cast<uint8_t>(args.GetInt32Property(optionsObj, "maxzoom", 22));
+                ParseTileCacheOptions(args, optionsObj, "RasterSourceNAPI", "RasterSource",
+                                      /*tileSizeDefault=*/512, cacheOptions);
             }
         }
-        
-        // Create the RasterSource
+
+        // Create the RasterSource:
         // Prefer the tiles array; fall back to the URL when tiles are absent
-        mbgl::variant<std::string, mbgl::Tileset> urlOrTileset;
-        if (!tiles.empty()) {
-            // Create a Tileset from the tiles array
-            mbgl::Tileset tileset;
-            tileset.tiles = tiles;
-            tileset.zoomRange = mbgl::Range<uint8_t>(minzoom, maxzoom);
-            urlOrTileset = std::move(tileset);
-            Logger::info("RasterSourceNAPI", "RasterSource using Tileset with %zu tiles", tiles.size());
-        } else {
-            // Use the URL string
-            urlOrTileset = url;
-            Logger::info("RasterSourceNAPI", "RasterSource using URL: %s", url.c_str());
-        }
-        
+        auto urlOrTileset = MakeUrlOrTileset(cacheOptions, "RasterSourceNAPI", "RasterSource");
+
         auto source = std::make_unique<mbgl::style::RasterSource>(
             sourceId,
             std::move(urlOrTileset),
-            tileSize
+            cacheOptions.tileSize
         );
         
         RasterSourceNAPI* sourceNapi = new RasterSourceNAPI(sourceId, std::move(source));
@@ -203,45 +123,9 @@ napi_value RasterSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterSou
                                 sourcePtr ? new RasterSourceNAPI(sourcePtr) : nullptr);
 }
 
-napi_value RasterSourceNAPI::GetId(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    RasterSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        return CreateStringValue(env, "");
-    }
-    
-    return CreateStringValue(env, sourceNapi->id);
-}
+DEFINE_SOURCE_GET_ID(RasterSourceNAPI)
 
-napi_value RasterSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    RasterSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        return CreateStringValue(env, "");
-    }
-    
-    auto* source = sourceNapi->getSource();
-    if (!source) {
-        return CreateStringValue(env, "");
-    }
-    
-    try {
-        auto url = source->getURL();
-        if (url) {
-            return CreateStringValue(env, *url);
-        }
-    } catch (const std::exception& e) {
-        Logger::error("RasterSourceNAPI", "GetUrl failed: %s", e.what());
-    }
-    
-    return CreateStringValue(env, "");
-}
+DEFINE_SOURCE_GET_URL(RasterSourceNAPI)
 
 napi_value RasterSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -285,32 +169,7 @@ napi_value RasterSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     return nullptr;
 }
 
-napi_value RasterSourceNAPI::SetTileSize(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) return nullptr;
-    
-    RasterSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-    
-    auto* source = sourceNapi->getSource();
-    if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
-        return nullptr;
-    }
-    
-    // Note: RasterSource does not support changing tile size after creation.
-    // Tile size must be specified in the constructor; the operation is
-    // unsupported regardless of the argument value.
-    Logger::info("RasterSourceNAPI", "SetTileSize not supported - tile size is immutable after source creation");
-    napi_throw_error(env, nullptr, "RasterSource does not support changing tile size after creation. Please recreate the source with the desired tile size.");
-    return nullptr;
-}
+DEFINE_SOURCE_SET_TILE_SIZE_UNSUPPORTED(RasterSourceNAPI)
 
 } // namespace harmony
 } // namespace mbgl

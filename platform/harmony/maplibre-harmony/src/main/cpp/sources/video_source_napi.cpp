@@ -9,6 +9,8 @@
 #include <array>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "source_napi_utils.hpp"
+#include "image_payload_napi.hpp"
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
@@ -22,45 +24,6 @@ napi_ref VideoSourceNAPI::constructor = nullptr;
 napi_env VideoSourceNAPI::constructorEnv = nullptr;
 
 namespace {
-
-// Default quad (whole world) when no coordinates are supplied yet
-std::array<mbgl::LatLng, 4> defaultCoordinates() {
-    return {{
-        mbgl::LatLng{0, 0}, mbgl::LatLng{0, 1},
-        mbgl::LatLng{1, 1}, mbgl::LatLng{1, 0}
-    }};
-}
-
-// Parse a [[lng, lat], ...] array of exactly four corners
-bool parseCoordinates(napi_env env, napi_value coordsValue, std::array<mbgl::LatLng, 4>& out) {
-    bool isArray = false;
-    napi_is_array(env, coordsValue, &isArray);
-    if (!isArray) return false;
-
-    uint32_t length = 0;
-    napi_get_array_length(env, coordsValue, &length);
-    if (length != 4) return false;
-
-    for (uint32_t i = 0; i < 4; ++i) {
-        napi_value coordValue;
-        napi_get_element(env, coordsValue, i, &coordValue);
-
-        bool isCoordArray = false;
-        napi_is_array(env, coordValue, &isCoordArray);
-        if (!isCoordArray) return false;
-
-        napi_value lngValue, latValue;
-        napi_get_element(env, coordValue, 0, &lngValue);
-        napi_get_element(env, coordValue, 1, &latValue);
-
-        double lng = 0.0, lat = 0.0;
-        napi_get_value_double(env, lngValue, &lng);
-        napi_get_value_double(env, latValue, &lat);
-
-        out[i] = mbgl::LatLng{lat, lng};
-    }
-    return true;
-}
 
 // Shared frame/image ingestion: accepts an Image or Bitmap NAPI object and
 // forwards the pixels to the underlying ImageSource
@@ -86,30 +49,12 @@ napi_value updateImageImpl(napi_env env, napi_callback_info info) {
     napi_value imageArg = args.GetValue(0);
 
     try {
-        if (ImageNAPI::IsImageObject(env, imageArg)) {
-            ImageNAPI* imageNapi = ImageNAPI::Unwrap(env, imageArg);
-            if (!imageNapi) {
-                napi_throw_error(env, nullptr, "Failed to unwrap Image object");
-                return nullptr;
-            }
-            auto styleImage = imageNapi->toStyleImage();
-            source->setImage(styleImage->getImage().clone());
-        } else if (mbgl::harmony::BitmapNAPI::IsBitmapObject(env, imageArg)) {
-            mbgl::harmony::BitmapNAPI* bitmapNapi = mbgl::harmony::BitmapNAPI::Unwrap(env, imageArg);
-            if (!bitmapNapi) {
-                napi_throw_error(env, nullptr, "Failed to unwrap Bitmap object");
-                return nullptr;
-            }
-            auto image = bitmapNapi->getImage();
-            if (!image) {
-                napi_throw_error(env, nullptr, "Bitmap has no image data");
-                return nullptr;
-            }
-            source->setImage(image->clone());
-        } else {
-            napi_throw_error(env, nullptr, "updateImage requires an Image or Bitmap object");
+        auto payload = DecodeImageOrBitmap(env, imageArg, "updateImage requires an Image or Bitmap object");
+        if (!payload) {
             return nullptr;
         }
+
+        source->setImage(std::move(payload->image));
     } catch (const std::exception& e) {
         Logger::error("VideoSourceNAPI", "UpdateImage failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
@@ -156,26 +101,10 @@ napi_value VideoSourceNAPI::Init(napi_env env, napi_value exports) {
         { "updateImage", nullptr, UpdateImage, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
 
-    napi_value cons;
-    napi_status status = napi_define_class(env, "VideoSource", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-
-    if (status != napi_ok) {
-        Logger::error("VideoSourceNAPI", "Failed to define VideoSource class");
-        return nullptr;
-    }
-
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("VideoSourceNAPI", "Failed to create constructor reference");
-        return nullptr;
-    }
-
-    status = napi_set_named_property(env, exports, "VideoSource", cons);
-    if (status != napi_ok) {
-        Logger::error("VideoSourceNAPI", "Failed to set VideoSource property");
-        return nullptr;
-    }
+    napi_value cons = RegisterNapiClass(env, exports, "VideoSource", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "VideoSourceNAPI");
+    if (!cons) return nullptr;
 
     Logger::info("VideoSourceNAPI", "VideoSource NAPI class initialized successfully");
     return exports;
@@ -193,11 +122,11 @@ napi_value VideoSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 
     try {
-        std::array<mbgl::LatLng, 4> coords = defaultCoordinates();
+        std::array<mbgl::LatLng, 4> coords = DefaultLatLngQuad();
 
         if (args.Count() >= 2) {
             napi_value coordsValue = args.GetValue(1);
-            if (!parseCoordinates(env, coordsValue, coords)) {
+            if (!ParseLatLngQuad(env, coordsValue, coords)) {
                 Logger::warn("VideoSourceNAPI",
                              "Coordinates must be an array of 4 [lng, lat] corners; using default");
             }
@@ -233,18 +162,7 @@ napi_value VideoSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSourc
                                 sourcePtr ? new VideoSourceNAPI(sourcePtr) : nullptr);
 }
 
-napi_value VideoSourceNAPI::GetId(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-
-    VideoSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-
-    if (!sourceNapi) {
-        return CreateStringValue(env, "");
-    }
-
-    return CreateStringValue(env, sourceNapi->id);
-}
+DEFINE_SOURCE_GET_ID(VideoSourceNAPI)
 
 napi_value VideoSourceNAPI::GetCoordinates(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -297,7 +215,7 @@ napi_value VideoSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
 
     napi_value coordsValue = args.GetValue(0);
     std::array<mbgl::LatLng, 4> coords;
-    if (!parseCoordinates(env, coordsValue, coords)) {
+    if (!ParseLatLngQuad(env, coordsValue, coords)) {
         napi_throw_error(env, nullptr, "Coordinates must be an array of 4 [lng, lat] corners");
         return nullptr;
     }

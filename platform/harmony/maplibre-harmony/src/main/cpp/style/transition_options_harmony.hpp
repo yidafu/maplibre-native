@@ -18,9 +18,13 @@ public:
      * Create a TransitionOptions NAPI object.
      * @param env NAPI environment
      * @param options mbgl::style::TransitionOptions C++ object
+     * @param defaultDurationMs Duration (ms) reported when options.duration is
+     *        unset; defaults to 0. GetTransition passes 300 to keep showing the
+     *        historical default.
      * @return NAPI object { duration: number, delay: number }
      */
-    static napi_value CreateTransitionOptionsObject(napi_env env, const mbgl::style::TransitionOptions& options);
+    static napi_value CreateTransitionOptionsObject(napi_env env, const mbgl::style::TransitionOptions& options,
+                                                    double defaultDurationMs = 0.0);
     
     /**
      * Parse TransitionOptions from a NAPI value.

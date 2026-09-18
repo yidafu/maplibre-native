@@ -12,6 +12,7 @@
 #include <mbgl/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "layer_property_macros.hpp"
 namespace mbgl {
 namespace harmony {
 
@@ -64,14 +65,10 @@ napi_value ColorReliefLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
 
-    napi_value cons;
-    napi_status status = napi_define_class(env, "ColorReliefLayer", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-
-    if (status != napi_ok) return nullptr;
-
-    mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    napi_set_named_property(env, exports, "ColorReliefLayer", cons);
+    napi_value cons = RegisterNapiClass(env, exports, "ColorReliefLayer", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "ColorReliefLayerNAPI");
+    if (!cons) return nullptr;
 
     Logger::info("ColorReliefLayerNAPI", "ColorReliefLayer NAPI class registered");
     return exports;
@@ -108,110 +105,17 @@ napi_value ColorReliefLayerNAPI::CreateInstance(napi_env env, mbgl::style::Color
 // Paint Property Setters
 // ============================================================================
 
-napi_value ColorReliefLayerNAPI::SetColorReliefColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+DEFINE_LAYER_COLORRAMP_SETTER(ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer, SetColorReliefColor, "colorReliefColor", setColorReliefColor)
 
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    // colorReliefColor uses ColorRampPropertyValue (same pattern as heatmap-color)
-    try {
-        NapiValue napiValue(env, argv[0]);
-        mbgl::style::conversion::Error error;
-        auto converted = mbgl::style::conversion::convert<mbgl::style::ColorRampPropertyValue>(
-            std::move(napiValue), error
-        );
-
-        if (converted) {
-            layerObj->getLayer()->setColorReliefColor(*converted);
-        } else {
-            Logger::error("ColorReliefLayerNAPI", "Failed to convert colorReliefColor: %s", error.message.c_str());
-        }
-    } catch (const std::exception& e) {
-        Logger::error("ColorReliefLayerNAPI", "Exception setting colorReliefColor: %s", e.what());
-    }
-
-    return thisVar;
-}
-
-napi_value ColorReliefLayerNAPI::SetColorReliefOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-
-    mbgl::harmony::setPaintProperty<mbgl::style::ColorReliefLayer, float>(
-        env, layerObj->getLayer(), argv[0], "colorReliefOpacity",
-        &mbgl::style::ColorReliefLayer::setColorReliefOpacity
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer, SetColorReliefOpacity, setPaintProperty, "colorReliefOpacity", setColorReliefOpacity, float)
 
 // ============================================================================
 // Paint Property Getters
 // ============================================================================
 
-napi_value ColorReliefLayerNAPI::GetColorReliefColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+DEFINE_LAYER_COLORRAMP_GETTER(ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer, GetColorReliefColor, getColorReliefColor)
 
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    mbgl::style::ColorReliefLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    // colorReliefColor is ColorRampPropertyValue
-    const auto& colorRamp = layer->getColorReliefColor();
-    auto result = mbgl::harmony::conversion::colorRampPropertyValueToNapi(env, colorRamp);
-    if (result) {
-        return *result;
-    }
-    napi_value null_value;
-    napi_get_null(env, &null_value);
-    return null_value;
-}
-
-napi_value ColorReliefLayerNAPI::GetColorReliefOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    mbgl::style::ColorReliefLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::ColorReliefLayer, float>(
-        env, layer, &mbgl::style::ColorReliefLayer::getColorReliefOpacity
-    );
-}
+DEFINE_LAYER_GETTER(ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer, GetColorReliefOpacity, getColorReliefOpacity, float)
 
 // ============================================================================
 // Base Layer Methods

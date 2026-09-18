@@ -2,6 +2,7 @@
 #define MAPLIBREHARMONY_NAPI_CONSTRUCTOR_REF_HPP
 
 #include "napi/native_api.h"
+#include "utils/logger.h"
 
 namespace mbgl {
 namespace harmony {
@@ -27,6 +28,44 @@ inline napi_status RefreshConstructorRef(napi_env env, napi_value cons, napi_ref
         refEnv = env;
     }
     return status;
+}
+
+// One-shot NAPI class registration shared by every `XxxNAPI::Init(env, exports)`:
+// define the class, refresh the persistent constructor reference, and publish
+// the constructor on `exports` under `className`.
+//
+// The three failure logs keep the wording/level used by the Init() functions
+// this replaces (className/logTag substituted). Every existing Init() failure
+// branch returned nullptr, so this returns nullptr on failure and the created
+// constructor on success; Init() wrappers turn that into
+// `return cons ? exports : nullptr;`.
+inline napi_value RegisterNapiClass(napi_env env, napi_value exports,
+                                    const char* className,
+                                    const napi_property_descriptor* props, size_t propCount,
+                                    napi_callback ctor,
+                                    napi_ref& outRef, napi_env& outRefEnv,
+                                    const char* logTag) {
+    napi_value cons = nullptr;
+    napi_status status = napi_define_class(env, className, NAPI_AUTO_LENGTH, ctor, nullptr,
+                                           propCount, props, &cons);
+    if (status != napi_ok) {
+        Logger::error(logTag, "Failed to define %s class", className);
+        return nullptr;
+    }
+
+    status = RefreshConstructorRef(env, cons, outRef, outRefEnv);
+    if (status != napi_ok) {
+        Logger::error(logTag, "Failed to create reference to %s constructor", className);
+        return nullptr;
+    }
+
+    status = napi_set_named_property(env, exports, className, cons);
+    if (status != napi_ok) {
+        Logger::error(logTag, "Failed to export %s class", className);
+        return nullptr;
+    }
+
+    return cons;
 }
 
 } // namespace harmony

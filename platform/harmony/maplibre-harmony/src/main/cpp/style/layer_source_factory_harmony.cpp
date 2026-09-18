@@ -96,7 +96,9 @@ napi_value createSourceInfoObject(napi_env env, mbgl::style::Source* source, con
     return sourceObj;
 }
 
-std::string sourceTypeToString(mbgl::style::SourceType type) {
+} // namespace
+
+std::string LayerSourceFactory::SourceTypeToString(mbgl::style::SourceType type) {
     switch (type) {
         case mbgl::style::SourceType::Vector:
             return "vector";
@@ -115,9 +117,19 @@ std::string sourceTypeToString(mbgl::style::SourceType type) {
     }
 }
 
+namespace {
+
+// JS null handed back to callers that asked for WrapperFallback::Null.
+napi_value createNullValue(napi_env env) {
+    napi_value nullValue;
+    napi_get_null(env, &nullValue);
+    return nullValue;
+}
+
 } // namespace
 
-napi_value LayerSourceFactory::createLayerWrapper(napi_env env, mbgl::style::Layer* layer) {
+napi_value LayerSourceFactory::createLayerWrapper(napi_env env, mbgl::style::Layer* layer,
+                                                  WrapperFallback fallback) {
     if (!layer) {
         Logger::warn("LayerSourceFactory", "createLayerWrapper: null layer pointer");
         napi_value undefined;
@@ -160,12 +172,17 @@ napi_value LayerSourceFactory::createLayerWrapper(napi_env env, mbgl::style::Lay
             env, static_cast<mbgl::style::CustomDrawableLayer*>(layer));
     }
 
+    if (fallback == WrapperFallback::Null) {
+        return createNullValue(env);
+    }
+
     Logger::info("LayerSourceFactory", "createLayerWrapper: info-only wrapper for type: %s, id: %s",
                 layerType.c_str(), layer->getID().c_str());
     return createLayerInfoObject(env, layer);
 }
 
-napi_value LayerSourceFactory::createSourceWrapper(napi_env env, mbgl::style::Source* source) {
+napi_value LayerSourceFactory::createSourceWrapper(napi_env env, mbgl::style::Source* source,
+                                                  WrapperFallback fallback) {
     if (!source) {
         Logger::warn("LayerSourceFactory", "createSourceWrapper: null source pointer");
         napi_value undefined;
@@ -199,7 +216,10 @@ napi_value LayerSourceFactory::createSourceWrapper(napi_env env, mbgl::style::So
             break;
     }
 
-    const std::string typeStr = sourceTypeToString(sourceType);
+    const std::string typeStr = SourceTypeToString(sourceType);
+    if (fallback == WrapperFallback::Null) {
+        return createNullValue(env);
+    }
     Logger::info("LayerSourceFactory", "createSourceWrapper: info-only wrapper for type: %s, id: %s",
                 typeStr.c_str(), source->getID().c_str());
     return createSourceInfoObject(env, source, typeStr);

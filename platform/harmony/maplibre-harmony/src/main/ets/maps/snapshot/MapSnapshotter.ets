@@ -30,6 +30,82 @@ import { DOMAIN } from '../../constants/HiLogConstants';
 export type { MapSnapshotterObserver } from 'libmaplibre.so';
 
 /**
+ * Flatten a CameraPosition into the plain object expected by the NAPI layer.
+ * Module-level helper: the same conversion previously existed verbatim in the
+ * MapSnapshotter constructor and setCameraPosition().
+ *
+ * @param position Camera position to flatten.
+ * @returns NAPI CameraPositionLike plain object.
+ */
+function cameraPositionToNative(position: CameraPosition): CameraPositionLike {
+  const cameraData: CameraPositionLike = {
+    target: {
+      latitude: position.target.latitude,
+      longitude: position.target.longitude
+    },
+    zoom: position.zoom,
+    bearing: position.bearing,
+    tilt: position.tilt
+  };
+  return cameraData;
+}
+
+/**
+ * Flatten a LatLngBounds into the plain object expected by the NAPI layer.
+ * Module-level helper: the same conversion previously existed verbatim in the
+ * MapSnapshotter constructor and setRegion().
+ *
+ * @param bounds Bounds to flatten.
+ * @returns NAPI LatLngBoundsLike plain object.
+ */
+function latLngBoundsToNative(bounds: LatLngBounds): LatLngBoundsLike {
+  const regionData: LatLngBoundsLike = {
+    north: bounds.north,
+    south: bounds.south,
+    east: bounds.east,
+    west: bounds.west
+  };
+  return regionData;
+}
+
+/**
+ * Create a PixelMap from raw snapshot pixel data.
+ *
+ * Shared by MapSnapshotter (offline snapshotter results) and MapLibreMap
+ * (MapViewSnapshotPayload snapshots); previously duplicated in both files.
+ *
+ * @param data Raw RGBA (premultiplied) pixel buffer.
+ * @param width Image width in pixels.
+ * @param height Image height in pixels.
+ * @returns Promise resolving to the created PixelMap.
+ */
+export function pixelMapFromSnapshotData(data: ArrayBuffer, width: number, height: number): Promise<image.PixelMap> {
+  return new Promise((resolve, reject) => {
+    try {
+      const imageInfo: image.ImageInfo = {
+        size: { width: width, height: height },
+        pixelFormat: image.PixelMapFormat.RGBA_8888,
+        alphaType: image.AlphaType.PREMUL,
+        density: 160,
+        stride: width * 4,
+        mimeType: 'image/png',
+        isHdr: false
+      };
+
+      image.createPixelMap(data, imageInfo, (err, pixelMap) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(pixelMap);
+        }
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
  * Snapshot completion callback.
  */
 export interface SnapshotReadyCallback {
@@ -95,6 +171,40 @@ export class MapSnapshotter {
   private observer: NativeMapSnapshotterObserver | null = null;
 
   /**
+   * Guarded native snapshotter call helper.
+   *
+   * Collapses the recurring
+   * `if (!this.nativeSnapshotter) { warn; return }`
+   * `try { this.nativeSnapshotter.X() } catch { error; return|throw }`
+   * boilerplate.
+   *
+   * @param label Call-site identifier used for logging.
+   * @param fallback Value returned when the snapshotter is missing or the
+   *                 operation throws without `errorPrefix`.
+   * @param op Operation to run against the native snapshotter.
+   * @param errorPrefix When provided, a caught error is rethrown as
+   *                    `new Error(\`${errorPrefix}: ${error}\`)` (mirrors the
+   *                    previous throwing setters); when omitted the fallback
+   *                    is returned instead.
+   * @returns Operation result, or `fallback`.
+   */
+  private withSnapshotter<T>(label: string, fallback: T, op: (snapshotter: MapSnapshotterNAPI) => T, errorPrefix?: string): T {
+    if (!this.nativeSnapshotter) {
+      hilog.warn(DOMAIN, 'MapSnapshotter', `${label}: Native snapshotter not initialized`);
+      return fallback;
+    }
+    try {
+      return op(this.nativeSnapshotter);
+    } catch (error) {
+      hilog.error(DOMAIN, 'MapSnapshotter', `${label} failed: ${error}`);
+      if (errorPrefix !== undefined) {
+        throw new Error(`${errorPrefix}: ${error}`);
+      }
+      return fallback;
+    }
+  }
+
+  /**
    * Constructor.
    *
    * @param options Snapshot options.
@@ -116,27 +226,12 @@ export class MapSnapshotter {
 
       // If a camera position is provided, convert it to a plain object
       if (options.cameraPosition) {
-        const cameraData: CameraPositionLike = {
-          target: {
-            latitude: options.cameraPosition.target.latitude,
-            longitude: options.cameraPosition.target.longitude
-          },
-          zoom: options.cameraPosition.zoom,
-          bearing: options.cameraPosition.bearing,
-          tilt: options.cameraPosition.tilt
-        };
-        napiOptions.camera = cameraData;
+        napiOptions.camera = cameraPositionToNative(options.cameraPosition);
       }
 
       // If a region is provided, convert it to a plain object
       if (options.region) {
-        const regionData: LatLngBoundsLike = {
-          north: options.region.north,
-          south: options.region.south,
-          east: options.region.east,
-          west: options.region.west
-        };
-        napiOptions.region = regionData;
+        napiOptions.region = latLngBoundsToNative(options.region);
       }
 
       // Instantiate the native snapshotter
@@ -233,55 +328,32 @@ export class MapSnapshotter {
    * Cancel snapshot generation.
    */
   public cancel(): void {
-    if (!this.nativeSnapshotter) {
-      return;
-    }
-
-    this.cancelled = true;
-
-    try {
-      this.nativeSnapshotter.cancel();
-    } catch (error) {
-      hilog.error(DOMAIN, 'MapSnapshotter', `Cancel failed: ${error}`);
-    }
+    this.withSnapshotter<void>('cancel', undefined, (snapshotter) => {
+      this.cancelled = true;
+      snapshotter.cancel();
+    });
   }
 
   /**
    * Set the style URL.
    */
   public setStyleUrl(styleUrl: string): void {
-    if (!this.nativeSnapshotter) {
-      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
-      return;
-    }
-
-    try {
-      this.nativeSnapshotter.setStyleUrl(styleUrl);
+    this.withSnapshotter<void>('setStyleUrl', undefined, (snapshotter) => {
+      snapshotter.setStyleUrl(styleUrl);
       this.options.styleUrl = styleUrl;
       hilog.info(DOMAIN, 'MapSnapshotter', `Style URL set: ${styleUrl}`);
-    } catch (error) {
-      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set style URL: ${error}`);
-      throw new Error(`Failed to set style URL: ${error}`);
-    }
+    }, 'Failed to set style URL');
   }
 
   /**
    * Set the style JSON.
    */
   public setStyleJson(styleJson: string): void {
-    if (!this.nativeSnapshotter) {
-      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
-      return;
-    }
-
-    try {
-      this.nativeSnapshotter.setStyleJson(styleJson);
+    this.withSnapshotter<void>('setStyleJson', undefined, (snapshotter) => {
+      snapshotter.setStyleJson(styleJson);
       this.options.styleJson = styleJson;
       hilog.info(DOMAIN, 'MapSnapshotter', 'Style JSON set');
-    } catch (error) {
-      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set style JSON: ${error}`);
-      throw new Error(`Failed to set style JSON: ${error}`);
-    }
+    }, 'Failed to set style JSON');
   }
 
   /**
@@ -295,29 +367,12 @@ export class MapSnapshotter {
    * Configure the camera position.
    */
   public setCameraPosition(cameraPosition: CameraPosition): void {
-    if (!this.nativeSnapshotter) {
-      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
-      return;
-    }
-
-    try {
+    this.withSnapshotter<void>('setCameraPosition', undefined, (snapshotter) => {
       // Convert CameraPosition to a plain object before passing to native code.
-      const cameraData: CameraPositionLike = {
-        target: {
-          latitude: cameraPosition.target.latitude,
-          longitude: cameraPosition.target.longitude
-        },
-        zoom: cameraPosition.zoom,
-        bearing: cameraPosition.bearing,
-        tilt: cameraPosition.tilt
-      };
-      this.nativeSnapshotter.setCameraPosition(cameraData);
+      snapshotter.setCameraPosition(cameraPositionToNative(cameraPosition));
       this.options.cameraPosition = cameraPosition;
       hilog.info(DOMAIN, 'MapSnapshotter', 'Camera position set');
-    } catch (error) {
-      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set camera position: ${error}`);
-      throw new Error(`Failed to set camera position: ${error}`);
-    }
+    }, 'Failed to set camera position');
   }
 
   /**
@@ -331,45 +386,23 @@ export class MapSnapshotter {
    * Configure the geographic region.
    */
   public setRegion(region: LatLngBounds): void {
-    if (!this.nativeSnapshotter) {
-      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
-      return;
-    }
-
-    try {
+    this.withSnapshotter<void>('setRegion', undefined, (snapshotter) => {
       // Convert LatLngBounds to a plain object.
-      const regionData: LatLngBoundsLike = {
-        north: region.north,
-        south: region.south,
-        east: region.east,
-        west: region.west
-      };
-      this.nativeSnapshotter.setRegion(regionData);
+      snapshotter.setRegion(latLngBoundsToNative(region));
       this.options.region = region;
       hilog.info(DOMAIN, 'MapSnapshotter', 'Region set');
-    } catch (error) {
-      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set region: ${error}`);
-      throw new Error(`Failed to set region: ${error}`);
-    }
+    }, 'Failed to set region');
   }
 
   /**
    * Set the snapshot dimensions.
    */
   public setSize(width: number, height: number): void {
-    if (!this.nativeSnapshotter) {
-      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
-      return;
-    }
-
-    try {
-      this.nativeSnapshotter.setSize(width, height);
+    this.withSnapshotter<void>('setSize', undefined, (snapshotter) => {
+      snapshotter.setSize(width, height);
       this.options.size = { width, height };
       hilog.info(DOMAIN, 'MapSnapshotter', `Size set: ${width}x${height}`);
-    } catch (error) {
-      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set size: ${error}`);
-      throw new Error(`Failed to set size: ${error}`);
-    }
+    }, 'Failed to set size');
   }
 
   /**
@@ -377,25 +410,13 @@ export class MapSnapshotter {
    * @param observer Observer instance; pass null to clear it.
    */
   public setObserver(observer: NativeMapSnapshotterObserver | null): void {
-    if (!this.nativeSnapshotter) {
-      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
-      return;
-    }
-
-    this.observer = observer;
-
-    try {
-      if (observer) {
-        this.nativeSnapshotter.setObserver(observer);
-        hilog.info(DOMAIN, 'MapSnapshotter', 'Observer set');
-      } else {
-        this.nativeSnapshotter.setObserver(null);
-        hilog.info(DOMAIN, 'MapSnapshotter', 'Observer cleared');
-      }
-    } catch (error) {
-      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set observer: ${error}`);
-      throw new Error(`Failed to set observer: ${error}`);
-    }
+    this.withSnapshotter<void>('setObserver', undefined, (snapshotter) => {
+      // Assigned before the native call: on failure the field stays set,
+      // mirroring the previous implementation.
+      this.observer = observer;
+      snapshotter.setObserver(observer);
+      hilog.info(DOMAIN, 'MapSnapshotter', observer ? 'Observer set' : 'Observer cleared');
+    }, 'Failed to set observer');
   }
 
   /**
@@ -414,17 +435,9 @@ export class MapSnapshotter {
    * @returns Layer instance, or null when missing.
    */
   public getLayer(layerId: string): Layer | null {
-    if (!this.nativeSnapshotter) {
-      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
-      return null;
-    }
-
-    try {
-      return this.nativeSnapshotter.getLayer(layerId) || null;
-    } catch (error) {
-      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to get layer: ${error}`);
-      return null;
-    }
+    return this.withSnapshotter<Layer | null>('getLayer', null, (snapshotter) => {
+      return snapshotter.getLayer(layerId) || null;
+    });
   }
 
   /**
@@ -436,17 +449,9 @@ export class MapSnapshotter {
    * @returns Source instance, or null when missing.
    */
   public getSource(sourceId: string): Source | null {
-    if (!this.nativeSnapshotter) {
-      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
-      return null;
-    }
-
-    try {
-      return this.nativeSnapshotter.getSource(sourceId) || null;
-    } catch (error) {
-      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to get source: ${error}`);
-      return null;
-    }
+    return this.withSnapshotter<Source | null>('getSource', null, (snapshotter) => {
+      return snapshotter.getSource(sourceId) || null;
+    });
   }
 
   /**
@@ -500,51 +505,23 @@ export class MapSnapshotter {
     pixelRatioOrSdf?: number | boolean,
     sdf?: boolean
   ): void {
-    if (!this.nativeSnapshotter) {
-      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
-      return;
-    }
-
-    try {
-      this.nativeSnapshotter.addImage(name, imageData, widthOrSdf, height, pixelRatioOrSdf, sdf);
+    this.withSnapshotter<void>('addImage', undefined, (snapshotter) => {
+      snapshotter.addImage(name, imageData, widthOrSdf, height, pixelRatioOrSdf, sdf);
       hilog.info(DOMAIN, 'MapSnapshotter', `Image added: ${name}`);
-    } catch (error) {
-      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to add image: ${error}`);
-      throw new Error(`Failed to add image: ${error}`);
-    }
+    }, 'Failed to add image');
   }
 
   /**
    * Create a PixelMap from the native result.
    *
+   * Delegates to the shared pixelMapFromSnapshotData() helper (also used by
+   * MapLibreMap.snapshot()).
+   *
    * @param result Native result object.
    * @returns Promise resolving to a PixelMap.
    */
-  private async createPixelMapFromNativeResult(result: SnapshotResultNAPI): Promise<image.PixelMap> {
-    return new Promise((resolve, reject) => {
-      try {
-        const imageInfo: image.ImageInfo = {
-          size: { height: result.height, width: result.width },
-          pixelFormat: image.PixelMapFormat.RGBA_8888,
-          alphaType: image.AlphaType.PREMUL,
-          density: 160,
-          stride: result.width * 4,
-          mimeType: 'image/png',
-          isHdr: false
-        };
-
-        // Create PixelMap from the ArrayBuffer.
-        image.createPixelMap(result.data, imageInfo, (err, pixelMap) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(pixelMap);
-          }
-        });
-      } catch (error) {
-        reject(error);
-      }
-    });
+  private createPixelMapFromNativeResult(result: SnapshotResultNAPI): Promise<image.PixelMap> {
+    return pixelMapFromSnapshotData(result.data, result.width, result.height);
   }
 }
 

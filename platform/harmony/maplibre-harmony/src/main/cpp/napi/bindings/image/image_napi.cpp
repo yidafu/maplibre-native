@@ -63,28 +63,11 @@ napi_value ImageNAPI::Init(napi_env env, napi_value exports) {
         { "getContent", nullptr, GetContent, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "Image", NAPI_AUTO_LENGTH, New, nullptr,
-                                          sizeof(properties) / sizeof(properties[0]), 
-                                          properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("ImageNAPI", "Failed to define Image class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("ImageNAPI", "Failed to create reference to Image constructor");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "Image", cons);
-    if (status != napi_ok) {
-        Logger::error("ImageNAPI", "Failed to export Image class");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "Image", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "ImageNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("ImageNAPI", "Image NAPI class registered successfully");
     return exports;
 }

@@ -10,6 +10,7 @@
 #include <mbgl/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "layer_property_macros.hpp"
 namespace mbgl {
 namespace harmony {
 
@@ -71,27 +72,11 @@ napi_value BackgroundLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "BackgroundLayer", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("BackgroundLayerNAPI", "Failed to define BackgroundLayer class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("BackgroundLayerNAPI", "Failed to create reference to BackgroundLayer constructor");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "BackgroundLayer", cons);
-    if (status != napi_ok) {
-        Logger::error("BackgroundLayerNAPI", "Failed to export BackgroundLayer class");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "BackgroundLayer", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "BackgroundLayerNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("BackgroundLayerNAPI", "BackgroundLayer NAPI class registered successfully");
     return exports;
 }
@@ -140,130 +125,19 @@ napi_value BackgroundLayerNAPI::CreateInstance(napi_env env, mbgl::style::Backgr
 // Paint Property Setters (Expression supported)
 // ============================================================================
 
-napi_value BackgroundLayerNAPI::SetBackgroundColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::BackgroundLayer, mbgl::Color>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "background-color",
-        &mbgl::style::BackgroundLayer::setBackgroundColor
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(BackgroundLayerNAPI, mbgl::style::BackgroundLayer, SetBackgroundColor, setPaintProperty, "background-color", setBackgroundColor, mbgl::Color)
 
-napi_value BackgroundLayerNAPI::SetBackgroundOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::BackgroundLayer, float>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "background-opacity",
-        &mbgl::style::BackgroundLayer::setBackgroundOpacity
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(BackgroundLayerNAPI, mbgl::style::BackgroundLayer, SetBackgroundOpacity, setPaintProperty, "background-opacity", setBackgroundOpacity, float)
 
-napi_value BackgroundLayerNAPI::SetBackgroundPattern(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::BackgroundLayer, mbgl::style::expression::Image>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "background-pattern",
-        &mbgl::style::BackgroundLayer::setBackgroundPattern
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(BackgroundLayerNAPI, mbgl::style::BackgroundLayer, SetBackgroundPattern, setPaintProperty, "background-pattern", setBackgroundPattern, mbgl::style::expression::Image)
 
 // ============================================================================
 // Property Getters (return constants or Expressions)
 // ============================================================================
 
-napi_value BackgroundLayerNAPI::GetBackgroundColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    mbgl::style::BackgroundLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
+DEFINE_LAYER_GETTER(BackgroundLayerNAPI, mbgl::style::BackgroundLayer, GetBackgroundColor, getBackgroundColor, mbgl::Color)
 
-    return mbgl::harmony::getProperty<mbgl::style::BackgroundLayer, mbgl::Color>(
-        env,
-        layer,
-        &mbgl::style::BackgroundLayer::getBackgroundColor
-    );
-}
-
-napi_value BackgroundLayerNAPI::GetBackgroundOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    mbgl::style::BackgroundLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::BackgroundLayer, float>(
-        env,
-        layer,
-        &mbgl::style::BackgroundLayer::getBackgroundOpacity
-    );
-}
+DEFINE_LAYER_GETTER(BackgroundLayerNAPI, mbgl::style::BackgroundLayer, GetBackgroundOpacity, getBackgroundOpacity, float)
 
 // ============================================================================
 // Base Layer Methods

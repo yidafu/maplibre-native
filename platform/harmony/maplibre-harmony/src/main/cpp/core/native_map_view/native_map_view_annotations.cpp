@@ -462,202 +462,220 @@ napi_value createFramesArray(napi_env env, const std::vector<HarmonyViewAnnotati
 
 } // namespace
 
-napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
+// Shared body for addMarkers/addPolylines/addPolygons: parse the array on the
+// JS thread, add all annotations with a single render-thread round trip, write
+// the generated IDs back to the wrappers, repaint and return the ID array.
+template <typename NapiT, typename AnnotationT, bool MarkerFlavor, typename MakeAnnotation>
+napi_value NativeMapView::AddAnnotationsBatch(napi_env env, napi_callback_info info,
+                                              const char* label, const char* pluralNoun,
+                                              const char* singularNoun, const char* wrapperName,
+                                              MakeAnnotation makeAnnotation) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
-    
-    // Retrieve the this object
+
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
     if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "updateMarker: Failed to get arguments");
+        Logger::error("NativeMapView", "%s: Failed to get arguments", label);
         return undefined;
     }
-    
+
     if (argc < 1) {
-        Logger::error("NativeMapView", "updateMarker: Requires 1 argument (Marker object)");
+        Logger::error("NativeMapView", "%s: Requires 1 argument (%s array)", label, pluralNoun);
         return undefined;
     }
-    
-    // Obtain the NativeMapView instance
+
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "updateMarker: Failed to unwrap NativeMapView instance");
+        Logger::error("NativeMapView", "%s: Failed to unwrap instance", label);
         return undefined;
     }
-    
-    if (!instance->map) {
-        Logger::error("NativeMapView", "updateMarker: Map not initialized");
-        return undefined;
-    }
-    
-    // Unwrap the Marker NAPI object
-    mbgl::harmony::MarkerNAPI* marker = nullptr;
-    if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&marker)) != napi_ok || !marker) {
-        Logger::error("NativeMapView", "updateMarker: Failed to unwrap Marker object");
-        return undefined;
-    }
-    
-    // Extract data from the Marker
-    auto annotationId = marker->getAnnotationId();
-    if (annotationId == static_cast<mbgl::AnnotationID>(-1)) {
-        Logger::error("NativeMapView", "updateMarker: Marker has invalid ID (not added to map yet)");
-        return undefined;
-    }
-    
-    auto position = marker->getPositionPoint();
-    auto iconId = marker->getIconId();
-    
-    try {
-        // Update the marker using SymbolAnnotation
-        mbgl::SymbolAnnotation annotation(position, iconId);
-        instance->invokeOnMapThread([instance, annotationId, annotation](mbgl::Map* m){
-            m->updateAnnotation(annotationId, annotation);
-            m->triggerRepaint();
-            // Marker position changed: re-evaluate view annotation frames on
-            // the same push path as camera updates (keeps InfoWindows glued
-            // to moving markers without waiting for a camera event).
-            instance->pushViewAnnotationFrames();
-        });
 
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "[MarkerDebug] updateMarker: Failed - %s", e.what());
-    }
-    
-    return undefined;
-}
-
-napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Retrieve the this object
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "addMarkers: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "addMarkers: Requires 1 argument (markers array)");
-        return undefined;
-    }
-    
-    // Obtain the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addMarkers: Failed to unwrap instance");
-        return undefined;
-    }
-    
     if (!instance->map) {
-        Logger::error("NativeMapView", "addMarkers: Map not initialized");
+        Logger::error("NativeMapView", "%s: Map not initialized", label);
         return undefined;
     }
-    
-    // Verify that the argument is an array
+
     bool isArray = false;
     if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
-        Logger::error("NativeMapView", "addMarkers: First argument must be an array");
+        Logger::error("NativeMapView", "%s: First argument must be an array", label);
         return undefined;
     }
-    
-    // Retrieve the array length
+
     uint32_t length = 0;
     if (napi_get_array_length(env, args[0], &length) != napi_ok) {
-        Logger::error("NativeMapView", "addMarkers: Failed to get array length");
+        Logger::error("NativeMapView", "%s: Failed to get array length", label);
         return undefined;
     }
-    
-    // Parse all markers on this (JS) thread first...
-    struct PendingMarker {
-        mbgl::SymbolAnnotation annotation;
-        mbgl::harmony::MarkerNAPI* marker;
+
+    // Parse all annotations on this (JS) thread first...
+    struct Pending {
+        AnnotationT annotation;
+        NapiT* wrapper;
     };
-    std::vector<PendingMarker> pending;
+    std::vector<Pending> pending;
     pending.reserve(length);
     bool warnedEmptyIcon = false;
 
     for (uint32_t i = 0; i < length; i++) {
-        napi_value markerObj;
-        if (napi_get_element(env, args[0], i, &markerObj) != napi_ok) {
-            Logger::error("NativeMapView", "addMarkers: Failed to get marker at index %u", i);
+        napi_value elementObj;
+        if (napi_get_element(env, args[0], i, &elementObj) != napi_ok) {
+            Logger::error("NativeMapView", "%s: Failed to get %s at index %u", label, singularNoun, i);
             continue;
         }
 
-        // Unwrap the MarkerNAPI object
-        mbgl::harmony::MarkerNAPI* marker = nullptr;
-        if (napi_unwrap(env, markerObj, reinterpret_cast<void**>(&marker)) != napi_ok || !marker) {
-            Logger::error("NativeMapView", "addMarkers: Failed to unwrap Marker at index %u", i);
+        NapiT* wrapper = nullptr;
+        if (napi_unwrap(env, elementObj, reinterpret_cast<void**>(&wrapper)) != napi_ok || !wrapper) {
+            Logger::error("NativeMapView", "%s: Failed to unwrap %s at index %u", label, wrapperName, i);
             continue;
         }
 
-        if (marker->getIconId().empty() && !warnedEmptyIcon) {
-            warnedEmptyIcon = true;
-            Logger::warn("NativeMapView",
-                         "addMarkers: marker without icon may be invisible; "
-                         "call addAnnotationIcon() or ensure the style has a default marker icon");
+        if constexpr (MarkerFlavor) {
+            if (wrapper->getIconId().empty() && !warnedEmptyIcon) {
+                warnedEmptyIcon = true;
+                Logger::warn("NativeMapView",
+                             "%s: marker without icon may be invisible; "
+                             "call addAnnotationIcon() or ensure the style has a default marker icon",
+                             label);
+            }
         }
 
-        pending.push_back({mbgl::SymbolAnnotation(marker->getPositionPoint(), marker->getIconId()), marker});
+        pending.push_back({makeAnnotation(wrapper), wrapper});
     }
 
     // ...then add them all with a single round trip to the render thread
-    // (one blocking hop total, not one per marker).
-    std::vector<mbgl::AnnotationID> ids;
-    ids.reserve(pending.size());
-    if (!pending.empty()) {
-        auto addedIds = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) {
-                std::vector<mbgl::AnnotationID> result;
-                result.reserve(pending.size());
-                for (auto& p : pending) {
-                    result.push_back(m->addAnnotation(p.annotation));
-                }
-                return result;
-            },
-            std::vector<mbgl::AnnotationID>{});
+    // (one blocking hop total, not one per annotation).
+    auto addedIds = instance->invokeOnMapThreadSync(
+        [&](mbgl::Map* m) {
+            std::vector<mbgl::AnnotationID> result;
+            result.reserve(pending.size());
+            for (auto& p : pending) {
+                result.push_back(m->addAnnotation(p.annotation));
+            }
+            return result;
+        },
+        std::vector<mbgl::AnnotationID>{});
 
-        for (size_t i = 0; i < addedIds.size() && i < pending.size(); i++) {
-            pending[i].marker->setAnnotationId(addedIds[i]);
-        }
-        ids = std::move(addedIds);
+    for (size_t i = 0; i < addedIds.size() && i < pending.size(); i++) {
+        pending[i].wrapper->setAnnotationId(addedIds[i]);
     }
 
-    if (ids.size() < pending.size()) {
-        Logger::warn("NativeMapView", "addMarkers: %u of %zu markers failed to add",
-                     static_cast<uint32_t>(pending.size() - ids.size()), pending.size());
+    if (addedIds.size() < pending.size()) {
+        Logger::warn("NativeMapView", "%s: %u of %zu %s failed to add",
+                     label, static_cast<uint32_t>(pending.size() - addedIds.size()),
+                     pending.size(), pluralNoun);
     }
-    
+
     // Trigger a repaint
-    if (!ids.empty()) {
-        instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
-        Logger::info("NativeMapView", "[MarkerDebug] NAPI-Repaint: Repaint triggered for %zu markers", ids.size());
-    } else {
+    if (!addedIds.empty()) {
+        instance->invokeOnMapThread([](mbgl::Map* m) { m->triggerRepaint(); });
+        if constexpr (MarkerFlavor) {
+            Logger::info("NativeMapView", "[MarkerDebug] NAPI-Repaint: Repaint triggered for %zu markers", addedIds.size());
+        }
+    } else if constexpr (MarkerFlavor) {
         Logger::warn("NativeMapView", "[MarkerDebug] NAPI-Repaint: ⚠️ No markers added, skipping repaint");
     }
-    
+
     // Create the array of returned IDs
     napi_value resultArray;
-    if (napi_create_array_with_length(env, ids.size(), &resultArray) != napi_ok) {
-        Logger::error("NativeMapView", "addMarkers: Failed to create result array");
+    if (napi_create_array_with_length(env, addedIds.size(), &resultArray) != napi_ok) {
+        Logger::error("NativeMapView", "%s: Failed to create result array", label);
         return undefined;
     }
-    
-    // Populate the ID array
-    for (size_t i = 0; i < ids.size(); i++) {
+
+    for (size_t i = 0; i < addedIds.size(); i++) {
         napi_value idValue;
-        if (napi_create_int64(env, static_cast<int64_t>(ids[i]), &idValue) == napi_ok) {
+        if (napi_create_int64(env, static_cast<int64_t>(addedIds[i]), &idValue) == napi_ok) {
             napi_set_element(env, resultArray, i, idValue);
         }
     }
-    
-    Logger::info("NativeMapView", "========== addMarkers() END - SUCCESS ==========");
+
+    if constexpr (MarkerFlavor) {
+        Logger::info("NativeMapView", "========== %s() END - SUCCESS ==========", label);
+    }
     return resultArray;
 }
+
+// Shared body for updateMarker/updatePolyline/updatePolygon.
+template <typename NapiT, typename AnnotationT, bool MarkerFlavor, typename MakeAnnotation>
+napi_value NativeMapView::UpdateAnnotationImpl(napi_env env, napi_callback_info info,
+                                               const char* label, const char* wrapperName,
+                                               const char* errorLabel, MakeAnnotation makeAnnotation) {
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "%s: Failed to get arguments", label);
+        return undefined;
+    }
+
+    if (argc < 1) {
+        Logger::error("NativeMapView", "%s: Requires 1 argument (%s object)", label, wrapperName);
+        return undefined;
+    }
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "%s: Failed to unwrap NativeMapView instance", label);
+        return undefined;
+    }
+
+    if (!instance->map) {
+        Logger::error("NativeMapView", "%s: Map not initialized", label);
+        return undefined;
+    }
+
+    NapiT* wrapper = nullptr;
+    if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&wrapper)) != napi_ok || !wrapper) {
+        Logger::error("NativeMapView", "%s: Failed to unwrap %s object", label, wrapperName);
+        return undefined;
+    }
+
+    auto annotationId = wrapper->getAnnotationId();
+    if (annotationId == static_cast<mbgl::AnnotationID>(-1)) {
+        Logger::error("NativeMapView", "%s: %s has invalid ID (not added to map yet)", label, wrapperName);
+        return undefined;
+    }
+
+    try {
+        AnnotationT annotation = makeAnnotation(wrapper);
+        instance->invokeOnMapThread([instance, annotationId, annotation](mbgl::Map* m) {
+            m->updateAnnotation(annotationId, annotation);
+            m->triggerRepaint();
+            if constexpr (MarkerFlavor) {
+                // Marker position changed: re-evaluate view annotation frames on
+                // the same push path as camera updates (keeps InfoWindows glued
+                // to moving markers without waiting for a camera event).
+                instance->pushViewAnnotationFrames();
+            }
+        });
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "%s: Failed - %s", errorLabel, e.what());
+    }
+
+    return undefined;
+}
+
+napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
+    return UpdateAnnotationImpl<mbgl::harmony::MarkerNAPI, mbgl::SymbolAnnotation, true>(
+        env, info, "updateMarker", "Marker", "[MarkerDebug] updateMarker",
+        [](mbgl::harmony::MarkerNAPI* marker) {
+            return mbgl::SymbolAnnotation(marker->getPositionPoint(), marker->getIconId());
+        });
+}
+
+napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
+    return AddAnnotationsBatch<mbgl::harmony::MarkerNAPI, mbgl::SymbolAnnotation, true>(
+        env, info, "addMarkers", "markers", "marker", "Marker",
+        [](mbgl::harmony::MarkerNAPI* marker) {
+            return mbgl::SymbolAnnotation(marker->getPositionPoint(), marker->getIconId());
+        });
+}
+
 
 napi_value NativeMapView::onLowMemory(napi_env env, napi_callback_info info) {
     // Low memory handling is managed by the Harmony system
@@ -666,350 +684,27 @@ napi_value NativeMapView::onLowMemory(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Retrieve the this object
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "addPolylines: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "addPolylines: Requires 1 argument (polylines array)");
-        return undefined;
-    }
-    
-    // Obtain the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addPolylines: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    if (!instance->map) {
-        Logger::error("NativeMapView", "addPolylines: Map not initialized");
-        return undefined;
-    }
-    
-    // Verify that the argument is an array
-    bool isArray = false;
-    if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
-        Logger::error("NativeMapView", "addPolylines: First argument must be an array");
-        return undefined;
-    }
-    
-    // Retrieve the array length
-    uint32_t length = 0;
-    if (napi_get_array_length(env, args[0], &length) != napi_ok) {
-        Logger::error("NativeMapView", "addPolylines: Failed to get array length");
-        return undefined;
-    }
-    
-    // Store the generated annotation IDs
-    std::vector<mbgl::AnnotationID> ids;
-    ids.reserve(length);
-    
-    // Parse all polylines on this thread first...
-    struct PendingPolyline {
-        mbgl::LineAnnotation annotation;
-        PolylineNAPI* polyline;
-    };
-    std::vector<PendingPolyline> pending;
-    pending.reserve(length);
-
-    for (uint32_t i = 0; i < length; i++) {
-        napi_value polylineObj;
-        if (napi_get_element(env, args[0], i, &polylineObj) != napi_ok) {
-            Logger::error("NativeMapView", "addPolylines: Failed to get polyline at index %u", i);
-            continue;
-        }
-
-        // Unwrap the PolylineNAPI object
-        PolylineNAPI* polyline = nullptr;
-        if (napi_unwrap(env, polylineObj, reinterpret_cast<void**>(&polyline)) != napi_ok || !polyline) {
-            Logger::error("NativeMapView", "addPolylines: Failed to unwrap Polyline at index %u", i);
-            continue;
-        }
-
-        pending.push_back({polyline->toAnnotation(), polyline});
-    }
-
-    // ...then add them all with a single round trip to the render thread.
-    {
-        auto addedIds = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) {
-                std::vector<mbgl::AnnotationID> result;
-                result.reserve(pending.size());
-                for (auto& p : pending) {
-                    result.push_back(m->addAnnotation(p.annotation));
-                }
-                return result;
-            },
-            std::vector<mbgl::AnnotationID>{});
-
-        for (size_t i = 0; i < addedIds.size() && i < pending.size(); i++) {
-            pending[i].polyline->setAnnotationId(addedIds[i]);
-        }
-        ids = std::move(addedIds);
-    }
-    
-    // Trigger a repaint
-    if (!ids.empty()) {
-        instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
-    }
-    
-    // Create the array of returned IDs
-    napi_value resultArray;
-    if (napi_create_array_with_length(env, ids.size(), &resultArray) != napi_ok) {
-        Logger::error("NativeMapView", "addPolylines: Failed to create result array");
-        return undefined;
-    }
-    
-    // Populate the ID array
-    for (size_t i = 0; i < ids.size(); i++) {
-        napi_value idValue;
-        if (napi_create_int64(env, static_cast<int64_t>(ids[i]), &idValue) == napi_ok) {
-            napi_set_element(env, resultArray, i, idValue);
-        }
-    }
-    
-    return resultArray;
+    return AddAnnotationsBatch<PolylineNAPI, mbgl::LineAnnotation>(
+        env, info, "addPolylines", "polylines", "polyline", "Polyline",
+        [](PolylineNAPI* polyline) { return polyline->toAnnotation(); });
 }
 
 napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Retrieve the this object
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "addPolygons: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "addPolygons: Requires 1 argument (polygons array)");
-        return undefined;
-    }
-    
-    // Obtain the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addPolygons: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    if (!instance->map) {
-        Logger::error("NativeMapView", "addPolygons: Map not initialized");
-        return undefined;
-    }
-    
-    // Verify that the argument is an array
-    bool isArray = false;
-    if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
-        Logger::error("NativeMapView", "addPolygons: First argument must be an array");
-        return undefined;
-    }
-    
-    // Retrieve the array length
-    uint32_t length = 0;
-    if (napi_get_array_length(env, args[0], &length) != napi_ok) {
-        Logger::error("NativeMapView", "addPolygons: Failed to get array length");
-        return undefined;
-    }
-    
-    // Store the generated annotation IDs
-    std::vector<mbgl::AnnotationID> ids;
-    ids.reserve(length);
-    
-    // Parse all polygons on this thread first...
-    struct PendingPolygon {
-        mbgl::FillAnnotation annotation;
-        PolygonNAPI* polygon;
-    };
-    std::vector<PendingPolygon> pending;
-    pending.reserve(length);
-
-    for (uint32_t i = 0; i < length; i++) {
-        napi_value polygonObj;
-        if (napi_get_element(env, args[0], i, &polygonObj) != napi_ok) {
-            Logger::error("NativeMapView", "addPolygons: Failed to get polygon at index %u", i);
-            continue;
-        }
-
-        // Unwrap the PolygonNAPI object
-        PolygonNAPI* polygon = nullptr;
-        if (napi_unwrap(env, polygonObj, reinterpret_cast<void**>(&polygon)) != napi_ok || !polygon) {
-            Logger::error("NativeMapView", "addPolygons: Failed to unwrap Polygon at index %u", i);
-            continue;
-        }
-
-        pending.push_back({polygon->toAnnotation(), polygon});
-    }
-
-    // ...then add them all with a single round trip to the render thread.
-    {
-        auto addedIds = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) {
-                std::vector<mbgl::AnnotationID> result;
-                result.reserve(pending.size());
-                for (auto& p : pending) {
-                    result.push_back(m->addAnnotation(p.annotation));
-                }
-                return result;
-            },
-            std::vector<mbgl::AnnotationID>{});
-
-        for (size_t i = 0; i < addedIds.size() && i < pending.size(); i++) {
-            pending[i].polygon->setAnnotationId(addedIds[i]);
-        }
-        ids = std::move(addedIds);
-    }
-    
-    // Trigger a repaint
-    if (!ids.empty()) {
-        instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
-    }
-    
-    // Create the array of returned IDs
-    napi_value resultArray;
-    if (napi_create_array_with_length(env, ids.size(), &resultArray) != napi_ok) {
-        Logger::error("NativeMapView", "addPolygons: Failed to create result array");
-        return undefined;
-    }
-    
-    // Populate the ID array
-    for (size_t i = 0; i < ids.size(); i++) {
-        napi_value idValue;
-        if (napi_create_int64(env, static_cast<int64_t>(ids[i]), &idValue) == napi_ok) {
-            napi_set_element(env, resultArray, i, idValue);
-        }
-    }
-    
-    return resultArray;
+    return AddAnnotationsBatch<PolygonNAPI, mbgl::FillAnnotation>(
+        env, info, "addPolygons", "polygons", "polygon", "Polygon",
+        [](PolygonNAPI* polygon) { return polygon->toAnnotation(); });
 }
 
 napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Retrieve the this object
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "updatePolyline: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "updatePolyline: Requires 1 argument (Polyline object)");
-        return undefined;
-    }
-    
-    // Obtain the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "updatePolyline: Failed to unwrap NativeMapView instance");
-        return undefined;
-    }
-    
-    if (!instance->map) {
-        Logger::error("NativeMapView", "updatePolyline: Map not initialized");
-        return undefined;
-    }
-    
-    // Unwrap the Polyline NAPI object
-    PolylineNAPI* polyline = nullptr;
-    if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&polyline)) != napi_ok || !polyline) {
-        Logger::error("NativeMapView", "updatePolyline: Failed to unwrap Polyline object");
-        return undefined;
-    }
-    
-    // Extract data from the polyline
-    auto annotationId = polyline->getAnnotationId();
-    if (annotationId == static_cast<mbgl::AnnotationID>(-1)) {
-        Logger::error("NativeMapView", "updatePolyline: Polyline has invalid ID (not added to map yet)");
-        return undefined;
-    }
-    
-    try {
-        // Update the polyline using LineAnnotation
-        mbgl::LineAnnotation annotation = polyline->toAnnotation();
-        instance->invokeOnMapThread([annotationId, annotation](mbgl::Map* m){
-            m->updateAnnotation(annotationId, annotation);
-            m->triggerRepaint();
-        });
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "updatePolyline: Failed - %s", e.what());
-    }
-    
-    return undefined;
+    return UpdateAnnotationImpl<PolylineNAPI, mbgl::LineAnnotation>(
+        env, info, "updatePolyline", "Polyline", "updatePolyline",
+        [](PolylineNAPI* polyline) { return polyline->toAnnotation(); });
 }
 
 napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // Retrieve the this object
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "updatePolygon: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "updatePolygon: Requires 1 argument (Polygon object)");
-        return undefined;
-    }
-    
-    // Obtain the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "updatePolygon: Failed to unwrap NativeMapView instance");
-        return undefined;
-    }
-    
-    if (!instance->map) {
-        Logger::error("NativeMapView", "updatePolygon: Map not initialized");
-        return undefined;
-    }
-    
-    // Unwrap the Polygon NAPI object
-    PolygonNAPI* polygon = nullptr;
-    if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&polygon)) != napi_ok || !polygon) {
-        Logger::error("NativeMapView", "updatePolygon: Failed to unwrap Polygon object");
-        return undefined;
-    }
-    
-    // Extract data from the polygon
-    auto annotationId = polygon->getAnnotationId();
-    if (annotationId == static_cast<mbgl::AnnotationID>(-1)) {
-        Logger::error("NativeMapView", "updatePolygon: Polygon has invalid ID (not added to map yet)");
-        return undefined;
-    }
-    
-    try {
-        // Update the polygon using FillAnnotation
-        mbgl::FillAnnotation annotation = polygon->toAnnotation();
-        
-        instance->invokeOnMapThread([annotationId, annotation](mbgl::Map* m){
-            m->updateAnnotation(annotationId, annotation);
-            m->triggerRepaint();
-        });
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "updatePolygon: Failed - %s", e.what());
-    }
-    
-    return undefined;
+    return UpdateAnnotationImpl<PolygonNAPI, mbgl::FillAnnotation>(
+        env, info, "updatePolygon", "Polygon", "updatePolygon",
+        [](PolygonNAPI* polygon) { return polygon->toAnnotation(); });
 }
 
 napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info info) {

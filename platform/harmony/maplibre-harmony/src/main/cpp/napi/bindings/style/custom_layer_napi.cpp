@@ -50,27 +50,11 @@ napi_value CustomLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getColor", nullptr, GetColor, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "CustomLayer", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("CustomLayerNAPI", "Failed to define CustomLayer class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("CustomLayerNAPI", "Failed to create reference to CustomLayer constructor");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "CustomLayer", cons);
-    if (status != napi_ok) {
-        Logger::error("CustomLayerNAPI", "Failed to export CustomLayer class");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "CustomLayer", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "CustomLayerNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("CustomLayerNAPI", "CustomLayer NAPI class registered successfully");
     return exports;
 }

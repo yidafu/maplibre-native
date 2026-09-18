@@ -19,6 +19,96 @@ using mbgl::harmony::geojson::GeoJsonConverter;
 namespace mbgl {
 namespace harmony {
 
+namespace {
+
+// Read a NAPI array of strings into `out`. On the first non-string element it
+// throws a JS error (notStringMessage / readFailedMessage) and returns false,
+// in which case the caller must bail out.
+bool ReadStringArrayArg(napi_env env, napi_value arrayValue,
+                        const char* notStringMessage,
+                        const char* readFailedMessage,
+                        std::vector<std::string>& out) {
+    uint32_t length;
+    napi_get_array_length(env, arrayValue, &length);
+
+    out.clear();
+    for (uint32_t i = 0; i < length; i++) {
+        napi_value element;
+        napi_get_element(env, arrayValue, i, &element);
+
+        size_t strLength = 0;
+        if (napi_get_value_string_utf8(env, element, nullptr, 0, &strLength) != napi_ok) {
+            napi_throw_error(env, nullptr, notStringMessage);
+            return false;
+        }
+        std::string str(strLength, '\0');
+        if (strLength > 0 &&
+            napi_get_value_string_utf8(env, element, &str[0], strLength + 1, nullptr) != napi_ok) {
+            napi_throw_error(env, nullptr, readFailedMessage);
+            return false;
+        }
+
+        out.push_back(std::move(str));
+    }
+    return true;
+}
+
+// Shared tail of the rendered-feature queries: parse the optional layerIds
+// argument (layerIdsArgIndex) and filter expression argument (filterArgIndex)
+// into `options`. Returns false (with a pending JS exception) when a layer id
+// element cannot be read.
+bool ParseRenderedQueryOptions(napi_env env, NapiArgs& args,
+                               size_t layerIdsArgIndex, size_t filterArgIndex,
+                               mbgl::RenderedQueryOptions& options) {
+    // Parse optional layerIds parameter
+    if (args.Count() >= layerIdsArgIndex + 1) {
+        napi_value layerIdsValue = args.GetValue(layerIdsArgIndex);
+        napi_valuetype type;
+        napi_typeof(env, layerIdsValue, &type);
+
+        if (type == napi_object) {
+            bool isArray;
+            napi_is_array(env, layerIdsValue, &isArray);
+
+            if (isArray) {
+                std::vector<std::string> layerIds;
+                if (!ReadStringArrayArg(env, layerIdsValue,
+                                        "layerIds must be an array of strings",
+                                        "Failed to read layerIds element", layerIds)) {
+                    return false;
+                }
+
+                if (!layerIds.empty()) {
+                    options.layerIDs = layerIds;
+                }
+            }
+        }
+    }
+
+    // Parse optional filter parameter
+    if (args.Count() >= filterArgIndex + 1) {
+        napi_value filterValue = args.GetValue(filterArgIndex);
+        napi_valuetype type;
+        napi_typeof(env, filterValue, &type);
+
+        if (type == napi_object) {
+            bool isArray;
+            napi_is_array(env, filterValue, &isArray);
+
+            if (isArray) {
+                auto filter = mbgl::harmony::napiArrayToFilter(env, filterValue);
+                if (filter) {
+                    options.filter = *filter;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+} // namespace
+
 napi_value NativeMapView::getMetersPerPixelAtLatitude(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
@@ -377,64 +467,10 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
         // 3. Build query options
         mbgl::RenderedQueryOptions options;
 
-        // 4. Parse optional layerIds parameter
-        if (args.Count() >= 3) {
-            napi_value layerIdsValue = args.GetValue(2);
-            napi_valuetype type;
-            napi_typeof(env, layerIdsValue, &type);
-
-            if (type == napi_object) {
-                bool isArray;
-                napi_is_array(env, layerIdsValue, &isArray);
-
-                if (isArray) {
-                    uint32_t length;
-                    napi_get_array_length(env, layerIdsValue, &length);
-
-                    std::vector<std::string> layerIds;
-                    for (uint32_t i = 0; i < length; i++) {
-                        napi_value element;
-                        napi_get_element(env, layerIdsValue, i, &element);
-
-                        size_t strLength = 0;
-                        if (napi_get_value_string_utf8(env, element, nullptr, 0, &strLength) != napi_ok) {
-                            napi_throw_error(env, nullptr, "layerIds must be an array of strings");
-                            return nullptr;
-                        }
-                        std::string str(strLength, '\0');
-                        if (strLength > 0 &&
-                            napi_get_value_string_utf8(env, element, &str[0], strLength + 1, nullptr) != napi_ok) {
-                            napi_throw_error(env, nullptr, "Failed to read layerIds element");
-                            return nullptr;
-                        }
-
-                        layerIds.push_back(std::move(str));
-                    }
-
-                    if (!layerIds.empty()) {
-                        options.layerIDs = layerIds;
-                    }
-                }
-            }
-        }
-
-        // 5. Parse optional filter parameter
-        if (args.Count() >= 4) {
-            napi_value filterValue = args.GetValue(3);
-            napi_valuetype type;
-            napi_typeof(env, filterValue, &type);
-
-            if (type == napi_object) {
-                bool isArray;
-                napi_is_array(env, filterValue, &isArray);
-
-                if (isArray) {
-                    auto filter = mbgl::harmony::napiArrayToFilter(env, filterValue);
-                    if (filter) {
-                        options.filter = *filter;
-                    }
-                }
-            }
+        // 4. Parse optional layerIds parameter and
+        // 5. parse optional filter parameter
+        if (!ParseRenderedQueryOptions(env, args, 2, 3, options)) {
+            return nullptr;
         }
 
         // 6. Invoke HarmonyRenderer query functionality
@@ -509,64 +545,10 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
         // 3. Build query options
         mbgl::RenderedQueryOptions options;
 
-        // 4. Parse optional layerIds parameter
-        if (args.Count() >= 5) {
-            napi_value layerIdsValue = args.GetValue(4);
-            napi_valuetype type;
-            napi_typeof(env, layerIdsValue, &type);
-
-            if (type == napi_object) {
-                bool isArray;
-                napi_is_array(env, layerIdsValue, &isArray);
-
-                if (isArray) {
-                    uint32_t length;
-                    napi_get_array_length(env, layerIdsValue, &length);
-
-                    std::vector<std::string> layerIds;
-                    for (uint32_t i = 0; i < length; i++) {
-                        napi_value element;
-                        napi_get_element(env, layerIdsValue, i, &element);
-
-                        size_t strLength = 0;
-                        if (napi_get_value_string_utf8(env, element, nullptr, 0, &strLength) != napi_ok) {
-                            napi_throw_error(env, nullptr, "layerIds must be an array of strings");
-                            return nullptr;
-                        }
-                        std::string str(strLength, '\0');
-                        if (strLength > 0 &&
-                            napi_get_value_string_utf8(env, element, &str[0], strLength + 1, nullptr) != napi_ok) {
-                            napi_throw_error(env, nullptr, "Failed to read layerIds element");
-                            return nullptr;
-                        }
-
-                        layerIds.push_back(std::move(str));
-                    }
-
-                    if (!layerIds.empty()) {
-                        options.layerIDs = layerIds;
-                    }
-                }
-            }
-        }
-
-        // 5. Parse optional filter parameter
-        if (args.Count() >= 6) {
-            napi_value filterValue = args.GetValue(5);
-            napi_valuetype type;
-            napi_typeof(env, filterValue, &type);
-
-            if (type == napi_object) {
-                bool isArray;
-                napi_is_array(env, filterValue, &isArray);
-
-                if (isArray) {
-                    auto filter = mbgl::harmony::napiArrayToFilter(env, filterValue);
-                    if (filter) {
-                        options.filter = *filter;
-                    }
-                }
-            }
+        // 4. Parse optional layerIds parameter and
+        // 5. parse optional filter parameter
+        if (!ParseRenderedQueryOptions(env, args, 4, 5, options)) {
+            return nullptr;
         }
 
         // 6. Invoke HarmonyRenderer query functionality
@@ -646,27 +628,12 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
                 napi_is_array(env, sourceLayerIdsValue, &isArray);
 
                 if (isArray) {
-                    uint32_t length;
-                    napi_get_array_length(env, sourceLayerIdsValue, &length);
-
                     std::vector<std::string> sourceLayerIds;
-                    for (uint32_t i = 0; i < length; i++) {
-                        napi_value element;
-                        napi_get_element(env, sourceLayerIdsValue, i, &element);
-
-                        size_t strLength = 0;
-                        if (napi_get_value_string_utf8(env, element, nullptr, 0, &strLength) != napi_ok) {
-                            napi_throw_error(env, nullptr, "sourceLayerIds must be an array of strings");
-                            return nullptr;
-                        }
-                        std::string layerId(strLength, '\0');
-                        if (strLength > 0 &&
-                            napi_get_value_string_utf8(env, element, &layerId[0], strLength + 1, nullptr) != napi_ok) {
-                            napi_throw_error(env, nullptr, "Failed to read sourceLayerIds element");
-                            return nullptr;
-                        }
-
-                        sourceLayerIds.push_back(std::move(layerId));
+                    if (!ReadStringArrayArg(env, sourceLayerIdsValue,
+                                            "sourceLayerIds must be an array of strings",
+                                            "Failed to read sourceLayerIds element",
+                                            sourceLayerIds)) {
+                        return nullptr;
                     }
 
                     options.sourceLayers = sourceLayerIds;

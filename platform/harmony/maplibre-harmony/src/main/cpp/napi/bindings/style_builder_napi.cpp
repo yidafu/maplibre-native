@@ -44,29 +44,11 @@ napi_value StyleBuilderNAPI::Init(napi_env env, napi_value exports) {
         { "withTransitionOptions", nullptr, WithTransitionOptions, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "StyleBuilder", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("StyleBuilderNAPI", "Failed to define StyleBuilder class");
-        return nullptr;
-    }
-    
-    // Create constructor reference
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("StyleBuilderNAPI", "Failed to create constructor reference");
-        return nullptr;
-    }
-    
-    // Add constructor to exports
-    status = napi_set_named_property(env, exports, "StyleBuilder", cons);
-    if (status != napi_ok) {
-        Logger::error("StyleBuilderNAPI", "Failed to set StyleBuilder property");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "StyleBuilder", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "StyleBuilderNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("StyleBuilderNAPI", "StyleBuilder NAPI class initialized successfully");
     return exports;
 }

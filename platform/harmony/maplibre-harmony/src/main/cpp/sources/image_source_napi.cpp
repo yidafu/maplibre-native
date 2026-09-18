@@ -8,6 +8,8 @@
 #include <mbgl/util/geo.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "source_napi_utils.hpp"
+#include "image_payload_napi.hpp"
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
@@ -53,27 +55,11 @@ napi_value ImageSourceNAPI::Init(napi_env env, napi_value exports) {
         { "setCoordinates", nullptr, SetCoordinates, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "ImageSource", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("ImageSourceNAPI", "Failed to define ImageSource class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("ImageSourceNAPI", "Failed to create constructor reference");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "ImageSource", cons);
-    if (status != napi_ok) {
-        Logger::error("ImageSourceNAPI", "Failed to set ImageSource property");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "ImageSource", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "ImageSourceNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("ImageSourceNAPI", "ImageSource NAPI class initialized successfully");
     return exports;
 }
@@ -99,58 +85,21 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
     
     try {
         // Parse coordinates argument (four LatLng values, clockwise: top-left, top-right, bottom-right, bottom-left)
-        std::array<mbgl::LatLng, 4> coords;
-        
+        std::array<mbgl::LatLng, 4> coords = DefaultLatLngQuad();
+
         if (napiArgs.Count() >= 2) {
             napi_value coordsValue = napiArgs.GetValue(1);
             bool isArray = false;
             napi_is_array(env, coordsValue, &isArray);
-            
-            if (isArray) {
-                uint32_t arrayLength = 0;
-                napi_get_array_length(env, coordsValue, &arrayLength);
-                
-                if (arrayLength == 4) {
-                    for (uint32_t i = 0; i < 4; ++i) {
-                        napi_value coordValue;
-                        napi_get_element(env, coordsValue, i, &coordValue);
-                        
-                        // Each coord should be a [lng, lat] array
-                        bool isCoordArray = false;
-                        napi_is_array(env, coordValue, &isCoordArray);
-                        
-                        if (isCoordArray) {
-                            napi_value lngValue, latValue;
-                            napi_get_element(env, coordValue, 0, &lngValue);
-                            napi_get_element(env, coordValue, 1, &latValue);
-                            
-                            double lng = 0.0, lat = 0.0;
-                            napi_get_value_double(env, lngValue, &lng);
-                            napi_get_value_double(env, latValue, &lat);
-                            
-                            coords[i] = mbgl::LatLng{lat, lng};
-                        }
-                    }
-                } else {
-                    Logger::warn("ImageSourceNAPI", "Coordinates array must have 4 elements, using default");
-                    coords = {{
-                        mbgl::LatLng{0, 0}, mbgl::LatLng{0, 1},
-                        mbgl::LatLng{1, 1}, mbgl::LatLng{1, 0}
-                    }};
-                }
-            } else {
+            if (!isArray) {
                 Logger::warn("ImageSourceNAPI", "Coordinates must be an array, using default");
-                coords = {{
-                    mbgl::LatLng{0, 0}, mbgl::LatLng{0, 1},
-                    mbgl::LatLng{1, 1}, mbgl::LatLng{1, 0}
-                }};
+                coords = DefaultLatLngQuad();
+            } else if (!ParseLatLngQuad(env, coordsValue, coords)) {
+                if (napiArgs.GetArrayLength(coordsValue) != 4) {
+                    Logger::warn("ImageSourceNAPI", "Coordinates array must have 4 elements, using default");
+                }
+                coords = DefaultLatLngQuad();
             }
-        } else {
-            // Fallback to default coordinates
-            coords = {{
-                mbgl::LatLng{0, 0}, mbgl::LatLng{0, 1},
-                mbgl::LatLng{1, 1}, mbgl::LatLng{1, 0}
-            }};
         }
         
         auto source = std::make_unique<mbgl::style::ImageSource>(sourceId, coords);
@@ -182,19 +131,7 @@ napi_value ImageSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSourc
                                 sourcePtr ? new ImageSourceNAPI(sourcePtr) : nullptr);
 }
 
-napi_value ImageSourceNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    ImageSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        return CreateStringValue(env, "");
-    }
-    
-    return CreateStringValue(env, sourceNapi->id);
-}
+DEFINE_SOURCE_GET_ID(ImageSourceNAPI)
 
 napi_value ImageSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     napi_value jsThis;
@@ -259,45 +196,20 @@ napi_value ImageSourceNAPI::SetImage(napi_env env, napi_callback_info info) {
     
     try {
         napi_value imageArg = args[0];
-        
-        // Check if it's an Image NAPI object
-        if (ImageNAPI::IsImageObject(env, imageArg)) {
-            // Unwrap ImageNAPI and get the image data
-            ImageNAPI* imageNapi = ImageNAPI::Unwrap(env, imageArg);
-            if (!imageNapi) {
-                napi_throw_error(env, nullptr, "Failed to unwrap Image object");
-                return nullptr;
-            }
-            
-            // Convert to style::Image and get the PremultipliedImage
-            auto styleImage = imageNapi->toStyleImage();
-            source->setImage(styleImage->getImage().clone());
-            
-            Logger::info("ImageSourceNAPI", "SetImage from Image object: %s -> %s", 
-                        sourceNapi->id.c_str(), imageNapi->getName().c_str());
-        }
-        // Check if it's a Bitmap object
-        else if (mbgl::harmony::BitmapNAPI::IsBitmapObject(env, imageArg)) {
-            // Get Bitmap data
-            mbgl::harmony::BitmapNAPI* bitmapNapi = mbgl::harmony::BitmapNAPI::Unwrap(env, imageArg);
-            if (!bitmapNapi) {
-                napi_throw_error(env, nullptr, "Failed to unwrap Bitmap object");
-                return nullptr;
-            }
-            
-            auto image = bitmapNapi->getImage();
-            if (!image) {
-                napi_throw_error(env, nullptr, "Bitmap has no image data");
-                return nullptr;
-            }
-            
-            source->setImage(image->clone());
-            
-            Logger::info("ImageSourceNAPI", "SetImage from Bitmap: %s", sourceNapi->id.c_str());
-        }
-        else {
-            napi_throw_error(env, nullptr, "SetImage requires an Image or Bitmap object");
+
+        // Shared Image/Bitmap ingestion (same dispatch as VideoSource::updateImage)
+        auto payload = DecodeImageOrBitmap(env, imageArg, "SetImage requires an Image or Bitmap object");
+        if (!payload) {
             return nullptr;
+        }
+
+        source->setImage(std::move(payload->image));
+
+        if (payload->fromImageObject) {
+            Logger::info("ImageSourceNAPI", "SetImage from Image object: %s -> %s",
+                        sourceNapi->id.c_str(), payload->imageObjectName.c_str());
+        } else {
+            Logger::info("ImageSourceNAPI", "SetImage from Bitmap: %s", sourceNapi->id.c_str());
         }
     } catch (const std::exception& e) {
         Logger::error("ImageSourceNAPI", "SetImage failed: %s", e.what());
@@ -334,47 +246,24 @@ napi_value ImageSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
     }
     
     // Parse the coordinates argument (four LatLng values)
-    std::array<mbgl::LatLng, 4> coords;
-    
     napi_value coordsValue = args[0];
-    bool isArray = false;
-    napi_is_array(env, coordsValue, &isArray);
-    
-    if (!isArray) {
-        napi_throw_error(env, nullptr, "coordinates must be an array");
-        return nullptr;
-    }
-    
-    uint32_t arrayLength = 0;
-    napi_get_array_length(env, coordsValue, &arrayLength);
-    
-    if (arrayLength != 4) {
-        napi_throw_error(env, nullptr, "coordinates array must have exactly 4 elements");
-        return nullptr;
-    }
-    
-    for (uint32_t i = 0; i < 4; ++i) {
-        napi_value coordValue;
-        napi_get_element(env, coordsValue, i, &coordValue);
-        
-        // Each coord should be a [lng, lat] array
-        bool isCoordArray = false;
-        napi_is_array(env, coordValue, &isCoordArray);
-        
-        if (!isCoordArray) {
-            napi_throw_error(env, nullptr, "Each coordinate must be a [lng, lat] array");
-            return nullptr;
+    std::array<mbgl::LatLng, 4> coords;
+    if (!ParseLatLngQuad(env, coordsValue, coords)) {
+        // Keep the historical, failure-reason-specific error messages
+        bool isArray = false;
+        napi_is_array(env, coordsValue, &isArray);
+        if (!isArray) {
+            napi_throw_error(env, nullptr, "coordinates must be an array");
+        } else {
+            uint32_t arrayLength = 0;
+            napi_get_array_length(env, coordsValue, &arrayLength);
+            if (arrayLength != 4) {
+                napi_throw_error(env, nullptr, "coordinates array must have exactly 4 elements");
+            } else {
+                napi_throw_error(env, nullptr, "Each coordinate must be a [lng, lat] array");
+            }
         }
-        
-        napi_value lngValue, latValue;
-        napi_get_element(env, coordValue, 0, &lngValue);
-        napi_get_element(env, coordValue, 1, &latValue);
-        
-        double lng = 0.0, lat = 0.0;
-        napi_get_value_double(env, lngValue, &lng);
-        napi_get_value_double(env, latValue, &lat);
-        
-        coords[i] = mbgl::LatLng{lat, lng};
+        return nullptr;
     }
     
     try {

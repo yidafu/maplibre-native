@@ -11,6 +11,7 @@
 #include <mbgl/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "layer_property_macros.hpp"
 namespace mbgl {
 namespace harmony {
 
@@ -100,27 +101,11 @@ napi_value CircleLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "CircleLayer", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("CircleLayerNAPI", "Failed to define CircleLayer class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("CircleLayerNAPI", "Failed to create reference to CircleLayer constructor");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "CircleLayer", cons);
-    if (status != napi_ok) {
-        Logger::error("CircleLayerNAPI", "Failed to export CircleLayer class");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "CircleLayer", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "CircleLayerNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("CircleLayerNAPI", "CircleLayer NAPI class registered successfully");
     return exports;
 }
@@ -173,248 +158,29 @@ napi_value CircleLayerNAPI::CreateInstance(napi_env env, mbgl::style::CircleLaye
 // Paint Property Setters (Expression supported)
 // ============================================================================
 
-napi_value CircleLayerNAPI::SetCircleRadius(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::CircleLayer, float>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "circle-radius",
-        &mbgl::style::CircleLayer::setCircleRadius
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleRadius, setPaintProperty, "circle-radius", setCircleRadius, float)
 
-napi_value CircleLayerNAPI::SetCircleColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::CircleLayer, mbgl::Color>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "circle-color",
-        &mbgl::style::CircleLayer::setCircleColor
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleColor, setPaintProperty, "circle-color", setCircleColor, mbgl::Color)
 
-napi_value CircleLayerNAPI::SetCircleOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::CircleLayer, float>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "circle-opacity",
-        &mbgl::style::CircleLayer::setCircleOpacity
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleOpacity, setPaintProperty, "circle-opacity", setCircleOpacity, float)
 
-napi_value CircleLayerNAPI::SetCircleBlur(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::CircleLayer, float>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "circle-blur",
-        &mbgl::style::CircleLayer::setCircleBlur
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleBlur, setPaintProperty, "circle-blur", setCircleBlur, float)
 
-napi_value CircleLayerNAPI::SetCircleStrokeWidth(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::CircleLayer, float>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "circle-stroke-width",
-        &mbgl::style::CircleLayer::setCircleStrokeWidth
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleStrokeWidth, setPaintProperty, "circle-stroke-width", setCircleStrokeWidth, float)
 
-napi_value CircleLayerNAPI::SetCircleStrokeColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::CircleLayer, mbgl::Color>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "circle-stroke-color",
-        &mbgl::style::CircleLayer::setCircleStrokeColor
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleStrokeColor, setPaintProperty, "circle-stroke-color", setCircleStrokeColor, mbgl::Color)
 
-napi_value CircleLayerNAPI::SetCircleStrokeOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::CircleLayer, float>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "circle-stroke-opacity",
-        &mbgl::style::CircleLayer::setCircleStrokeOpacity
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleStrokeOpacity, setPaintProperty, "circle-stroke-opacity", setCircleStrokeOpacity, float)
 
 // ============================================================================
 // Property Getters (return constants or Expressions)
 // ============================================================================
 
-napi_value CircleLayerNAPI::GetCircleRadius(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleRadius, getCircleRadius, float)
 
-    return mbgl::harmony::getProperty<mbgl::style::CircleLayer, float>(
-        env,
-        layer,
-        &mbgl::style::CircleLayer::getCircleRadius
-    );
-}
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleColor, getCircleColor, mbgl::Color)
 
-napi_value CircleLayerNAPI::GetCircleColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::CircleLayer, mbgl::Color>(
-        env,
-        layer,
-        &mbgl::style::CircleLayer::getCircleColor
-    );
-}
-
-napi_value CircleLayerNAPI::GetCircleOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::CircleLayer, float>(
-        env,
-        layer,
-        &mbgl::style::CircleLayer::getCircleOpacity
-    );
-}
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleOpacity, getCircleOpacity, float)
 
 // ============================================================================
 // Base Layer Methods
@@ -492,210 +258,25 @@ napi_value CircleLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
 // New Properties
 // ============================================================================
 
-napi_value CircleLayerNAPI::SetCircleTranslate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::CircleLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), argv[0], "circle-translate",
-        &mbgl::style::CircleLayer::setCircleTranslate
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleTranslate, setPaintProperty, "circle-translate", setCircleTranslate, std::array<float,2>)
 
-napi_value CircleLayerNAPI::GetCircleTranslate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleTranslate, getCircleTranslate, std::array<float,2>)
 
-    return mbgl::harmony::getProperty<mbgl::style::CircleLayer, std::array<float, 2>>(
-        env, layer, &mbgl::style::CircleLayer::getCircleTranslate
-    );
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleTranslateAnchor, setPaintProperty, "circle-translate-anchor", setCircleTranslateAnchor, mbgl::style::TranslateAnchorType)
 
-napi_value CircleLayerNAPI::SetCircleTranslateAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::CircleLayer, mbgl::style::TranslateAnchorType>(
-        env, layerObj->getLayer(), argv[0], "circle-translate-anchor",
-        &mbgl::style::CircleLayer::setCircleTranslateAnchor
-    );
-    return thisVar;
-}
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleTranslateAnchor, getCircleTranslateAnchor, mbgl::style::TranslateAnchorType)
 
-napi_value CircleLayerNAPI::GetCircleTranslateAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCirclePitchScale, setPaintProperty, "circle-pitch-scale", setCirclePitchScale, mbgl::style::CirclePitchScaleType)
 
-    return mbgl::harmony::getProperty<mbgl::style::CircleLayer, mbgl::style::TranslateAnchorType>(
-        env, layer, &mbgl::style::CircleLayer::getCircleTranslateAnchor
-    );
-}
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCirclePitchScale, getCirclePitchScale, mbgl::style::CirclePitchScaleType)
 
-napi_value CircleLayerNAPI::SetCirclePitchScale(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::CircleLayer, mbgl::style::CirclePitchScaleType>(
-        env, layerObj->getLayer(), argv[0], "circle-pitch-scale",
-        &mbgl::style::CircleLayer::setCirclePitchScale
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCirclePitchAlignment, setLayoutProperty, "circle-pitch-alignment", setCirclePitchAlignment, mbgl::style::AlignmentType)
 
-napi_value CircleLayerNAPI::GetCirclePitchScale(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCirclePitchAlignment, getCirclePitchAlignment, mbgl::style::AlignmentType)
 
-    return mbgl::harmony::getProperty<mbgl::style::CircleLayer, mbgl::style::CirclePitchScaleType>(
-        env, layer, &mbgl::style::CircleLayer::getCirclePitchScale
-    );
-}
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleSortKey, setLayoutProperty, "circle-sort-key", setCircleSortKey, float)
 
-napi_value CircleLayerNAPI::SetCirclePitchAlignment(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::CircleLayer, mbgl::style::AlignmentType>(
-        env, layerObj->getLayer(), argv[0], "circle-pitch-alignment",
-        &mbgl::style::CircleLayer::setCirclePitchAlignment
-    );
-    return thisVar;
-}
-
-napi_value CircleLayerNAPI::GetCirclePitchAlignment(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::CircleLayer, mbgl::style::AlignmentType>(
-        env, layer, &mbgl::style::CircleLayer::getCirclePitchAlignment
-    );
-}
-
-napi_value CircleLayerNAPI::SetCircleSortKey(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::CircleLayer, float>(
-        env, layerObj->getLayer(), argv[0], "circle-sort-key",
-        &mbgl::style::CircleLayer::setCircleSortKey
-    );
-    return thisVar;
-}
-
-napi_value CircleLayerNAPI::GetCircleSortKey(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::CircleLayer, float>(
-        env, layer, &mbgl::style::CircleLayer::getCircleSortKey
-    );
-}
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleSortKey, getCircleSortKey, float)
 
 // ==================== Generic Property Methods ====================
 

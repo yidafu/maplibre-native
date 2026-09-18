@@ -370,7 +370,7 @@ inline napi_value LayerSetMaxZoom(napi_env env, napi_callback_info info) {
 }
 
 template <typename NAPI>
-inline napi_value LayerGetMaxZoom(napi_env env, napi_callback_info info) {
+inline napi_value LayerGetMaxZoom(napi_env env, napi_callback_info info, double fallback = 0.0) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
@@ -378,7 +378,7 @@ inline napi_value LayerGetMaxZoom(napi_env env, napi_callback_info info) {
     auto* layer = layerObj ? layerObj->getLayer() : nullptr;
     if (!layer) {
         napi_value result;
-        napi_create_double(env, 0.0, &result);
+        napi_create_double(env, fallback, &result);
         return result;
     }
 

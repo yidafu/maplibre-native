@@ -507,7 +507,42 @@ private:
     static void resetSnapshotStateOn(const std::shared_ptr<SnapshotRequestState>& state);
     
     // ==================== Map thread helper methods ====================
-    
+
+    // Shared NAPI bodies for the single-argument map property accessors
+    // (prefetch / tile-LOD / rendering-stats setters and getters in
+    // native_map_view_observers.cpp). Defined in the .cpp.
+    template <typename V, typename Apply>
+    static napi_value SetMapScalarProperty(napi_env env, napi_callback_info info,
+                                           const char* label, const char* argName, Apply apply);
+    template <typename V, typename Read>
+    static napi_value GetMapScalarProperty(napi_env env, napi_callback_info info,
+                                           const char* label, V defaultValue, Read read);
+
+    // Shared NAPI bodies for the bounds scalar accessors (get/setMinZoom,
+    // get/setMaxZoom, get/setMinPitch, get/setMaxPitch in
+    // native_map_view_camera.cpp). Defined in the .cpp.
+    template <typename Get>
+    static napi_value GetBoundsScalar(napi_env env, napi_callback_info info,
+                                      const char* label, Get get);
+    template <typename Apply>
+    static napi_value SetBoundsScalar(napi_env env, napi_callback_info info,
+                                      const char* label, const char* argName,
+                                      const char* okLogFormat,
+                                      bool parseBeforeUnwrap, Apply apply);
+
+    // Shared NAPI bodies for the annotation batch-add / single-update wrappers
+    // in native_map_view_annotations.cpp. MarkerFlavor keeps the marker-only
+    // empty-icon warning, view-annotation frame push and [MarkerDebug] logs.
+    template <typename NapiT, typename AnnotationT, bool MarkerFlavor = false, typename MakeAnnotation>
+    static napi_value AddAnnotationsBatch(napi_env env, napi_callback_info info,
+                                          const char* label, const char* pluralNoun,
+                                          const char* singularNoun, const char* wrapperName,
+                                          MakeAnnotation makeAnnotation);
+    template <typename NapiT, typename AnnotationT, bool MarkerFlavor = false, typename MakeAnnotation>
+    static napi_value UpdateAnnotationImpl(napi_env env, napi_callback_info info,
+                                           const char* label, const char* wrapperName,
+                                           const char* errorLabel, MakeAnnotation makeAnnotation);
+
     /**
      * Execute a map operation on the Map+Render thread asynchronously.
      * Thread scheduling and error handling are managed automatically.

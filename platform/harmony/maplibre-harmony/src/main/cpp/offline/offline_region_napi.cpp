@@ -70,8 +70,6 @@ void OfflineRegionNAPI::Destructor(napi_env env, void* nativeObject, void* /* fi
 // ========== NAPI Initialization ==========
 
 napi_value OfflineRegionNAPI::Init(napi_env env, napi_value exports) {
-    napi_status status;
-    
     napi_property_descriptor properties[] = {
         {"getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getDefinition", nullptr, GetDefinition, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -83,31 +81,11 @@ napi_value OfflineRegionNAPI::Init(napi_env env, napi_value exports) {
         {"invalidate", nullptr, Invalidate, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"updateMetadata", nullptr, UpdateMetadata, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
-    
-    napi_value cons;
-    status = napi_define_class(
-        env, "OfflineRegion", NAPI_AUTO_LENGTH, Constructor, nullptr,
-        sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("OfflineRegionNAPI", "Failed to define class");
-        return nullptr;
-    }
-    
-    // Store constructor reference
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor_, constructor_Env);
-    if (status != napi_ok) {
-        Logger::error("OfflineRegionNAPI", "Failed to create constructor reference");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "OfflineRegion", cons);
-    if (status != napi_ok) {
-        Logger::error("OfflineRegionNAPI", "Failed to export class");
-        return nullptr;
-    }
-    
-    return exports;
+
+    napi_value cons = RegisterNapiClass(env, exports, "OfflineRegion", properties,
+                                        sizeof(properties) / sizeof(properties[0]), Constructor,
+                                        constructor_, constructor_Env, "OfflineRegionNAPI");
+    return cons ? exports : nullptr;
 }
 
 // ========== Create NAPI Objects ==========
@@ -434,100 +412,66 @@ napi_value OfflineRegionNAPI::GetStatus(napi_env env, napi_callback_info info) {
     return undefined;
 }
 
-napi_value OfflineRegionNAPI::Delete(napi_env env, napi_callback_info info) {
+napi_value OfflineRegionNAPI::DeleteOrInvalidate(napi_env env, napi_callback_info info, bool invalidate) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return nullptr;
-    
+
     napi_value callback = args.GetFunction(0, "callback");
     if (args.HasError()) return nullptr;
-    
+
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
+
     OfflineRegionNAPI* obj = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
-    
+
     if (!obj || !obj->region_ || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
         return nullptr;
     }
-    
+
     auto jsCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
-        mbgl::harmony::ThreadSafeCallback::Create(env, callback, "OfflineRegionDelete"));
+        mbgl::harmony::ThreadSafeCallback::Create(
+            env, callback, invalidate ? "OfflineRegionInvalidate" : "OfflineRegionDelete"));
     if (!jsCallback) {
         napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
         return nullptr;
     }
-    
-    obj->fileSource_->deleteOfflineRegion(
-        *obj->region_,
-        [jsCallback](std::exception_ptr error) {
-            jsCallback->CallBlocking([error](napi_env env) -> napi_value {
-                if (error) {
-                    std::string errorMsg = mbgl::util::toString(error);
-                    napi_value errorValue;
-                    napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-                    return errorValue;
-                }
-                napi_value undefined;
-                napi_get_undefined(env, &undefined);
-                return undefined;
-            });
-        }
-    );
-    
+
+    // DatabaseFileSource invokes its completion on the database thread; marshal
+    // back to the JS thread via ThreadSafeCallback instead of calling NAPI directly.
+    auto completion = [jsCallback](std::exception_ptr error) {
+        jsCallback->CallBlocking([error](napi_env env) -> napi_value {
+            if (error) {
+                std::string errorMsg = mbgl::util::toString(error);
+                napi_value errorValue;
+                napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
+                return errorValue;
+            }
+            napi_value undefined;
+            napi_get_undefined(env, &undefined);
+            return undefined;
+        });
+    };
+
+    if (invalidate) {
+        obj->fileSource_->invalidateOfflineRegion(*obj->region_, completion);
+    } else {
+        obj->fileSource_->deleteOfflineRegion(*obj->region_, completion);
+    }
+
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
+napi_value OfflineRegionNAPI::Delete(napi_env env, napi_callback_info info) {
+    return DeleteOrInvalidate(env, info, false);
+}
+
 napi_value OfflineRegionNAPI::Invalidate(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) return nullptr;
-    
-    napi_value callback = args.GetFunction(0, "callback");
-    if (args.HasError()) return nullptr;
-    
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    OfflineRegionNAPI* obj = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
-    
-    if (!obj || !obj->region_ || !obj->fileSource_) {
-        napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
-        return nullptr;
-    }
-    
-    auto jsCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
-        mbgl::harmony::ThreadSafeCallback::Create(env, callback, "OfflineRegionInvalidate"));
-    if (!jsCallback) {
-        napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
-        return nullptr;
-    }
-    
-    obj->fileSource_->invalidateOfflineRegion(
-        *obj->region_,
-        [jsCallback](std::exception_ptr error) {
-            jsCallback->CallBlocking([error](napi_env env) -> napi_value {
-                if (error) {
-                    std::string errorMsg = mbgl::util::toString(error);
-                    napi_value errorValue;
-                    napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-                    return errorValue;
-                }
-                napi_value undefined;
-                napi_get_undefined(env, &undefined);
-                return undefined;
-            });
-        }
-    );
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return DeleteOrInvalidate(env, info, true);
 }
 
 napi_value OfflineRegionNAPI::UpdateMetadata(napi_env env, napi_callback_info info) {

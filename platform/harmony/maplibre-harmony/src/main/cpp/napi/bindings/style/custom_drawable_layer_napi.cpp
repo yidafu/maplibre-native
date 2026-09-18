@@ -3,6 +3,7 @@
 #include "napi/core/napi_wrap_instance.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
+#include "style/layers/layer_base_methods.hpp"
 #include "utils/logger.h"
 #include <mbgl/style/layers/custom_drawable_layer.hpp>
 #include <mbgl/gfx/fill_generator.hpp>
@@ -123,7 +124,9 @@ bool parseColor(napi_env env, napi_value value, mbgl::Color& out) {
     return false;
 }
 
-// Read a double property from an object, with a fallback
+// Read a double property from an object, with a fallback. (Same semantics as
+// NapiArgs::GetDoubleProperty, which cannot be used here: it is a non-static
+// member and these parsers only receive env + napi_value, no callback info.)
 double getNumberProperty(napi_env env, napi_value obj, const char* name, double fallback) {
     napi_value property;
     if (napi_get_named_property(env, obj, name, &property) != napi_ok) {
@@ -335,26 +338,10 @@ napi_value CustomDrawableLayerNAPI::Init(napi_env env, napi_value exports) {
         { "clear", nullptr, Clear, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
 
-    napi_value cons;
-    napi_status status = napi_define_class(env, "CustomDrawableLayer", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-
-    if (status != napi_ok) {
-        Logger::error("CustomDrawableLayerNAPI", "Failed to define CustomDrawableLayer class");
-        return nullptr;
-    }
-
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("CustomDrawableLayerNAPI", "Failed to create reference to constructor");
-        return nullptr;
-    }
-
-    status = napi_set_named_property(env, exports, "CustomDrawableLayer", cons);
-    if (status != napi_ok) {
-        Logger::error("CustomDrawableLayerNAPI", "Failed to export CustomDrawableLayer class");
-        return nullptr;
-    }
+    napi_value cons = RegisterNapiClass(env, exports, "CustomDrawableLayer", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "CustomDrawableLayerNAPI");
+    if (!cons) return nullptr;
 
     Logger::info("CustomDrawableLayerNAPI", "CustomDrawableLayer NAPI class registered successfully");
     return exports;
@@ -429,130 +416,40 @@ napi_value CustomDrawableLayerNAPI::CreateInstance(napi_env env, mbgl::style::Cu
     return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "CustomDrawableLayer", napiObj);
 }
 
+// Id / type / visibility / zoom range all share the canonical base-layer
+// implementations (see style/layers/layer_base_methods.hpp).
 napi_value CustomDrawableLayerNAPI::GetId(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-
-    CustomDrawableLayerNAPI* layerObj = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&layerObj));
-
-    if (!layerObj) {
-        return CreateStringValue(env, "");
-    }
-    return CreateStringValue(env, layerObj->layerId);
+    return LayerGetId<CustomDrawableLayerNAPI>(env, info);
 }
 
 napi_value CustomDrawableLayerNAPI::GetType(napi_env env, napi_callback_info info) {
-    return CreateStringValue(env, "custom-drawable");
+    return LayerGetType(env, "custom-drawable");
 }
 
 napi_value CustomDrawableLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) return nullptr;
-
-    CustomDrawableLayerNAPI* layerObj = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&layerObj));
-
-    if (!layerObj || !layerObj->getLayer()) {
-        return nullptr;
-    }
-
-    std::string visibility = args.GetString(0, "visibility");
-    if (args.HasError()) return nullptr;
-
-    if (visibility == "visible") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
-    } else if (visibility == "none") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
-    }
-
-    return nullptr;
+    return LayerSetVisibility<CustomDrawableLayerNAPI>(env, info);
 }
 
 napi_value CustomDrawableLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-
-    CustomDrawableLayerNAPI* layerObj = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&layerObj));
-
-    if (!layerObj || !layerObj->getLayer()) {
-        return CreateStringValue(env, "visible");
-    }
-
-    auto visibility = layerObj->getLayer()->getVisibility();
-    return CreateStringValue(env, visibility == mbgl::style::VisibilityType::Visible ? "visible" : "none");
+    return LayerGetVisibility<CustomDrawableLayerNAPI>(env, info);
 }
 
 napi_value CustomDrawableLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) return nullptr;
-
-    CustomDrawableLayerNAPI* layerObj = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&layerObj));
-
-    if (!layerObj || !layerObj->getLayer()) {
-        return nullptr;
-    }
-
-    double minZoom = args.GetDouble(0, "minZoom");
-    if (args.HasError()) return nullptr;
-
-    layerObj->getLayer()->setMinZoom(static_cast<float>(minZoom));
-    return nullptr;
+    return LayerSetMinZoom<CustomDrawableLayerNAPI>(env, info);
 }
 
 napi_value CustomDrawableLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-
-    CustomDrawableLayerNAPI* layerObj = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&layerObj));
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-
-    napi_value result;
-    napi_create_double(env, layerObj->getLayer()->getMinZoom(), &result);
-    return result;
+    return LayerGetMinZoom<CustomDrawableLayerNAPI>(env, info);
 }
 
 napi_value CustomDrawableLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) return nullptr;
-
-    CustomDrawableLayerNAPI* layerObj = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&layerObj));
-
-    if (!layerObj || !layerObj->getLayer()) {
-        return nullptr;
-    }
-
-    double maxZoom = args.GetDouble(0, "maxZoom");
-    if (args.HasError()) return nullptr;
-
-    layerObj->getLayer()->setMaxZoom(static_cast<float>(maxZoom));
-    return nullptr;
+    return LayerSetMaxZoom<CustomDrawableLayerNAPI>(env, info);
 }
 
 napi_value CustomDrawableLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-
-    CustomDrawableLayerNAPI* layerObj = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&layerObj));
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value result;
-        napi_create_double(env, 24.0, &result);
-        return result;
-    }
-
-    napi_value result;
-    napi_create_double(env, layerObj->getLayer()->getMaxZoom(), &result);
-    return result;
+    // Preserve this binding's historical fallback: a dead wrapper reports the
+    // max zoom as 24.0 (renderable at every zoom) instead of the canonical 0.0.
+    return LayerGetMaxZoom<CustomDrawableLayerNAPI>(env, info, 24.0);
 }
 
 napi_value CustomDrawableLayerNAPI::AddPolyline(napi_env env, napi_callback_info info) {

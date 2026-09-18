@@ -12,6 +12,7 @@
 #include <mbgl/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
+#include "layer_property_macros.hpp"
 namespace mbgl {
 namespace harmony {
 
@@ -93,27 +94,11 @@ napi_value FillLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "FillLayer", NAPI_AUTO_LENGTH, New, nullptr,
-                                           sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("FillLayerNAPI", "Failed to define FillLayer class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("FillLayerNAPI", "Failed to create reference to FillLayer constructor");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "FillLayer", cons);
-    if (status != napi_ok) {
-        Logger::error("FillLayerNAPI", "Failed to export FillLayer class");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "FillLayer", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "FillLayerNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("FillLayerNAPI", "FillLayer NAPI class registered successfully");
     return exports;
 }
@@ -166,199 +151,25 @@ napi_value FillLayerNAPI::CreateInstance(napi_env env, mbgl::style::FillLayer* l
 // Paint Property Setters (Expression supported)
 // ============================================================================
 
-napi_value FillLayerNAPI::SetFillColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillLayer, mbgl::Color>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "fill-color",
-        &mbgl::style::FillLayer::setFillColor
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillColor, setPaintProperty, "fill-color", setFillColor, mbgl::Color)
 
-napi_value FillLayerNAPI::SetFillOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillLayer, float>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "fill-opacity",
-        &mbgl::style::FillLayer::setFillOpacity
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillOpacity, setPaintProperty, "fill-opacity", setFillOpacity, float)
 
-napi_value FillLayerNAPI::SetFillOutlineColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillLayer, mbgl::Color>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "fill-outline-color",
-        &mbgl::style::FillLayer::setFillOutlineColor
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillOutlineColor, setPaintProperty, "fill-outline-color", setFillOutlineColor, mbgl::Color)
 
-napi_value FillLayerNAPI::SetFillPattern(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillLayer, mbgl::style::expression::Image>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "fill-pattern",
-        &mbgl::style::FillLayer::setFillPattern
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillPattern, setPaintProperty, "fill-pattern", setFillPattern, mbgl::style::expression::Image)
 
-napi_value FillLayerNAPI::SetFillAntialias(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillLayer, bool>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "fill-antialias",
-        &mbgl::style::FillLayer::setFillAntialias
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillAntialias, setPaintProperty, "fill-antialias", setFillAntialias, bool)
 
-napi_value FillLayerNAPI::SetFillTranslate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillLayer, std::array<float, 2>>(
-        env,
-        layerObj->getLayer(),
-        argv[0],
-        "fill-translate",
-        &mbgl::style::FillLayer::setFillTranslate
-    );
-    
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillTranslate, setPaintProperty, "fill-translate", setFillTranslate, std::array<float,2>)
 
 // ============================================================================
 // Property Getters (return constants or Expressions)
 // ============================================================================
 
-napi_value FillLayerNAPI::GetFillColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
+DEFINE_LAYER_GETTER(FillLayerNAPI, mbgl::style::FillLayer, GetFillColor, getFillColor, mbgl::Color)
 
-    return mbgl::harmony::getProperty<mbgl::style::FillLayer, mbgl::Color>(
-        env,
-        layer,
-        &mbgl::style::FillLayer::getFillColor
-    );
-}
-
-napi_value FillLayerNAPI::GetFillOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::FillLayer, float>(
-        env,
-        layer,
-        &mbgl::style::FillLayer::getFillOpacity
-    );
-}
+DEFINE_LAYER_GETTER(FillLayerNAPI, mbgl::style::FillLayer, GetFillOpacity, getFillOpacity, float)
 
 // ============================================================================
 // Base Layer Methods
@@ -436,87 +247,13 @@ napi_value FillLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
 // New Properties
 // ============================================================================
 
-napi_value FillLayerNAPI::SetFillTranslateAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::FillLayer, mbgl::style::TranslateAnchorType>(
-        env, layerObj->getLayer(), argv[0], "fill-translate-anchor",
-        &mbgl::style::FillLayer::setFillTranslateAnchor
-    );
-    return thisVar;
-}
+DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillTranslateAnchor, setPaintProperty, "fill-translate-anchor", setFillTranslateAnchor, mbgl::style::TranslateAnchorType)
 
-napi_value FillLayerNAPI::GetFillTranslateAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+DEFINE_LAYER_GETTER(FillLayerNAPI, mbgl::style::FillLayer, GetFillTranslateAnchor, getFillTranslateAnchor, mbgl::style::TranslateAnchorType)
 
-    return mbgl::harmony::getProperty<mbgl::style::FillLayer, mbgl::style::TranslateAnchorType>(
-        env, layer, &mbgl::style::FillLayer::getFillTranslateAnchor
-    );
-}
+DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillSortKey, setLayoutProperty, "fill-sort-key", setFillSortKey, float)
 
-napi_value FillLayerNAPI::SetFillSortKey(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::FillLayer, float>(
-        env, layerObj->getLayer(), argv[0], "fill-sort-key",
-        &mbgl::style::FillLayer::setFillSortKey
-    );
-    return thisVar;
-}
-
-napi_value FillLayerNAPI::GetFillSortKey(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-
-    return mbgl::harmony::getProperty<mbgl::style::FillLayer, float>(
-        env, layer, &mbgl::style::FillLayer::getFillSortKey
-    );
-}
+DEFINE_LAYER_GETTER(FillLayerNAPI, mbgl::style::FillLayer, GetFillSortKey, getFillSortKey, float)
 
 // ==================== Generic Property Methods ====================
 

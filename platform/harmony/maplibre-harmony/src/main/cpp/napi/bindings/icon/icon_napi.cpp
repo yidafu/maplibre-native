@@ -45,28 +45,11 @@ napi_value IconNAPI::Init(napi_env env, napi_value exports) {
         { "release", nullptr, Release, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
-    napi_value cons;
-    napi_status status = napi_define_class(env, "Icon", NAPI_AUTO_LENGTH, New, nullptr,
-                                          sizeof(properties) / sizeof(properties[0]), 
-                                          properties, &cons);
-    
-    if (status != napi_ok) {
-        Logger::error("IconNAPI", "Failed to define Icon class");
-        return nullptr;
-    }
-    
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
-    if (status != napi_ok) {
-        Logger::error("IconNAPI", "Failed to create reference to Icon constructor");
-        return nullptr;
-    }
-    
-    status = napi_set_named_property(env, exports, "Icon", cons);
-    if (status != napi_ok) {
-        Logger::error("IconNAPI", "Failed to export Icon class");
-        return nullptr;
-    }
-    
+    napi_value cons = RegisterNapiClass(env, exports, "Icon", properties,
+                                        sizeof(properties) / sizeof(properties[0]), New,
+                                        constructor, constructorEnv, "IconNAPI");
+    if (!cons) return nullptr;
+
     Logger::info("IconNAPI", "Icon NAPI class registered successfully");
     return exports;
 }

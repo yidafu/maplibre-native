@@ -1,37 +1,42 @@
-import { hilog } from '@kit.PerformanceAnalysisKit';
-import { DOMAIN } from '../../constants/HiLogConstants';
-/**
- * PolylineManager - polyline manager.
- *
- * Handles polyline creation, updates, deletion, and queries.
- *
- * Architecture:
- * - Uses the native annotation system (`nativeMapView.addPolylines`)
- * - Queries run via the `queryShapeAnnotations` API
- * - Differs from `MarkerManager`, which uses a GeoJSON-based approach
- *
- * Reference: Android `PolylineContainer` implementation.
- */
 import type { MapLibreMap } from '../MapLibreMap';
 import { Polyline, PolylineOptions } from './Polyline';
+import { NativeAnnotationManager } from './NativeAnnotationManager';
 
 /**
  * PolylineManager class.
  *
  * Manages all polyline annotations on the map via the native annotation system.
+ * Shared add/remove/update/clear/query plumbing lives in
+ * {@link NativeAnnotationManager}.
  */
-export class PolylineManager {
-  private mapLibreMap: MapLibreMap;
-  // Polyline ID -> Polyline mapping
-  private polylineMap: Map<number, Polyline> = new Map();
-
+export class PolylineManager extends NativeAnnotationManager<Polyline, PolylineOptions> {
   /**
    * Constructor.
    *
    * @param mapLibreMap MapLibreMap instance.
    */
   constructor(mapLibreMap: MapLibreMap) {
-    this.mapLibreMap = mapLibreMap;
+    super(mapLibreMap, 'PolylineManager', 'polyline');
+  }
+
+  protected create(options: PolylineOptions): Polyline {
+    return new Polyline(options);
+  }
+
+  protected addToNative(polylines: Polyline[]): number[] {
+    return this.mapLibreMap.getNativeMapView().addPolylines(polylines);
+  }
+
+  protected updateOnNative(polyline: Polyline): void {
+    this.mapLibreMap.updatePolyline(polyline);
+  }
+
+  protected readId(polyline: Polyline): number {
+    return polyline.getId();
+  }
+
+  protected writeId(polyline: Polyline, id: number): void {
+    polyline.setId(id);
   }
 
   /**
@@ -41,24 +46,7 @@ export class PolylineManager {
    * @returns Created polyline.
    */
   public addPolyline(options: PolylineOptions): Polyline {
-    try {
-      // Create polyline object
-      const polyline = new Polyline(options);
-
-      // Invoke native API (returns an array of IDs)
-      const ids = this.mapLibreMap.getNativeMapView().addPolylines([polyline]);
-
-      if (ids.length > 0) {
-        const id = ids[0];
-        polyline.setId(id);
-        this.polylineMap.set(id, polyline);
-      }
-
-      return polyline;
-    } catch (error) {
-      hilog.error(DOMAIN, 'PolylineManager', '%{public}s', `[PolylineManager] Failed to add polyline: ${error}`);
-      throw new Error(`Failed to add polyline: ${error}`);
-    }
+    return this.addOne(options);
   }
 
   /**
@@ -68,29 +56,7 @@ export class PolylineManager {
    * @returns Array of created polylines.
    */
   public addPolylines(optionsList: PolylineOptions[]): Polyline[] {
-    try {
-      // Create polyline objects
-      const polylines: Polyline[] = [];
-      for (const options of optionsList) {
-        polylines.push(new Polyline(options));
-      }
-
-      // Add them to the map in batch
-      const ids = this.mapLibreMap.getNativeMapView().addPolylines(polylines);
-
-      // Assign IDs and register them
-      for (let i = 0; i < polylines.length; i++) {
-        const polyline = polylines[i];
-        const id = ids[i];
-        polyline.setId(id);
-        this.polylineMap.set(id, polyline);
-      }
-
-      return polylines;
-    } catch (error) {
-      hilog.error(DOMAIN, 'PolylineManager', '%{public}s', `[PolylineManager] Failed to add polylines batch: ${error}`);
-      throw new Error(`Failed to add polylines batch: ${error}`);
-    }
+    return this.addMany(optionsList);
   }
 
   /**
@@ -99,13 +65,7 @@ export class PolylineManager {
    * @param polyline Polyline to remove.
    */
   public removePolyline(polyline: Polyline): void {
-    const id = polyline.getId();
-    if (id === -1) {
-      return;
-    }
-
-    this.mapLibreMap.getNativeMapView().removeAnnotations([id]);
-    this.polylineMap.delete(id);
+    this.removeOne(polyline);
   }
 
   /**
@@ -114,19 +74,7 @@ export class PolylineManager {
    * @param polylines Polylines to remove.
    */
   public removePolylines(polylines: Polyline[]): void {
-    const ids: number[] = [];
-
-    for (const polyline of polylines) {
-      const id = polyline.getId();
-      if (id !== -1) {
-        ids.push(id);
-        this.polylineMap.delete(id);
-      }
-    }
-
-    if (ids.length > 0) {
-      this.mapLibreMap.getNativeMapView().removeAnnotations(ids);
-    }
+    this.removeMany(polylines);
   }
 
   /**
@@ -135,24 +83,14 @@ export class PolylineManager {
    * @param polyline Polyline to update.
    */
   public updatePolyline(polyline: Polyline): void {
-    const id = polyline.getId();
-    if (id === -1) {
-      hilog.warn(DOMAIN, 'PolylineManager', '%{public}s', '[PolylineManager] Cannot update polyline with id -1');
-      return;
-    }
-
-    this.mapLibreMap.updatePolyline(polyline);
+    this.updateOne(polyline);
   }
 
   /**
    * Remove all polylines.
    */
   public clear(): void {
-    const ids = Array.from(this.polylineMap.keys());
-    if (ids.length > 0) {
-      this.mapLibreMap.getNativeMapView().removeAnnotations(ids);
-    }
-    this.polylineMap.clear();
+    this.clearAll();
   }
 
   /**
@@ -161,6 +99,6 @@ export class PolylineManager {
    * @returns Array of polylines.
    */
   public getPolylines(): Polyline[] {
-    return Array.from(this.polylineMap.values());
+    return this.getAll();
   }
 }

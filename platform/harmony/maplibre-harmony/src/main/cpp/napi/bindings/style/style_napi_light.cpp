@@ -2,6 +2,7 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
+#include "style/transition_options_harmony.hpp"
 
 #include <mbgl/map/map.hpp>
 #include <mbgl/style/light.hpp>
@@ -213,23 +214,7 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
             }
 
             mbgl::style::TransitionOptions options;
-
-            napi_value durationValue;
-            if (hasProperty(transitionValue, "duration", durationValue)) {
-                double durationMs = 0.0;
-                if (napi_get_value_double(env, durationValue, &durationMs) == napi_ok) {
-                    options.duration.emplace(mbgl::Milliseconds(static_cast<int64_t>(durationMs)));
-                }
-            }
-
-            napi_value delayValue;
-            if (hasProperty(transitionValue, "delay", delayValue)) {
-                double delayMs = 0.0;
-                if (napi_get_value_double(env, delayValue, &delayMs) == napi_ok) {
-                    options.delay.emplace(mbgl::Milliseconds(static_cast<int64_t>(delayMs)));
-                }
-            }
-
+            TransitionOptionsHarmony::ParseTransitionOptions(env, transitionValue, options);
             setter(options);
         };
 
