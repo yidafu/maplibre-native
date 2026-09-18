@@ -19,15 +19,13 @@ napi_ref VectorSourceNAPI::constructor = nullptr;
 napi_env VectorSourceNAPI::constructorEnv = nullptr;
 
 VectorSourceNAPI::VectorSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::VectorSource> source)
-    : id(id), source(std::move(source)), ownsSource(true) {
+    : SourceNapiBase(id, std::move(source)) {
     Logger::info("VectorSourceNAPI", "VectorSource instance created: %s", id.c_str());
 }
 
 VectorSourceNAPI::VectorSourceNAPI(mbgl::style::VectorSource* sourcePtr)
-    : ownsSource(false) {
+    : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
-        id = sourcePtr->getID();
-        weakSource = sourcePtr->makeWeakPtr();
         Logger::info("VectorSourceNAPI", "VectorSource created from existing source (WeakPtr): %s", id.c_str());
     }
 }
@@ -37,10 +35,7 @@ VectorSourceNAPI::~VectorSourceNAPI() {
     Logger::info("VectorSourceNAPI", "VectorSource instance destroyed: %s", id.c_str());
 }
 
-void VectorSourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    VectorSourceNAPI* sourceNapi = static_cast<VectorSourceNAPI*>(nativeObject);
-    delete sourceNapi;
-}
+DEFINE_SOURCE_DESTRUCTOR(VectorSourceNAPI)
 
 napi_value VectorSourceNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("VectorSourceNAPI", "Initializing VectorSource NAPI class");
@@ -104,10 +99,7 @@ napi_value VectorSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-napi_value VectorSourceNAPI::CreateInstance(napi_env env, mbgl::style::VectorSource* sourcePtr) {
-    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "VectorSource",
-                                sourcePtr ? new VectorSourceNAPI(sourcePtr) : nullptr);
-}
+DEFINE_SOURCE_CREATE_INSTANCE(VectorSourceNAPI, "VectorSource", mbgl::style::VectorSource)
 
 DEFINE_SOURCE_GET_ID(VectorSourceNAPI)
 
@@ -119,16 +111,8 @@ napi_value VectorSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     if (args.HasError()) return nullptr;
     
     VectorSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-    
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, args.This(), &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     
@@ -153,16 +137,8 @@ napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
     if (args.HasError()) return nullptr;
     
     VectorSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-    
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, args.This(), &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     

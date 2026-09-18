@@ -20,15 +20,13 @@ napi_ref RasterDemSourceNAPI::constructor = nullptr;
 napi_env RasterDemSourceNAPI::constructorEnv = nullptr;
 
 RasterDemSourceNAPI::RasterDemSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::RasterDEMSource> source)
-    : id(id), source(std::move(source)), ownsSource(true) {
+    : SourceNapiBase(id, std::move(source)) {
     Logger::info("RasterDemSourceNAPI", "RasterDemSource instance created: %s", id.c_str());
 }
 
 RasterDemSourceNAPI::RasterDemSourceNAPI(mbgl::style::RasterDEMSource* sourcePtr)
-    : ownsSource(false) {
+    : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
-        id = sourcePtr->getID();
-        weakSource = sourcePtr->makeWeakPtr();
         Logger::info("RasterDemSourceNAPI", "RasterDemSource created from existing source (WeakPtr): %s", id.c_str());
     }
 }
@@ -38,10 +36,7 @@ RasterDemSourceNAPI::~RasterDemSourceNAPI() {
     Logger::info("RasterDemSourceNAPI", "RasterDemSource instance destroyed: %s", id.c_str());
 }
 
-void RasterDemSourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    RasterDemSourceNAPI* sourceNapi = static_cast<RasterDemSourceNAPI*>(nativeObject);
-    delete sourceNapi;
-}
+DEFINE_SOURCE_DESTRUCTOR(RasterDemSourceNAPI)
 
 napi_value RasterDemSourceNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("RasterDemSourceNAPI", "Initializing RasterDemSource NAPI class");
@@ -144,10 +139,7 @@ napi_value RasterDemSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-napi_value RasterDemSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterDEMSource* sourcePtr) {
-    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "RasterDemSource",
-                                sourcePtr ? new RasterDemSourceNAPI(sourcePtr) : nullptr);
-}
+DEFINE_SOURCE_CREATE_INSTANCE(RasterDemSourceNAPI, "RasterDemSource", mbgl::style::RasterDEMSource)
 
 DEFINE_SOURCE_GET_ID(RasterDemSourceNAPI)
 

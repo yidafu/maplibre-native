@@ -21,15 +21,13 @@ napi_ref RasterSourceNAPI::constructor = nullptr;
 napi_env RasterSourceNAPI::constructorEnv = nullptr;
 
 RasterSourceNAPI::RasterSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::RasterSource> source)
-    : id(id), source(std::move(source)), ownsSource(true) {
+    : SourceNapiBase(id, std::move(source)) {
     Logger::info("RasterSourceNAPI", "RasterSource instance created: %s", id.c_str());
 }
 
 RasterSourceNAPI::RasterSourceNAPI(mbgl::style::RasterSource* sourcePtr)
-    : ownsSource(false) {
+    : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
-        id = sourcePtr->getID();
-        weakSource = sourcePtr->makeWeakPtr();
         Logger::info("RasterSourceNAPI", "RasterSource created from existing source (WeakPtr): %s", id.c_str());
     }
 }
@@ -39,10 +37,7 @@ RasterSourceNAPI::~RasterSourceNAPI() {
     Logger::info("RasterSourceNAPI", "RasterSource instance destroyed: %s", id.c_str());
 }
 
-void RasterSourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    RasterSourceNAPI* sourceNapi = static_cast<RasterSourceNAPI*>(nativeObject);
-    delete sourceNapi;
-}
+DEFINE_SOURCE_DESTRUCTOR(RasterSourceNAPI)
 
 napi_value RasterSourceNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("RasterSourceNAPI", "Initializing RasterSource NAPI class");
@@ -118,10 +113,7 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-napi_value RasterSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterSource* sourcePtr) {
-    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "RasterSource",
-                                sourcePtr ? new RasterSourceNAPI(sourcePtr) : nullptr);
-}
+DEFINE_SOURCE_CREATE_INSTANCE(RasterSourceNAPI, "RasterSource", mbgl::style::RasterSource)
 
 DEFINE_SOURCE_GET_ID(RasterSourceNAPI)
 

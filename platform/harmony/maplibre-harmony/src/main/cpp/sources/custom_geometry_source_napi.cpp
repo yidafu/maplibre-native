@@ -82,15 +82,13 @@ CustomGeometrySourceNAPI::QuerySourceFeaturesFn CustomGeometrySourceNAPI::queryS
 
 CustomGeometrySourceNAPI::CustomGeometrySourceNAPI(const std::string& id,
                                                    std::unique_ptr<mbgl::style::CustomGeometrySource> source)
-    : id(id), source(std::move(source)), ownsSource(true) {
+    : SourceNapiBase(id, std::move(source)) {
     Logger::info("CustomGeometrySourceNAPI", "CustomGeometrySource instance created: %s", id.c_str());
 }
 
 CustomGeometrySourceNAPI::CustomGeometrySourceNAPI(mbgl::style::CustomGeometrySource* sourcePtr)
-    : ownsSource(false) {
+    : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
-        id = sourcePtr->getID();
-        weakSource = sourcePtr->makeWeakPtr();
         Logger::info("CustomGeometrySourceNAPI", "CustomGeometrySource created from existing source (WeakPtr): %s",
                      id.c_str());
     }
@@ -100,10 +98,7 @@ CustomGeometrySourceNAPI::~CustomGeometrySourceNAPI() {
     Logger::info("CustomGeometrySourceNAPI", "CustomGeometrySource instance destroyed: %s", id.c_str());
 }
 
-void CustomGeometrySourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    CustomGeometrySourceNAPI* sourceNapi = static_cast<CustomGeometrySourceNAPI*>(nativeObject);
-    delete sourceNapi;
-}
+DEFINE_SOURCE_DESTRUCTOR(CustomGeometrySourceNAPI)
 
 napi_value CustomGeometrySourceNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("CustomGeometrySourceNAPI", "Initializing CustomGeometrySource NAPI class");
@@ -217,10 +212,7 @@ napi_value CustomGeometrySourceNAPI::New(napi_env env, napi_callback_info info) 
     }
 }
 
-napi_value CustomGeometrySourceNAPI::CreateInstance(napi_env env, mbgl::style::CustomGeometrySource* sourcePtr) {
-    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "CustomGeometrySource",
-                                sourcePtr ? new CustomGeometrySourceNAPI(sourcePtr) : nullptr);
-}
+DEFINE_SOURCE_CREATE_INSTANCE(CustomGeometrySourceNAPI, "CustomGeometrySource", mbgl::style::CustomGeometrySource)
 
 DEFINE_SOURCE_GET_ID(CustomGeometrySourceNAPI)
 
@@ -230,16 +222,8 @@ napi_value CustomGeometrySourceNAPI::SetTileData(napi_env env, napi_callback_inf
     if (args.HasError()) return nullptr;
 
     CustomGeometrySourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, args.This(), &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
 
@@ -276,16 +260,8 @@ napi_value CustomGeometrySourceNAPI::InvalidateTile(napi_env env, napi_callback_
     if (args.HasError()) return nullptr;
 
     CustomGeometrySourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, args.This(), &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
 
@@ -312,16 +288,8 @@ napi_value CustomGeometrySourceNAPI::InvalidateRegion(napi_env env, napi_callbac
     if (args.HasError()) return nullptr;
 
     CustomGeometrySourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, args.This(), &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
 

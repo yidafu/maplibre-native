@@ -11,6 +11,8 @@
 #include <optional>
 #include <vector>
 
+#include "source_napi_base.hpp"
+
 namespace mbgl {
 namespace harmony {
 
@@ -19,8 +21,11 @@ namespace harmony {
  *
  * Wraps mbgl::style::GeoJSONSource to provide an object-oriented interface,
  * similar to the Android GeoJsonSource class.
+ *
+ * Ownership state and the shared accessors live in SourceNapiBase; getSource()
+ * and attachToStyle() are the one deliberate exception (see below).
  */
-class GeoJsonSourceNAPI {
+class GeoJsonSourceNAPI : public SourceNapiBase<GeoJsonSourceNAPI, mbgl::style::GeoJSONSource> {
 public:
     GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::GeoJSONSource> source);
     // Construct from an existing source (uses WeakPtr, does not take ownership)
@@ -83,28 +88,21 @@ public:
     static QueryFeatureExtensionsFn queryFeatureExtensionsFn();
     static QuerySourceFeaturesFn querySourceFeaturesFn();
     
-    // Internal helpers
-    std::string getId() const { return id; }
+    // Internal helpers.
+    //
+    // These two deliberately shadow the SourceNapiBase versions (non-virtual,
+    // never called through a base pointer): this wrapper reports *why* source
+    // access was disabled when the WeakPtr initialisation failed, which the
+    // shared implementation stays silent about. Their return semantics -
+    // nullptr once the source is gone - are identical to the base's.
     mbgl::style::GeoJSONSource* getSource() const;
-    
-    // Release ownership (used when Style.addSource takes over)
-    std::unique_ptr<mbgl::style::Source> releaseSource() {
-        ownsSource = false;
-        return std::move(source);
-    }
-    
+
     // Create the WeakPtr after addSource (mirrors the iOS approach)
     void attachToStyle(mbgl::style::GeoJSONSource* sourcePtr);
-    
+
     // Constructor reference
     static napi_ref constructor;
     static napi_env constructorEnv;
-    
-private:
-    std::string id;
-    std::unique_ptr<mbgl::style::GeoJSONSource> source;
-    bool ownsSource;  // Indicates whether this wrapper owns the source
-    mapbox::base::WeakPtr<mbgl::style::Source> weakSource;  // WeakPtr used after ownership transfer
 };
 
 } // namespace harmony

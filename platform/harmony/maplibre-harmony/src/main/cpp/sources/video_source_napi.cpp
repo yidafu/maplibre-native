@@ -33,16 +33,8 @@ napi_value updateImageImpl(napi_env env, napi_callback_info info) {
     if (args.HasError()) return nullptr;
 
     VideoSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, args.This(), &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
 
@@ -67,15 +59,13 @@ napi_value updateImageImpl(napi_env env, napi_callback_info info) {
 } // namespace
 
 VideoSourceNAPI::VideoSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::ImageSource> source)
-    : id(id), source(std::move(source)), ownsSource(true) {
+    : SourceNapiBase(id, std::move(source)) {
     Logger::info("VideoSourceNAPI", "VideoSource instance created: %s", id.c_str());
 }
 
 VideoSourceNAPI::VideoSourceNAPI(mbgl::style::ImageSource* sourcePtr)
-    : ownsSource(false) {
+    : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
-        id = sourcePtr->getID();
-        weakSource = sourcePtr->makeWeakPtr();
         Logger::info("VideoSourceNAPI", "VideoSource created from existing source (WeakPtr): %s", id.c_str());
     }
 }
@@ -84,10 +74,7 @@ VideoSourceNAPI::~VideoSourceNAPI() {
     Logger::info("VideoSourceNAPI", "VideoSource instance destroyed: %s", id.c_str());
 }
 
-void VideoSourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    VideoSourceNAPI* sourceNapi = static_cast<VideoSourceNAPI*>(nativeObject);
-    delete sourceNapi;
-}
+DEFINE_SOURCE_DESTRUCTOR(VideoSourceNAPI)
 
 napi_value VideoSourceNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("VideoSourceNAPI", "Initializing VideoSource NAPI class");
@@ -157,10 +144,7 @@ napi_value VideoSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-napi_value VideoSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSource* sourcePtr) {
-    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "VideoSource",
-                                sourcePtr ? new VideoSourceNAPI(sourcePtr) : nullptr);
-}
+DEFINE_SOURCE_CREATE_INSTANCE(VideoSourceNAPI, "VideoSource", mbgl::style::ImageSource)
 
 DEFINE_SOURCE_GET_ID(VideoSourceNAPI)
 
@@ -168,12 +152,9 @@ napi_value VideoSourceNAPI::GetCoordinates(napi_env env, napi_callback_info info
     NapiArgs args(env, info);
 
     VideoSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-
-    if (!sourceNapi || !sourceNapi->getSource()) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
+    auto* source = ResolveSource(env, args.This(), &sourceNapi, false);
+    if (!source) {
+        return CreateEmptyArray(env);
     }
 
     try {
@@ -206,10 +187,8 @@ napi_value VideoSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
     if (args.HasError()) return nullptr;
 
     VideoSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-
-    if (!sourceNapi || !sourceNapi->getSource()) {
-        napi_throw_error(env, nullptr, "Invalid source");
+    auto* source = ResolveSource(env, args.This(), &sourceNapi, true, "Invalid source");
+    if (!source) {
         return nullptr;
     }
 
@@ -236,10 +215,8 @@ napi_value VideoSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     if (args.HasError()) return nullptr;
 
     VideoSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
-
-    if (!sourceNapi || !sourceNapi->getSource()) {
-        napi_throw_error(env, nullptr, "Invalid source");
+    auto* source = ResolveSource(env, args.This(), &sourceNapi, true, "Invalid source");
+    if (!source) {
         return nullptr;
     }
 

@@ -59,17 +59,14 @@ void* s_hooksOwner = nullptr;
 } // anonymous namespace
 
 GeoJsonSourceNAPI::GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::GeoJSONSource> source)
-    : id(id), source(std::move(source)), ownsSource(true) {
+    : SourceNapiBase(id, std::move(source)) {
     Logger::info("GeoJsonSourceNAPI", "GeoJsonSource instance created: %s", id.c_str());
 }
 
 GeoJsonSourceNAPI::GeoJsonSourceNAPI(mbgl::style::GeoJSONSource* sourcePtr)
-    : ownsSource(false) {
+    : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
-        id = sourcePtr->getID();
-        auto weak = sourcePtr->makeWeakPtr();
-        if (weak) {
-            weakSource = std::move(weak);
+        if (weakSource) {
             Logger::info("GeoJsonSourceNAPI", "GeoJsonSource created from existing source (WeakPtr): %s", id.c_str());
         } else {
             // Do NOT keep the raw pointer: once the source is removed from the
@@ -114,10 +111,7 @@ GeoJsonSourceNAPI::~GeoJsonSourceNAPI() {
     Logger::info("GeoJsonSourceNAPI", "GeoJsonSource instance destroyed: %s", id.c_str());
 }
 
-void GeoJsonSourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    GeoJsonSourceNAPI* sourceNapi = static_cast<GeoJsonSourceNAPI*>(nativeObject);
-    delete sourceNapi;
-}
+DEFINE_SOURCE_DESTRUCTOR(GeoJsonSourceNAPI)
 
 void GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(QueryFeatureExtensionsFn fn, void* owner) {
     std::lock_guard<std::mutex> lock(s_hooksMutex);
@@ -356,10 +350,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-napi_value GeoJsonSourceNAPI::CreateInstance(napi_env env, mbgl::style::GeoJSONSource* sourcePtr) {
-    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "GeoJsonSource",
-                                sourcePtr ? new GeoJsonSourceNAPI(sourcePtr) : nullptr);
-}
+DEFINE_SOURCE_CREATE_INSTANCE(GeoJsonSourceNAPI, "GeoJsonSource", mbgl::style::GeoJSONSource)
 
 // ==================== Getters ====================
 
@@ -374,16 +365,8 @@ napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) 
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
     GeoJsonSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-    
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, jsThis, &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     
@@ -431,16 +414,8 @@ napi_value GeoJsonSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
     GeoJsonSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-    
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, jsThis, &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     
@@ -527,19 +502,9 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
     GeoJsonSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
-    }
-    
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, jsThis, &sourceNapi, false);
     if (!source) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
+        return CreateEmptyArray(env);
     }
     
     if (argc < 1) {
@@ -601,19 +566,9 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
     GeoJsonSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
-    }
-    
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, jsThis, &sourceNapi, false);
     if (!source) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
+        return CreateEmptyArray(env);
     }
     
     if (argc < 3) {
@@ -688,13 +643,7 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
     GeoJsonSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        return CreateDoubleValue(env, 0.0);
-    }
-    
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, jsThis, &sourceNapi, false);
     if (!source) {
         return CreateDoubleValue(env, 0.0);
     }

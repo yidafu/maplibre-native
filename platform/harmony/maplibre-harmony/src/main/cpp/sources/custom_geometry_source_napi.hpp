@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "source_napi_base.hpp"
+
 namespace mbgl {
 namespace harmony {
 class ThreadSafeCallback;
@@ -25,8 +27,11 @@ namespace harmony {
  * fetchTile/cancelTile from tile worker threads, and this wrapper forwards
  * them to the JS thread via ThreadSafeCallback. Tile data is pushed back with
  * setTileData(z, x, y, geojson).
+ *
+ * Ownership state and the shared accessors live in SourceNapiBase.
  */
-class CustomGeometrySourceNAPI {
+class CustomGeometrySourceNAPI
+    : public SourceNapiBase<CustomGeometrySourceNAPI, mbgl::style::CustomGeometrySource> {
 public:
     CustomGeometrySourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::CustomGeometrySource> source);
     // Construct from an existing Source (uses WeakPtr, does not take ownership)
@@ -63,38 +68,10 @@ public:
     // Resolve the current hook; empty when unset. Copy under the hook mutex.
     static QuerySourceFeaturesFn querySourceFeaturesFn();
 
-    // Internal helpers
-    std::string getId() const { return id; }
-    mbgl::style::CustomGeometrySource* getSource() const {
-        if (!source && weakSource) {
-            return static_cast<mbgl::style::CustomGeometrySource*>(weakSource.get());
-        }
-        return source.get();
-    }
-
-    // Release ownership (for Style.addSource)
-    std::unique_ptr<mbgl::style::Source> releaseSource() {
-        ownsSource = false;
-        return std::move(source);
-    }
-
-    // After addSource, keep a WeakPtr so the wrapper survives after the style
-    // takes over ownership
-    void attachToStyle(mbgl::style::CustomGeometrySource* sourcePtr) {
-        if (sourcePtr) {
-            weakSource = sourcePtr->makeWeakPtr();
-        }
-    }
-
     static napi_ref constructor;
     static napi_env constructorEnv;
 
 private:
-    std::string id;
-    std::unique_ptr<mbgl::style::CustomGeometrySource> source;
-    bool ownsSource;
-    mapbox::base::WeakPtr<mbgl::style::Source> weakSource;
-
     // Shared with the TileFunction lambdas held by the core source so the
     // callbacks stay callable until the source itself is destroyed, even if
     // the JS wrapper is garbage collected first.

@@ -22,15 +22,13 @@ napi_ref ImageSourceNAPI::constructor = nullptr;
 napi_env ImageSourceNAPI::constructorEnv = nullptr;
 
 ImageSourceNAPI::ImageSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::ImageSource> source)
-    : id(id), source(std::move(source)), ownsSource(true) {
+    : SourceNapiBase(id, std::move(source)) {
     Logger::info("ImageSourceNAPI", "ImageSource instance created: %s", id.c_str());
 }
 
 ImageSourceNAPI::ImageSourceNAPI(mbgl::style::ImageSource* sourcePtr)
-    : ownsSource(false) {
+    : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
-        id = sourcePtr->getID();
-        weakSource = sourcePtr->makeWeakPtr();
         Logger::info("ImageSourceNAPI", "ImageSource created from existing source (WeakPtr): %s", id.c_str());
     }
 }
@@ -40,10 +38,7 @@ ImageSourceNAPI::~ImageSourceNAPI() {
     Logger::info("ImageSourceNAPI", "ImageSource instance destroyed: %s", id.c_str());
 }
 
-void ImageSourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    ImageSourceNAPI* sourceNapi = static_cast<ImageSourceNAPI*>(nativeObject);
-    delete sourceNapi;
-}
+DEFINE_SOURCE_DESTRUCTOR(ImageSourceNAPI)
 
 napi_value ImageSourceNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("ImageSourceNAPI", "Initializing ImageSource NAPI class");
@@ -126,10 +121,7 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-napi_value ImageSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSource* sourcePtr) {
-    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "ImageSource",
-                                sourcePtr ? new ImageSourceNAPI(sourcePtr) : nullptr);
-}
+DEFINE_SOURCE_CREATE_INSTANCE(ImageSourceNAPI, "ImageSource", mbgl::style::ImageSource)
 
 DEFINE_SOURCE_GET_ID(ImageSourceNAPI)
 
@@ -138,16 +130,8 @@ napi_value ImageSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
     ImageSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-    
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, jsThis, &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     
@@ -176,16 +160,8 @@ napi_value ImageSourceNAPI::SetImage(napi_env env, napi_callback_info info) {
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
     ImageSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-    
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, jsThis, &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     
@@ -227,16 +203,8 @@ napi_value ImageSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
     ImageSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
-    
-    if (!sourceNapi) {
-        napi_throw_error(env, nullptr, "Invalid source wrapper");
-        return nullptr;
-    }
-    
-    auto* source = sourceNapi->getSource();
+    auto* source = ResolveSource(env, jsThis, &sourceNapi, true);
     if (!source) {
-        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     

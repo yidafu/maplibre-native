@@ -5,6 +5,10 @@
 // NAPI class used to hand-duplicate GetId (x7), GetUrl (x4) and the
 // "tile size is immutable" SetTileSize (x2); the bodies were identical apart
 // from the class name. Expand only inside namespace mbgl::harmony.
+//
+// The per-method "unwrap this, check the wrapper, check the source" preamble
+// (~13 lines in every accessor of every source class) is likewise shared here
+// as ResolveSource().
 
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
@@ -13,6 +17,7 @@
 #include <array>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <mbgl/util/geo.hpp>
@@ -27,9 +32,59 @@ namespace harmony {
  * Create an empty JS array. Several source accessors return `[]` on failure.
  */
 inline napi_value CreateEmptyArray(napi_env env) {
-    napi_value result;
+    // Initialised up front: napi_create_array() leaves `result` untouched on
+    // failure, and returning an indeterminate napi_value is UB.
+    napi_value result = nullptr;
     napi_create_array(env, &result);
     return result;
+}
+
+/**
+ * Resolve the source wrapper hanging off `jsThis` and its underlying core
+ * source.
+ *
+ * Replaces the ~13-line preamble that every source accessor used to open with:
+ *
+ *     XSourceNAPI* sourceNapi = nullptr;
+ *     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+ *     if (!sourceNapi) { napi_throw_error(env, nullptr, "Invalid source wrapper"); return nullptr; }
+ *     auto* source = sourceNapi->getSource();
+ *     if (!source)     { napi_throw_error(env, nullptr, "Invalid source");         return nullptr; }
+ *
+ * On success returns the core source and writes the typed wrapper to
+ * `*outWrapper` (callers use it for things like `sourceNapi->id`). On failure
+ * returns nullptr.
+ *
+ * Error reporting is caller-selected so the historical wording is preserved
+ * verbatim:
+ *  - `throwOnError == true` (default): raises `wrapperError` / "Invalid source"
+ *    before returning nullptr. VideoSourceNAPI historically collapsed the
+ *    wrapper check into "Invalid source" and passes that as `wrapperError`.
+ *  - `throwOnError == false`: silent, for accessors that return a sentinel
+ *    (`[]` / `0.0`) instead of throwing.
+ *
+ * @tparam NapiCls the source wrapper class; its `getSource()` fixes the return type
+ */
+template <typename NapiCls>
+auto ResolveSource(napi_env env, napi_value jsThis, NapiCls** outWrapper,
+                   bool throwOnError = true,
+                   const char* wrapperError = "Invalid source wrapper")
+    -> decltype(std::declval<NapiCls*>()->getSource()) {
+    *outWrapper = napi::NapiArgs::Unwrap<NapiCls>(env, jsThis);
+    if (!*outWrapper) {
+        if (throwOnError) {
+            napi_throw_error(env, nullptr, wrapperError);
+        }
+        return nullptr;
+    }
+    auto* source = (*outWrapper)->getSource();
+    if (!source) {
+        if (throwOnError) {
+            napi_throw_error(env, nullptr, "Invalid source");
+        }
+        return nullptr;
+    }
+    return source;
 }
 
 /**
@@ -254,6 +309,25 @@ inline mbgl::variant<std::string, mbgl::Tileset> MakeUrlOrTileset(
             #NapiCls " does not support changing tile size after creation. "   \
             "Please recreate the source with the desired tile size.");         \
         return nullptr;                                                        \
+    }
+
+// Destructor callback passed to napi_wrap: every source wrapper deletes its
+// peer the same way (the classes only differ in name).
+#define DEFINE_SOURCE_DESTRUCTOR(NapiCls)                                          \
+    void NapiCls::Destructor(napi_env env, void* nativeObject, void* finalize_hint) { \
+        NapiCls* sourceNapi = static_cast<NapiCls*>(nativeObject);                 \
+        delete sourceNapi;                                                         \
+    }
+
+// CreateInstance: re-wrap a source the style already owns through its WeakPtr
+// (the C++ analogue of the constructor). `SourceT` is the concrete
+// mbgl::style::XSource this wrapper targets - note VideoSourceNAPI wraps
+// mbgl::style::ImageSource, not a "VideoSource".
+#define DEFINE_SOURCE_CREATE_INSTANCE(NapiCls, TypeName, SourceT)                   \
+    napi_value NapiCls::CreateInstance(napi_env env, SourceT* sourcePtr) {          \
+        return mbgl::harmony::WrapExistingInstance(                                 \
+            env, constructor, Destructor, TypeName,                                 \
+            sourcePtr ? new NapiCls(sourcePtr) : nullptr);                          \
     }
 
 #endif // MAPLIBRE_HARMONY_SOURCE_NAPI_UTILS_HPP
