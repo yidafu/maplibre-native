@@ -56,6 +56,19 @@ bool getNamedProperty(napi_env env, napi_value object, const char* name, napi_va
     return napi_get_named_property(env, object, name, result) == napi_ok;
 }
 
+// Resolve `this` into the owning NativeMapView, throwing the standard
+// "Failed to unwrap NativeMapView instance" error and returning nullptr when the
+// wrapper is missing, so callers can simply `return nullptr;`.
+NativeMapView* UnwrapMapInstance(napi_env env, const NapiArgs& args) {
+    NativeMapView* instance = nullptr;
+    napi_value thisObj = args.This();
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+        return nullptr;
+    }
+    return instance;
+}
+
 struct HarmonyViewAnnotationUpdate {
     std::optional<mbgl::LatLng> anchor;
     std::optional<mbgl::Size> size;
@@ -1000,10 +1013,8 @@ napi_value NativeMapView::addViewAnnotation(napi_env env, napi_callback_info inf
         return nullptr;
     }
 
-    NativeMapView* instance = nullptr;
-    napi_value thisObj = args.This();
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+    NativeMapView* instance = UnwrapMapInstance(env, args);
+    if (!instance) {
         return nullptr;
     }
 
@@ -1049,10 +1060,8 @@ napi_value NativeMapView::updateViewAnnotation(napi_env env, napi_callback_info 
         return nullptr;
     }
 
-    NativeMapView* instance = nullptr;
-    napi_value thisObj = args.This();
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+    NativeMapView* instance = UnwrapMapInstance(env, args);
+    if (!instance) {
         return nullptr;
     }
 
@@ -1147,10 +1156,8 @@ napi_value NativeMapView::removeViewAnnotation(napi_env env, napi_callback_info 
         return nullptr;
     }
 
-    NativeMapView* instance = nullptr;
-    napi_value thisObj = args.This();
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+    NativeMapView* instance = UnwrapMapInstance(env, args);
+    if (!instance) {
         return nullptr;
     }
 
@@ -1183,10 +1190,8 @@ napi_value NativeMapView::removeViewAnnotation(napi_env env, napi_callback_info 
 napi_value NativeMapView::getViewAnnotationFrames(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
 
-    NativeMapView* instance = nullptr;
-    napi_value thisObj = args.This();
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+    NativeMapView* instance = UnwrapMapInstance(env, args);
+    if (!instance) {
         return nullptr;
     }
 
@@ -1303,10 +1308,8 @@ napi_value NativeMapView::setViewAnnotationFramesListener(napi_env env, napi_cal
         return nullptr;
     }
 
-    NativeMapView* instance = nullptr;
-    napi_value thisObj = args.This();
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+    NativeMapView* instance = UnwrapMapInstance(env, args);
+    if (!instance) {
         return nullptr;
     }
 
