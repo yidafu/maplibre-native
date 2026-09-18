@@ -21,16 +21,15 @@ using mbgl::harmony::Logger;
 namespace mbgl {
 namespace harmony {
 
-CURLEventLoop::CURLEventLoop(Mode mode)
+CURLEventLoop::CURLEventLoop()
     : loop_(nullptr)
     , thread_(nullptr)
     , running_(false)
     , stopping_(false)
     , activeRequestCount_(0)
-    , mode_(mode)
     , multi_(nullptr)
     , timeout_timer_(nullptr)
-    , polling_timer_(nullptr)
+    , heartbeat_timer_(nullptr)
     , holder_(nullptr)
     , operation_signal_(nullptr) {
 
@@ -93,13 +92,11 @@ CURLEventLoop::CURLEventLoop(Mode mode)
         throw std::runtime_error("Failed to initialize CURL multi handle");
     }
 
-    // Configure CURL callbacks based on the mode
-    if (mode_ == Mode::EventDriven) {
-        curl_multi_setopt(multi_, CURLMOPT_SOCKETFUNCTION, handleSocket);
-        curl_multi_setopt(multi_, CURLMOPT_SOCKETDATA, this);
-        curl_multi_setopt(multi_, CURLMOPT_TIMERFUNCTION, handleTimer);
-        curl_multi_setopt(multi_, CURLMOPT_TIMERDATA, this);
-    }
+    // Configure CURL socket/timer callbacks
+    curl_multi_setopt(multi_, CURLMOPT_SOCKETFUNCTION, handleSocket);
+    curl_multi_setopt(multi_, CURLMOPT_SOCKETDATA, this);
+    curl_multi_setopt(multi_, CURLMOPT_TIMERFUNCTION, handleTimer);
+    curl_multi_setopt(multi_, CURLMOPT_TIMERDATA, this);
 }
 
 CURLEventLoop::~CURLEventLoop() {
@@ -120,13 +117,13 @@ CURLEventLoop::~CURLEventLoop() {
     // the close callbacks, which the drain below must run before uv_loop_close —
     // otherwise uv_loop_close fails with EBUSY and leaks the loop internals.
     if (loop_) {
-        if (polling_timer_) {
-            if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(polling_timer_))) {
-                uv_close(reinterpret_cast<uv_handle_t*>(polling_timer_), [](uv_handle_t* h) {
+        if (heartbeat_timer_) {
+            if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(heartbeat_timer_))) {
+                uv_close(reinterpret_cast<uv_handle_t*>(heartbeat_timer_), [](uv_handle_t* h) {
                     delete reinterpret_cast<uv_timer_t*>(h);
                 });
             }
-            polling_timer_ = nullptr;
+            heartbeat_timer_ = nullptr;
         }
         if (timeout_timer_) {
             if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(timeout_timer_))) {
@@ -181,62 +178,31 @@ void CURLEventLoop::start() {
     running_.store(true);
     stopping_.store(false);
 
-    const char* modeString = (mode_ == Mode::EventDriven) ? "EventDriven" : "SimplePolling";
-    Logger::info("Network", "Starting CURLEventLoop (mode=%s)", modeString);
+    Logger::info("Network", "Starting CURLEventLoop (event-driven)");
 
-    // Start the polling timer when running in SimplePolling mode
-    if (mode_ == Mode::SimplePolling) {
-        polling_timer_ = new uv_timer_t;
-        polling_timer_->data = this;
+    // Start a low-frequency heartbeat timer as a safety net. If uv_poll_init
+    // fails on this platform, socket monitoring is unavailable, and transfers
+    // must be driven by periodic polling instead. The heartbeat ensures
+    // progress without relying solely on libcurl's adaptive timeout (which can
+    // be 30s+ for connection establishment).
+    heartbeat_timer_ = new uv_timer_t;
+    heartbeat_timer_->data = this;
 
-        int err = uv_timer_init(loop_, polling_timer_);
+    int err = uv_timer_init(loop_, heartbeat_timer_);
+    if (err != 0) {
+        Logger::error("Network", "Failed to initialize heartbeat timer: %s", uv_strerror(err));
+        delete heartbeat_timer_;
+        heartbeat_timer_ = nullptr;
+    } else {
+        err = uv_timer_start(heartbeat_timer_, onHeartbeat, 100, 100);
         if (err != 0) {
-            Logger::error("Network", "Failed to initialize polling timer: %s", uv_strerror(err));
-            delete polling_timer_;
-            polling_timer_ = nullptr;
-            throw std::runtime_error("Failed to initialize polling timer: " + std::string(uv_strerror(err)));
-        }
-
-        err = uv_timer_start(polling_timer_, onPolling, 20, 20);
-        if (err != 0) {
-            Logger::error("Network", "Failed to start polling timer: %s", uv_strerror(err));
-            // The timer is initialized but unusable: close it (the close callback
-            // deletes it) instead of leaking the handle. The loop thread has not
-            // been created yet; the destructor drains any remaining handles.
-            uv_close(reinterpret_cast<uv_handle_t*>(polling_timer_), [](uv_handle_t* h) {
+            Logger::error("Network", "Failed to start heartbeat timer: %s", uv_strerror(err));
+            uv_close(reinterpret_cast<uv_handle_t*>(heartbeat_timer_), [](uv_handle_t* h) {
                 delete reinterpret_cast<uv_timer_t*>(h);
             });
-            polling_timer_ = nullptr;
-            running_.store(false);
-            throw std::runtime_error("Failed to start polling timer: " + std::string(uv_strerror(err)));
-        }
-    }
-
-    // In EventDriven mode, start a low-frequency heartbeat timer as a safety net.
-    // If uv_poll_init fails on this platform, socket monitoring is unavailable,
-    // and transfers must be driven by periodic polling instead. The heartbeat
-    // ensures progress without relying solely on libcurl's adaptive timeout
-    // (which can be 30s+ for connection establishment).
-    if (mode_ == Mode::EventDriven) {
-        polling_timer_ = new uv_timer_t;
-        polling_timer_->data = this;
-
-        int err = uv_timer_init(loop_, polling_timer_);
-        if (err != 0) {
-            Logger::error("Network", "Failed to initialize heartbeat timer: %s", uv_strerror(err));
-            delete polling_timer_;
-            polling_timer_ = nullptr;
+            heartbeat_timer_ = nullptr;
         } else {
-            err = uv_timer_start(polling_timer_, onPolling, 100, 100);
-            if (err != 0) {
-                Logger::error("Network", "Failed to start heartbeat timer: %s", uv_strerror(err));
-                uv_close(reinterpret_cast<uv_handle_t*>(polling_timer_), [](uv_handle_t* h) {
-                    delete reinterpret_cast<uv_timer_t*>(h);
-                });
-                polling_timer_ = nullptr;
-            } else {
-                Logger::debug("Network", "Heartbeat timer started (100ms)");
-            }
+            Logger::debug("Network", "Heartbeat timer started (100ms)");
         }
     }
 
@@ -508,13 +474,13 @@ bool CURLEventLoop::processOperation(const PendingOperation& op) {
                 return false;
             }
 
-            // In EventDriven mode, CURL may call handleSocket() within curl_multi_add_handle()
-            // to register socket monitoring. Since we're on the CURLEventLoop thread,
-            // uv_poll_init/uv_poll_start are called on the correct thread.
-            // CURL may also call handleTimer() to set up the timeout.
+            // CURL may call handleSocket() within curl_multi_add_handle() to
+            // register socket monitoring. Since we're on the CURLEventLoop
+            // thread, uv_poll_init/uv_poll_start are called on the correct
+            // thread. CURL may also call handleTimer() to set up the timeout.
 
             // Kick off the handle: tell CURL there's a pending action
-            if (mode_ == Mode::EventDriven) {
+            {
                 int running_handles = 0;
                 CURLMcode actionResult = curl_multi_socket_action(multi_, CURL_SOCKET_TIMEOUT, 0, &running_handles);
                 if (actionResult != CURLM_OK) {
@@ -631,18 +597,18 @@ void CURLEventLoop::performShutdown() {
     // Close all uv handles. After the last handle is closed, uv_run(UV_RUN_DEFAULT)
     // returns naturally. This avoids calling uv_stop() from a different thread.
 
-    // 1. Close polling timer (SimplePolling mode)
-    if (polling_timer_) {
-        if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(polling_timer_))) {
-            uv_timer_stop(polling_timer_);
-            uv_close(reinterpret_cast<uv_handle_t*>(polling_timer_), [](uv_handle_t* h) {
+    // 1. Close heartbeat timer
+    if (heartbeat_timer_) {
+        if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(heartbeat_timer_))) {
+            uv_timer_stop(heartbeat_timer_);
+            uv_close(reinterpret_cast<uv_handle_t*>(heartbeat_timer_), [](uv_handle_t* h) {
                 delete reinterpret_cast<uv_timer_t*>(h);
             });
         }
-        polling_timer_ = nullptr;
+        heartbeat_timer_ = nullptr;
     }
 
-    // 2. Close timeout timer (EventDriven mode)
+    // 2. Close timeout timer
     if (timeout_timer_) {
         if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(timeout_timer_))) {
             uv_timer_stop(timeout_timer_);
@@ -789,8 +755,9 @@ void CURLEventLoop::onTimeout(uv_timer_t* timer) {
     }
 }
 
-// Simple polling callback (SimplePolling mode)
-void CURLEventLoop::onPolling(uv_timer_t* timer) {
+// Heartbeat callback — low-frequency safety net in case socket monitoring is
+// unavailable (uv_poll_init failure); otherwise it only performs idle work.
+void CURLEventLoop::onHeartbeat(uv_timer_t* timer) {
     auto* eventLoop = static_cast<CURLEventLoop*>(timer->data);
 
     if (!eventLoop || eventLoop->stopping_.load()) {

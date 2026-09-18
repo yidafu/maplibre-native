@@ -94,7 +94,6 @@ public:
 
     CURL *getHandle();
     void returnHandle(CURL *handle);
-    void checkMultiInfo();
 
     // Use the dedicated CURL event loop
     std::shared_ptr<harmony::CURLEventLoop> curlEventLoop;
@@ -203,19 +202,8 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
 
     // Create the standalone CURLEventLoop
     try {
-        // 默认使用 EventDriven 模式（高性能，socket驱动）
-        // 环境变量 CURL_MODE=poll 可回退到 SimplePolling 模式（20ms 轮询）
-        auto mode = harmony::CURLEventLoop::Mode::EventDriven;
-
-        const char* curl_mode_env = getenv("CURL_MODE");
-        if (curl_mode_env && strcmp(curl_mode_env, "poll") == 0) {
-            mode = harmony::CURLEventLoop::Mode::SimplePolling;
-        }
-        
-        const char* modeString = (mode == harmony::CURLEventLoop::Mode::EventDriven) ? "EventDriven" : "SimplePolling";
-        Logger::info("Network", "CURL_MODE=%s -> CURLEventLoop mode: %s", curl_mode_env ? curl_mode_env : "unset", modeString);
-        
-        curlEventLoop = std::make_shared<harmony::CURLEventLoop>(mode);
+        Logger::info("Network", "Creating CURLEventLoop (event-driven)");
+        curlEventLoop = std::make_shared<harmony::CURLEventLoop>();
         curlEventLoop->start();
         
         // Obtain the multi handle (owned by CURLEventLoop)
@@ -285,26 +273,8 @@ void HTTPFileSource::Impl::returnHandle(CURL *handle) {
     handles.push(handle);
 }
 
-void HTTPFileSource::Impl::checkMultiInfo() {
-    CURLMsg *message = nullptr;
-    int pending = 0;
-
-    while ((message = curl_multi_info_read(multi, &pending))) {
-        switch (message->msg) {
-            case CURLMSG_DONE: {
-                HTTPRequest *baton = nullptr;
-                curl_easy_getinfo(message->easy_handle, CURLINFO_PRIVATE, (char *)&baton);
-                assert(baton);
-                
-                baton->handleResult(message->data.result);
-            } break;
-
-            default:
-                Logger::error("Network", "Unknown CURL message type: %d", message->msg);
-                throw std::runtime_error("CURLMsg returned unknown message type");
-        }
-    }
-}
+// checkMultiInfo removed: CURLEventLoop::processCURLMessages owns the
+// curl_multi_info_read / handleResult flow.
 
 // perform removed; CURLEventLoop now handles socket events
 

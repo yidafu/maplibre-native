@@ -45,18 +45,12 @@ namespace harmony {
  * 4. Graceful shutdown mechanism
  * 5. Loosely coupled to HTTPFileSource
  *
- * Supports two modes:
- * - Simple polling: 20 ms timer polling (fallback mode)
- * - Event-driven: socket-driven events (high performance, default)
+ * Socket-driven (CURLMOPT_SOCKETFUNCTION/TIMERFUNCTION), with a low-frequency
+ * heartbeat timer as a safety net in case uv_poll_init fails on this platform.
  */
 class CURLEventLoop {
 public:
-    enum class Mode {
-        SimplePolling,   // 20 ms timer polling (fallback mode)
-        EventDriven      // Socket-driven events (high performance, default)
-    };
-
-    CURLEventLoop(Mode mode = Mode::EventDriven);
+    CURLEventLoop();
     ~CURLEventLoop();
 
     // Start the event loop
@@ -132,17 +126,14 @@ private:
     // Active request count (tracks requests being processed to prevent use-after-free)
     std::atomic<size_t> activeRequestCount_;
 
-    // Operating mode
-    Mode mode_;
-
     // CURL multi handle
     CURLM* multi_;
 
     // Timer for CURL timeouts (pointer avoids incomplete-type issues)
     uv_timer_t* timeout_timer_;
 
-    // Polling timer for SimplePolling mode
-    uv_timer_t* polling_timer_;
+    // Low-frequency heartbeat timer (100 ms safety net; see class comment)
+    uv_timer_t* heartbeat_timer_;
 
     // Holder async handle keeps the loop alive
     uv_async_t* holder_;
@@ -157,7 +148,7 @@ private:
     std::queue<PendingOperation> pending_operations_;
     std::mutex operation_queue_mutex_;
 
-    // Active CURL handles and their uv_poll_t watchers (EventDriven mode).
+    // Active CURL handles and their uv_poll_t watchers.
     // Only accessed from the CURLEventLoop thread — no mutex needed.
     std::unordered_map<CURL*, uv_poll_t*> active_handles_;
 
@@ -181,7 +172,7 @@ private:
     // libuv callbacks
     static void onSocketEvent(uv_poll_t* poll, int status, int events);
     static void onTimeout(uv_timer_t* timer);
-    static void onPolling(uv_timer_t* timer);  // Simple polling callback
+    static void onHeartbeat(uv_timer_t* timer);
     static void onClose(uv_handle_t* handle);
 
     // Operation signal callback — runs on CURLEventLoop thread, processes the pending queue
