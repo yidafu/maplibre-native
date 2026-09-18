@@ -1,7 +1,7 @@
 #include "polyline_napi.hpp"
 #include "napi/core/napi_constructor_ref.hpp"
 #include "utils/logger.h"
-#include "napi/core/napi_args.hpp"
+#include "napi/bindings/annotation_napi_accessors.hpp"
 #include "geometry/lat_lng_harmony.hpp"
 #include "napi/bindings/annotation_napi_common.hpp"
 
@@ -11,6 +11,12 @@ namespace harmony {
 // Use Logger from mbgl::harmony namespace
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
+using mbgl::harmony::annotation_napi::JsBool;
+using mbgl::harmony::annotation_napi::JsHexColor;
+using mbgl::harmony::annotation_napi::JsInt32;
+using mbgl::harmony::annotation_napi::JsInt64;
+using mbgl::harmony::annotation_napi::JsNumber;
+using mbgl::harmony::annotation_napi::JsString;
 
 // Static member initialization
 napi_ref PolylineNAPI::constructor = nullptr;
@@ -177,477 +183,107 @@ mbgl::LineAnnotation PolylineNAPI::toAnnotation() const {
     return annotation;
 }
 
-// Getter implementations
-napi_value PolylineNAPI::GetPoints(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return nullptr;
-    
-    return PointArrayToJs(env, polyline->points);
-}
+// ============================================================================
+// 访问器实现
+//
+// 通用骨架（this 解包 / 空检查 / 返回语义）见 annotation_napi_accessors.hpp；
+// 这里只保留每个属性「取哪个成员、走哪条转换路径」的差异。
+// ============================================================================
 
-napi_value PolylineNAPI::GetColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return nullptr;
-    
-    // Convert color to hex string
-    const std::string colorStr = ColorToHex(polyline->color);
-    
-    napi_value result;
-    napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
-}
+// ----- 读访问器 -----
 
-napi_value PolylineNAPI::GetWidth(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return nullptr;
-    
-    napi_value result;
-    napi_create_double(env, polyline->width, &result);
-    return result;
-}
+DEFINE_ANNOTATION_GETTER(PolylineNAPI, GetPoints, PointArrayToJs(env, self->points))
+DEFINE_ANNOTATION_GETTER(PolylineNAPI, GetColor, JsHexColor(env, self->color))
+DEFINE_ANNOTATION_GETTER(PolylineNAPI, GetWidth, JsNumber(env, self->width))
+DEFINE_ANNOTATION_GETTER(PolylineNAPI, GetAlpha, JsNumber(env, self->alpha))
+DEFINE_ANNOTATION_GETTER(PolylineNAPI, GetVisible, JsBool(env, self->visible))
+DEFINE_ANNOTATION_GETTER(PolylineNAPI, GetZIndex, JsInt32(env, self->zIndex))
+DEFINE_ANNOTATION_GETTER(PolylineNAPI, GetJointType, JsString(env, self->jointType))
+DEFINE_ANNOTATION_GETTER(PolylineNAPI, GetCapType, JsString(env, self->capType))
+DEFINE_ANNOTATION_GETTER(PolylineNAPI, GetId, JsInt64(env, static_cast<int64_t>(self->annotationId)))
 
-napi_value PolylineNAPI::GetAlpha(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return nullptr;
-    
-    napi_value result;
-    napi_create_double(env, polyline->alpha, &result);
-    return result;
-}
-
-napi_value PolylineNAPI::GetVisible(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return nullptr;
-    
-    napi_value result;
-    napi_get_boolean(env, polyline->visible, &result);
-    return result;
-}
-
-napi_value PolylineNAPI::GetZIndex(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return nullptr;
-    
-    napi_value result;
-    napi_create_int32(env, polyline->zIndex, &result);
-    return result;
-}
-
+// getPattern 在空样式时返回 null（而非空数组），保留显式实现。
 napi_value PolylineNAPI::GetPattern(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline || polyline->pattern.empty()) {
-        napi_value null;
-        napi_get_null(env, &null);
-        return null;
+    ANN_NAPI_THIS(PolylineNAPI, self);
+    if (!self || self->pattern.empty()) {
+        return mbgl::harmony::annotation_napi::JsNull(env);
     }
-    
-    napi_value result;
-    napi_create_array_with_length(env, polyline->pattern.size(), &result);
-    
-    for (size_t i = 0; i < polyline->pattern.size(); i++) {
-        napi_value val;
-        napi_create_double(env, polyline->pattern[i], &val);
-        napi_set_element(env, result, i, val);
+
+    napi_value result = nullptr;
+    napi_create_array_with_length(env, self->pattern.size(), &result);
+
+    for (size_t i = 0; i < self->pattern.size(); i++) {
+        napi_set_element(env, result, static_cast<uint32_t>(i),
+                         JsNumber(env, self->pattern[i]));
     }
-    
+
     return result;
 }
 
-napi_value PolylineNAPI::GetJointType(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return nullptr;
-    
-    napi_value result;
-    napi_create_string_utf8(env, polyline->jointType.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
-}
+// ----- 写访问器 -----
 
-napi_value PolylineNAPI::GetCapType(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return nullptr;
-    
-    napi_value result;
-    napi_create_string_utf8(env, polyline->capType.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
-}
+DEFINE_ANNOTATION_POINTS_SETTER(PolylineNAPI, SetPoints, points)
+DEFINE_ANNOTATION_COLOR_SETTER(PolylineNAPI, SetColor, color, "color")
 
-napi_value PolylineNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return nullptr;
-    
-    napi_value result;
-    napi_create_int64(env, static_cast<int64_t>(polyline->annotationId), &result);
-    return result;
-}
-
-// Setter implementations
-napi_value PolylineNAPI::SetPoints(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
+DEFINE_ANNOTATION_SETTER(PolylineNAPI, SetWidth,
     args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    napi_value pointsValue = args.Get(0);
-    bool isArray = false;
-    napi_is_array(env, pointsValue, &isArray);
-    
-    if (isArray) {
-        polyline->points = ParseLatLngArrayToPoints(env, pointsValue);
+    self->width = static_cast<float>(args.GetDouble(0)))
+
+DEFINE_ANNOTATION_SETTER(PolylineNAPI, SetAlpha,
+    args.RequireMinArgs(1);
+    self->alpha = static_cast<float>(args.GetDouble(0)))
+
+DEFINE_ANNOTATION_SETTER(PolylineNAPI, SetVisible,
+    args.RequireMinArgs(1);
+    self->visible = args.GetBool(0))
+
+DEFINE_ANNOTATION_SETTER(PolylineNAPI, SetZIndex,
+    args.RequireMinArgs(1);
+    self->zIndex = args.GetInt32(0))
+
+DEFINE_ANNOTATION_SETTER(PolylineNAPI, SetJointType,
+    args.RequireMinArgs(1);
+    self->jointType = args.GetString(0, "jointType"))
+
+DEFINE_ANNOTATION_SETTER(PolylineNAPI, SetCapType,
+    args.RequireMinArgs(1);
+    self->capType = args.GetString(0, "capType"))
+
+DEFINE_ANNOTATION_SETTER(PolylineNAPI, SetId,
+    args.RequireMinArgs(1);
+    self->annotationId = static_cast<mbgl::AnnotationID>(args.GetInt64(0)))
+
+// setPattern：无参 / null / undefined 视为清空；数组则整体替换。
+// 元素通过 args.GetArrayElementDouble 读取——取元素失败时回退 0.0，
+// 不再直接读未初始化的 double（原实现存在该未定义行为）。
+DEFINE_ANNOTATION_SETTER(PolylineNAPI, SetPattern,
+    napi_valuetype patternType = napi_undefined;
+    if (args.Count() > 0 && napi_typeof(env, args.Get(0), &patternType) != napi_ok) {
+        patternType = napi_undefined;
     }
-    
-    return thisVar;
-}
 
-napi_value PolylineNAPI::SetColor(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    std::string colorStr = args.GetString(0, "color");
-    if (!colorStr.empty() && colorStr[0] == '#') {
-        if (!ParseHexColor(colorStr, polyline->color)) {
-            Logger::error("PolylineNAPI", "Failed to parse color: %s", colorStr.c_str());
-        }
-    }
-    
-    return thisVar;
-}
-
-napi_value PolylineNAPI::SetWidth(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    polyline->width = static_cast<float>(args.GetDouble(0));
-    return thisVar;
-}
-
-napi_value PolylineNAPI::SetAlpha(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    polyline->alpha = static_cast<float>(args.GetDouble(0));
-    return thisVar;
-}
-
-napi_value PolylineNAPI::SetVisible(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    polyline->visible = args.GetBool(0);
-    return thisVar;
-}
-
-napi_value PolylineNAPI::SetZIndex(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    polyline->zIndex = args.GetInt32(0);
-    return thisVar;
-}
-
-napi_value PolylineNAPI::SetPattern(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    if (args.Count() == 0) {
-        polyline->pattern.clear();
-        return thisVar;
-    }
-    
-    napi_value patternValue = args.Get(0);
-    napi_valuetype type;
-    napi_typeof(env, patternValue, &type);
-    
-    if (type == napi_null || type == napi_undefined) {
-        polyline->pattern.clear();
+    if (args.Count() == 0 || patternType == napi_null || patternType == napi_undefined) {
+        self->pattern.clear();
     } else {
+        napi_value patternValue = args.Get(0);
         bool isArray = false;
         napi_is_array(env, patternValue, &isArray);
         if (isArray) {
-            polyline->pattern.clear();
-            uint32_t length = 0;
-            napi_get_array_length(env, patternValue, &length);
-            
+            self->pattern.clear();
+            const uint32_t length = args.GetArrayLength(patternValue);
             for (uint32_t i = 0; i < length; i++) {
-                napi_value val;
-                napi_get_element(env, patternValue, i, &val);
-                double num;
-                napi_get_value_double(env, val, &num);
-                polyline->pattern.push_back(static_cast<float>(num));
+                self->pattern.push_back(
+                    static_cast<float>(args.GetArrayElementDouble(patternValue, i, 0.0)));
             }
         }
-    }
-    
-    return thisVar;
-}
+    })
 
-napi_value PolylineNAPI::SetJointType(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    polyline->jointType = args.GetString(0, "jointType");
-    return thisVar;
-}
+DEFINE_ANNOTATION_MAP_REF_SETTER(PolylineNAPI, SetMapLibreMap)
 
-napi_value PolylineNAPI::SetCapType(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    polyline->capType = args.GetString(0, "capType");
-    return thisVar;
-}
-
-// Helper methods
-napi_value PolylineNAPI::AddPoint(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    napi_value pointValue = args.GetObject(0, "point");
-    if (!args.HasError()) {
-        mbgl::Point<double> point;
-        if (ParseLatLngToPoint(env, pointValue, point)) {
-            polyline->points.push_back(point);
-        }
-    }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-}
-
-napi_value PolylineNAPI::InsertPoint(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(2);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    int32_t index = args.GetInt32(0);
-    napi_value pointValue = args.GetObject(1, "point");
-    
-    if (!args.HasError() && index >= 0 && static_cast<size_t>(index) <= polyline->points.size()) {
-        mbgl::Point<double> point;
-        if (ParseLatLngToPoint(env, pointValue, point)) {
-            polyline->points.insert(polyline->points.begin() + index, point);
-        }
-    }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-}
-
-napi_value PolylineNAPI::RemovePoint(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) {
-        napi_value null;
-        napi_get_null(env, &null);
-        return null;
-    }
-    
-    int32_t index = args.GetInt32(0);
-    
-    if (index >= 0 && static_cast<size_t>(index) < polyline->points.size()) {
-        auto removedPoint = polyline->points[index];
-        polyline->points.erase(polyline->points.begin() + index);
-        
-        // Return the removed point
-        return LatLngHarmony::CreateLatLngObject(env, mbgl::LatLng(removedPoint.y, removedPoint.x));
-    }
-    
-    napi_value null;
-    napi_get_null(env, &null);
-    return null;
-}
-
-napi_value PolylineNAPI::SetId(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    polyline->annotationId = static_cast<mbgl::AnnotationID>(args.GetInt64(0));
-    return thisVar;
-}
-
-napi_value PolylineNAPI::SetMapLibreMap(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolylineNAPI* polyline = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polyline));
-    
-    if (!polyline) return thisVar;
-    
-    // Clear old reference
-    if (polyline->mapLibreMapRef) {
-        napi_delete_reference(env, polyline->mapLibreMapRef);
-        polyline->mapLibreMapRef = nullptr;
-    }
-    
-    // Create new reference if argument provided
-    if (args.Count() > 0) {
-        napi_value mapObj = args.Get(0);
-        napi_create_reference(env, mapObj, 1, &polyline->mapLibreMapRef);
-    }
-    
-    return thisVar;
-}
+// addPoint / insertPoint / removePoint 与 Polygon 完全同构，直接用共享宏。
+DEFINE_ANNOTATION_ADD_POINT(PolylineNAPI, points)
+DEFINE_ANNOTATION_INSERT_POINT(PolylineNAPI, points)
+DEFINE_ANNOTATION_REMOVE_POINT(PolylineNAPI, points)
 
 } // namespace harmony
 } // namespace mbgl

@@ -1,7 +1,7 @@
 #include "polygon_napi.hpp"
 #include "napi/core/napi_constructor_ref.hpp"
 #include "utils/logger.h"
-#include "napi/core/napi_args.hpp"
+#include "napi/bindings/annotation_napi_accessors.hpp"
 #include "geometry/lat_lng_harmony.hpp"
 #include "napi/bindings/annotation_napi_common.hpp"
 
@@ -11,6 +11,12 @@ namespace harmony {
 // Use Logger from mbgl::harmony namespace
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
+using mbgl::harmony::annotation_napi::JsBool;
+using mbgl::harmony::annotation_napi::JsHexColor;
+using mbgl::harmony::annotation_napi::JsInt32;
+using mbgl::harmony::annotation_napi::JsInt64;
+using mbgl::harmony::annotation_napi::JsNumber;
+using mbgl::harmony::annotation_napi::JsString;
 
 // Static member initialization
 napi_ref PolygonNAPI::constructor = nullptr;
@@ -201,536 +207,145 @@ mbgl::FillAnnotation PolygonNAPI::toAnnotation() const {
     return annotation;
 }
 
-// Getter implementations
-napi_value PolygonNAPI::GetPoints(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return nullptr;
-    
-    return PointArrayToJs(env, polygon->points);
-}
+// ============================================================================
+// 访问器实现
+//
+// 通用骨架（this 解包 / 空检查 / 返回语义）见 annotation_napi_accessors.hpp；
+// 这里只保留每个属性「取哪个成员、走哪条转换路径」的差异。
+// ============================================================================
 
+// ----- 读访问器 -----
+
+DEFINE_ANNOTATION_GETTER(PolygonNAPI, GetPoints, PointArrayToJs(env, self->points))
+DEFINE_ANNOTATION_GETTER(PolygonNAPI, GetFillColor, JsHexColor(env, self->fillColor))
+DEFINE_ANNOTATION_GETTER(PolygonNAPI, GetStrokeColor, JsHexColor(env, self->strokeColor))
+DEFINE_ANNOTATION_GETTER(PolygonNAPI, GetStrokeWidth, JsNumber(env, self->strokeWidth))
+DEFINE_ANNOTATION_GETTER(PolygonNAPI, GetFillAlpha, JsNumber(env, self->fillAlpha))
+DEFINE_ANNOTATION_GETTER(PolygonNAPI, GetStrokeAlpha, JsNumber(env, self->strokeAlpha))
+DEFINE_ANNOTATION_GETTER(PolygonNAPI, GetVisible, JsBool(env, self->visible))
+DEFINE_ANNOTATION_GETTER(PolygonNAPI, GetZIndex, JsInt32(env, self->zIndex))
+DEFINE_ANNOTATION_GETTER(PolygonNAPI, GetId, JsInt64(env, static_cast<int64_t>(self->annotationId)))
+
+// getHoles 暴露的是「洞数组的数组」，没有普适的标量形态，保留手写实现。
 napi_value PolygonNAPI::GetHoles(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return nullptr;
-    
-    napi_value result;
-    napi_create_array_with_length(env, polygon->holes.size(), &result);
-    
-    for (size_t i = 0; i < polygon->holes.size(); i++) {
-        napi_set_element(env, result, static_cast<uint32_t>(i), PointArrayToJs(env, polygon->holes[i]));
+    ANN_NAPI_THIS(PolygonNAPI, self);
+    if (!self) return nullptr;
+
+    napi_value result = nullptr;
+    napi_create_array_with_length(env, self->holes.size(), &result);
+
+    for (size_t i = 0; i < self->holes.size(); i++) {
+        napi_set_element(env, result, static_cast<uint32_t>(i),
+                         PointArrayToJs(env, self->holes[i]));
     }
-    
+
     return result;
 }
 
-napi_value PolygonNAPI::GetFillColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return nullptr;
-    
-    // Convert color to hex string
-    const std::string colorStr = ColorToHex(polygon->fillColor);
-    
-    napi_value result;
-    napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
-}
+// ----- 写访问器 -----
 
-napi_value PolygonNAPI::GetStrokeColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return nullptr;
-    
-    // Convert color to hex string
-    const std::string colorStr = ColorToHex(polygon->strokeColor);
-    
-    napi_value result;
-    napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
-}
+DEFINE_ANNOTATION_POINTS_SETTER(PolygonNAPI, SetPoints, points)
 
-napi_value PolygonNAPI::GetStrokeWidth(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return nullptr;
-    
-    napi_value result;
-    napi_create_double(env, polygon->strokeWidth, &result);
-    return result;
-}
+DEFINE_ANNOTATION_COLOR_SETTER(PolygonNAPI, SetFillColor, fillColor, "fillColor")
+DEFINE_ANNOTATION_COLOR_SETTER(PolygonNAPI, SetStrokeColor, strokeColor, "strokeColor")
 
-napi_value PolygonNAPI::GetFillAlpha(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return nullptr;
-    
-    napi_value result;
-    napi_create_double(env, polygon->fillAlpha, &result);
-    return result;
-}
-
-napi_value PolygonNAPI::GetStrokeAlpha(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return nullptr;
-    
-    napi_value result;
-    napi_create_double(env, polygon->strokeAlpha, &result);
-    return result;
-}
-
-napi_value PolygonNAPI::GetVisible(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return nullptr;
-    
-    napi_value result;
-    napi_get_boolean(env, polygon->visible, &result);
-    return result;
-}
-
-napi_value PolygonNAPI::GetZIndex(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return nullptr;
-    
-    napi_value result;
-    napi_create_int32(env, polygon->zIndex, &result);
-    return result;
-}
-
-napi_value PolygonNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return nullptr;
-    
-    napi_value result;
-    napi_create_int64(env, static_cast<int64_t>(polygon->annotationId), &result);
-    return result;
-}
-
-// Setter implementations
-napi_value PolygonNAPI::SetPoints(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
+DEFINE_ANNOTATION_SETTER(PolygonNAPI, SetStrokeWidth,
     args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
-    napi_value pointsValue = args.Get(0);
-    bool isArray = false;
-    napi_is_array(env, pointsValue, &isArray);
-    
-    if (isArray) {
-        polygon->points = ParseLatLngArrayToPoints(env, pointsValue);
-    }
-    
-    return thisVar;
-}
+    self->strokeWidth = static_cast<float>(args.GetDouble(0)))
 
-napi_value PolygonNAPI::SetHoles(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
+DEFINE_ANNOTATION_SETTER(PolygonNAPI, SetFillAlpha,
     args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
+    self->fillAlpha = static_cast<float>(args.GetDouble(0)))
+
+DEFINE_ANNOTATION_SETTER(PolygonNAPI, SetStrokeAlpha,
+    args.RequireMinArgs(1);
+    self->strokeAlpha = static_cast<float>(args.GetDouble(0)))
+
+DEFINE_ANNOTATION_SETTER(PolygonNAPI, SetVisible,
+    args.RequireMinArgs(1);
+    self->visible = args.GetBool(0))
+
+DEFINE_ANNOTATION_SETTER(PolygonNAPI, SetZIndex,
+    args.RequireMinArgs(1);
+    self->zIndex = args.GetInt32(0))
+
+DEFINE_ANNOTATION_SETTER(PolygonNAPI, SetId,
+    args.RequireMinArgs(1);
+    self->annotationId = static_cast<mbgl::AnnotationID>(args.GetInt64(0)))
+
+DEFINE_ANNOTATION_MAP_REF_SETTER(PolygonNAPI, SetMapLibreMap)
+
+// setHoles：整体替换洞集合，非数组入参静默忽略（与既有行为一致）。
+DEFINE_ANNOTATION_SETTER(PolygonNAPI, SetHoles,
+    args.RequireMinArgs(1);
     napi_value holesValue = args.Get(0);
     bool isArray = false;
     napi_is_array(env, holesValue, &isArray);
-    
     if (isArray) {
-        polygon->holes.clear();
-        uint32_t holesLength = 0;
-        napi_get_array_length(env, holesValue, &holesLength);
-        
+        self->holes.clear();
+        const uint32_t holesLength = args.GetArrayLength(holesValue);
         for (uint32_t i = 0; i < holesLength; i++) {
-            napi_value holeValue;
-            napi_get_element(env, holesValue, i, &holeValue);
-            
+            napi_value holeValue = nullptr;
+            if (napi_get_element(env, holesValue, i, &holeValue) != napi_ok) {
+                continue;
+            }
             std::vector<mbgl::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
             if (!hole.empty()) {
-                polygon->holes.push_back(std::move(hole));
+                self->holes.push_back(std::move(hole));
             }
         }
-    }
-    
-    return thisVar;
-}
+    })
 
-napi_value PolygonNAPI::SetFillColor(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
-    std::string colorStr = args.GetString(0, "fillColor");
-    if (!colorStr.empty() && colorStr[0] == '#') {
-        if (!ParseHexColor(colorStr, polygon->fillColor)) {
-            Logger::error("PolygonNAPI", "Failed to parse fillColor: %s", colorStr.c_str());
-        }
-    }
-    
-    return thisVar;
-}
+// addPoint / insertPoint / removePoint 在两份注解实现里完全同构，直接用共享宏。
+DEFINE_ANNOTATION_ADD_POINT(PolygonNAPI, points)
+DEFINE_ANNOTATION_INSERT_POINT(PolygonNAPI, points)
+DEFINE_ANNOTATION_REMOVE_POINT(PolygonNAPI, points)
 
-napi_value PolygonNAPI::SetStrokeColor(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
-    std::string colorStr = args.GetString(0, "strokeColor");
-    if (!colorStr.empty() && colorStr[0] == '#') {
-        if (!ParseHexColor(colorStr, polygon->strokeColor)) {
-            Logger::error("PolygonNAPI", "Failed to parse strokeColor: %s", colorStr.c_str());
-        }
-    }
-    
-    return thisVar;
-}
-
-napi_value PolygonNAPI::SetStrokeWidth(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
-    polygon->strokeWidth = static_cast<float>(args.GetDouble(0));
-    return thisVar;
-}
-
-napi_value PolygonNAPI::SetFillAlpha(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
-    polygon->fillAlpha = static_cast<float>(args.GetDouble(0));
-    return thisVar;
-}
-
-napi_value PolygonNAPI::SetStrokeAlpha(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
-    polygon->strokeAlpha = static_cast<float>(args.GetDouble(0));
-    return thisVar;
-}
-
-napi_value PolygonNAPI::SetVisible(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
-    polygon->visible = args.GetBool(0);
-    return thisVar;
-}
-
-napi_value PolygonNAPI::SetZIndex(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
-    polygon->zIndex = args.GetInt32(0);
-    return thisVar;
-}
-
-// Helper methods
-napi_value PolygonNAPI::AddPoint(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    napi_value pointValue = args.GetObject(0, "point");
-    if (!args.HasError()) {
-        mbgl::Point<double> point;
-        if (ParseLatLngToPoint(env, pointValue, point)) {
-            polygon->points.push_back(point);
-        }
-    }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-}
-
-napi_value PolygonNAPI::InsertPoint(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(2);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    int32_t index = args.GetInt32(0);
-    napi_value pointValue = args.GetObject(1, "point");
-    
-    if (!args.HasError() && index >= 0 && static_cast<size_t>(index) <= polygon->points.size()) {
-        mbgl::Point<double> point;
-        if (ParseLatLngToPoint(env, pointValue, point)) {
-            polygon->points.insert(polygon->points.begin() + index, point);
-        }
-    }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-}
-
-napi_value PolygonNAPI::RemovePoint(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) {
-        napi_value null;
-        napi_get_null(env, &null);
-        return null;
-    }
-    
-    int32_t index = args.GetInt32(0);
-    
-    if (index >= 0 && static_cast<size_t>(index) < polygon->points.size()) {
-        auto removedPoint = polygon->points[index];
-        polygon->points.erase(polygon->points.begin() + index);
-        
-        // Return the removed point
-        return LatLngHarmony::CreateLatLngObject(env, mbgl::LatLng(removedPoint.y, removedPoint.x));
-    }
-    
-    napi_value null;
-    napi_get_null(env, &null);
-    return null;
-}
+// ----- 洞的增删 -----
+// addHole 返回 undefined、removeHole 命中返回被删洞 / 未命中返回 null，
+// 返回语义与 setter 骨架不同，故保留显式实现。
 
 napi_value PolygonNAPI::AddHole(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    ANN_NAPI_THIS(PolygonNAPI, self);
+    if (!self) {
+        return mbgl::harmony::annotation_napi::JsUndefined(env);
     }
-    
+
     napi_value holeValue = args.Get(0);
     bool isArray = false;
     napi_is_array(env, holeValue, &isArray);
-    
+
     if (isArray) {
         std::vector<mbgl::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
         if (!hole.empty()) {
-            polygon->holes.push_back(std::move(hole));
+            self->holes.push_back(std::move(hole));
         }
     }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+
+    return mbgl::harmony::annotation_napi::JsUndefined(env);
 }
 
 napi_value PolygonNAPI::RemoveHole(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) {
-        napi_value null;
-        napi_get_null(env, &null);
-        return null;
+    ANN_NAPI_THIS(PolygonNAPI, self);
+    if (!self) {
+        return mbgl::harmony::annotation_napi::JsNull(env);
     }
-    
-    int32_t index = args.GetInt32(0);
-    
-    if (index >= 0 && static_cast<size_t>(index) < polygon->holes.size()) {
-        auto removedHole = polygon->holes[index];
-        polygon->holes.erase(polygon->holes.begin() + index);
-        
-        // Return the removed hole as an array of points
+
+    const int32_t index = args.GetInt32(0);
+
+    if (index >= 0 && static_cast<size_t>(index) < self->holes.size()) {
+        // 先按值拷出被删的洞，再 erase，避免迭代器/索引失效
+        const auto removedHole = self->holes[index];
+        self->holes.erase(self->holes.begin() + index);
         return PointArrayToJs(env, removedHole);
     }
-    
-    napi_value null;
-    napi_get_null(env, &null);
-    return null;
-}
 
-napi_value PolygonNAPI::SetId(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
-    polygon->annotationId = static_cast<mbgl::AnnotationID>(args.GetInt64(0));
-    return thisVar;
-}
-
-napi_value PolygonNAPI::SetMapLibreMap(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    PolygonNAPI* polygon = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&polygon));
-    
-    if (!polygon) return thisVar;
-    
-    // Clear old reference
-    if (polygon->mapLibreMapRef) {
-        napi_delete_reference(env, polygon->mapLibreMapRef);
-        polygon->mapLibreMapRef = nullptr;
-    }
-    
-    // Create new reference if argument provided
-    if (args.Count() > 0) {
-        napi_value mapObj = args.Get(0);
-        napi_create_reference(env, mapObj, 1, &polygon->mapLibreMapRef);
-    }
-    
-    return thisVar;
+    return mbgl::harmony::annotation_napi::JsNull(env);
 }
 
 } // namespace harmony
 } // namespace mbgl
-
