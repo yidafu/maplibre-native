@@ -356,31 +356,9 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-napi_value SymbolLayerNAPI::New(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    args.RequireMinArgs(2);
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    std::string layerId = args.GetString(0, "layerId");
-    std::string sourceId = args.GetString(1, "sourceId");
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    SymbolLayerNAPI* layerObj = new SymbolLayerNAPI(layerId, sourceId);
-    napi_wrap(env, jsThis, layerObj, Destructor, nullptr, nullptr);
-    
-    // Add the _TYPE_ property for ETS type detection
-    napi_value typeValue;
-    napi_create_string_utf8(env, "SymbolLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, jsThis, "_TYPE_", typeValue);
-    return jsThis;
-}
+DEFINE_LAYER_NEW(SymbolLayerNAPI, "SymbolLayer", 2, new SymbolLayerNAPI(layerId, sourceId),
+        std::string layerId = args.GetString(0, "layerId");
+        std::string sourceId = args.GetString(1, "sourceId");)
 
 napi_value SymbolLayerNAPI::CreateInstance(napi_env env, mbgl::style::SymbolLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "SymbolLayer",

@@ -70,39 +70,7 @@ napi_value LineLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getLineOpacity", nullptr, GetLineOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
         
         // Layer base methods
-        { "getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getType", nullptr, GetType, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSourceId", nullptr, GetSourceId, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
-        // Visibility, zoom, source layer, filter - common to all layers
-        { "setVisibility", nullptr, SetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getVisibility", nullptr, GetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setMinZoom", nullptr, SetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getMinZoom", nullptr, GetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setMaxZoom", nullptr, SetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getMaxZoom", nullptr, GetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setSourceLayer", nullptr, SetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSourceLayer", nullptr, GetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
-        // New properties
-        { "setLineTranslate", nullptr, SetLineTranslate, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getLineTranslate", nullptr, GetLineTranslate, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setLineTranslateAnchor", nullptr, SetLineTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getLineTranslateAnchor", nullptr, GetLineTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setLineMiterLimit", nullptr, SetLineMiterLimit, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getLineMiterLimit", nullptr, GetLineMiterLimit, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setLineRoundLimit", nullptr, SetLineRoundLimit, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getLineRoundLimit", nullptr, GetLineRoundLimit, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setLineGradient", nullptr, SetLineGradient, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getLineGradient", nullptr, GetLineGradient, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setLineSortKey", nullptr, SetLineSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getLineSortKey", nullptr, GetLineSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
-        // Generic property methods (Android-compatible API)
-        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
+        LAYER_BASE_PROPERTY_DESCRIPTORS
     };
     
     napi_value cons = RegisterNapiClass(env, exports, "LineLayer", properties,
@@ -114,40 +82,9 @@ napi_value LineLayerNAPI::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-napi_value LineLayerNAPI::New(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    args.RequireMinArgs(2);
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    std::string layerId = args.GetString(0, "layerId");
-    std::string sourceId = args.GetString(1, "sourceId");
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    LineLayerNAPI* layerObj = new LineLayerNAPI(layerId, sourceId);
-    
-    napi_status status = napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete layerObj;
-        Logger::error("LineLayerNAPI", "Failed to wrap LineLayer object");
-        return nullptr;
-    }
-    
-
-    
-    // Add the _TYPE_ property for ETS type detection
-    napi_value typeValue;
-    napi_create_string_utf8(env, "LineLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
-    return thisVar;
-}
+DEFINE_LAYER_NEW(LineLayerNAPI, "LineLayer", 2, new LineLayerNAPI(layerId, sourceId),
+        std::string layerId = args.GetString(0, "layerId");
+        std::string sourceId = args.GetString(1, "sourceId");)
 
 napi_value LineLayerNAPI::CreateInstance(napi_env env, mbgl::style::LineLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "LineLayer",

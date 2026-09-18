@@ -95,26 +95,8 @@ napi_value LocationIndicatorLayerNAPI::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-napi_value LocationIndicatorLayerNAPI::New(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    args.RequireMinArgs(1);
-    if (args.HasError()) return nullptr;
-
-    std::string layerId = args.GetString(0, "layerId");
-    if (args.HasError()) return nullptr;
-
-    LocationIndicatorLayerNAPI* layerObj = new LocationIndicatorLayerNAPI(layerId);
-    napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
-
-    napi_value typeValue;
-    napi_create_string_utf8(env, "LocationIndicatorLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
-
-    return thisVar;
-}
+DEFINE_LAYER_NEW(LocationIndicatorLayerNAPI, "LocationIndicatorLayer", 1, new LocationIndicatorLayerNAPI(layerId),
+        std::string layerId = args.GetString(0, "layerId");)
 
 napi_value LocationIndicatorLayerNAPI::CreateInstance(napi_env env, mbgl::style::LocationIndicatorLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "LocationIndicatorLayer",

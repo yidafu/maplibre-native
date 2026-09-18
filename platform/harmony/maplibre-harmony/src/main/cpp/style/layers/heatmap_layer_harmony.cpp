@@ -65,23 +65,7 @@ napi_value HeatmapLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getHeatmapOpacity", nullptr, GetHeatmapOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
         
         // Layer base methods
-        { "getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getType", nullptr, GetType, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSourceId", nullptr, GetSourceId, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setVisibility", nullptr, SetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getVisibility", nullptr, GetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setMinZoom", nullptr, SetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getMinZoom", nullptr, GetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setMaxZoom", nullptr, SetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getMaxZoom", nullptr, GetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setSourceLayer", nullptr, SetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSourceLayer", nullptr, GetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
-        // Generic property methods (Android-compatible API)
-        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
+        LAYER_BASE_PROPERTY_DESCRIPTORS
     };
     
     napi_value cons = RegisterNapiClass(env, exports, "HeatmapLayer", properties,
@@ -93,40 +77,9 @@ napi_value HeatmapLayerNAPI::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-napi_value HeatmapLayerNAPI::New(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    args.RequireMinArgs(2);
-    if (args.HasError()) {
-        return nullptr;
-    }
-
-    std::string layerId = args.GetString(0, "layerId");
-    std::string sourceId = args.GetString(1, "sourceId");
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    HeatmapLayerNAPI* layerObj = new HeatmapLayerNAPI(layerId, sourceId);
-    
-    napi_status status = napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete layerObj;
-        Logger::error("HeatmapLayerNAPI", "Failed to wrap HeatmapLayer object");
-        return nullptr;
-    }
-    
-
-    
-    // Add the _TYPE_ property for type detection in the ETS layer
-    napi_value typeValue;
-    napi_create_string_utf8(env, "HeatmapLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
-    return thisVar;
-}
+DEFINE_LAYER_NEW(HeatmapLayerNAPI, "HeatmapLayer", 2, new HeatmapLayerNAPI(layerId, sourceId),
+        std::string layerId = args.GetString(0, "layerId");
+        std::string sourceId = args.GetString(1, "sourceId");)
 
 napi_value HeatmapLayerNAPI::CreateInstance(napi_env env, mbgl::style::HeatmapLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "HeatmapLayer",

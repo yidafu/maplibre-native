@@ -81,39 +81,8 @@ napi_value BackgroundLayerNAPI::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-napi_value BackgroundLayerNAPI::New(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    std::string layerId = args.GetString(0, "layerId");
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    BackgroundLayerNAPI* layerObj = new BackgroundLayerNAPI(layerId);
-    
-    napi_status status = napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete layerObj;
-        Logger::error("BackgroundLayerNAPI", "Failed to wrap BackgroundLayer object");
-        return nullptr;
-    }
-    
-
-    
-    // Add the _TYPE_ property for ETS type detection
-    napi_value typeValue;
-    napi_create_string_utf8(env, "BackgroundLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
-    return thisVar;
-}
+DEFINE_LAYER_NEW(BackgroundLayerNAPI, "BackgroundLayer", 1, new BackgroundLayerNAPI(layerId),
+        std::string layerId = args.GetString(0, "layerId");)
 
 napi_value BackgroundLayerNAPI::CreateInstance(napi_env env, mbgl::style::BackgroundLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "BackgroundLayer",

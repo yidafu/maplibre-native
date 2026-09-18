@@ -53,23 +53,7 @@ napi_value HillshadeLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setHillshadeAccentColor", nullptr, SetHillshadeAccentColor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getHillshadeIlluminationDirection", nullptr, GetHillshadeIlluminationDirection, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getHillshadeExaggeration", nullptr, GetHillshadeExaggeration, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getType", nullptr, GetType, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSourceId", nullptr, GetSourceId, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setVisibility", nullptr, SetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getVisibility", nullptr, GetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setMinZoom", nullptr, SetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getMinZoom", nullptr, GetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setMaxZoom", nullptr, SetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getMaxZoom", nullptr, GetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setSourceLayer", nullptr, SetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSourceLayer", nullptr, GetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
-        // Generic property methods (Android-compatible API)
-        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
+        LAYER_BASE_PROPERTY_DESCRIPTORS
     };
     
     napi_value cons = RegisterNapiClass(env, exports, "HillshadeLayer", properties,
@@ -81,28 +65,9 @@ napi_value HillshadeLayerNAPI::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-napi_value HillshadeLayerNAPI::New(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    args.RequireMinArgs(2);
-    if (args.HasError()) return nullptr;
-    
-    std::string layerId = args.GetString(0, "layerId");
-    std::string sourceId = args.GetString(1, "sourceId");
-    if (args.HasError()) return nullptr;
-    
-    HillshadeLayerNAPI* layerObj = new HillshadeLayerNAPI(layerId, sourceId);
-    napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
-    
-    // Add the _TYPE_ property for ETS type detection
-    napi_value typeValue;
-    napi_create_string_utf8(env, "HillshadeLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
-    
-    return thisVar;
-}
+DEFINE_LAYER_NEW(HillshadeLayerNAPI, "HillshadeLayer", 2, new HillshadeLayerNAPI(layerId, sourceId),
+        std::string layerId = args.GetString(0, "layerId");
+        std::string sourceId = args.GetString(1, "sourceId");)
 
 napi_value HillshadeLayerNAPI::CreateInstance(napi_env env, mbgl::style::HillshadeLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "HillshadeLayer",

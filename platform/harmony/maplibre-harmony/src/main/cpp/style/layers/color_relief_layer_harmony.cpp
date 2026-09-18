@@ -48,21 +48,7 @@ napi_value ColorReliefLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setColorReliefOpacity", nullptr, SetColorReliefOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getColorReliefColor", nullptr, GetColorReliefColor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getColorReliefOpacity", nullptr, GetColorReliefOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getType", nullptr, GetType, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSourceId", nullptr, GetSourceId, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setVisibility", nullptr, SetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getVisibility", nullptr, GetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setMinZoom", nullptr, SetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getMinZoom", nullptr, GetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setMaxZoom", nullptr, SetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getMaxZoom", nullptr, GetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setSourceLayer", nullptr, SetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSourceLayer", nullptr, GetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
+        LAYER_BASE_PROPERTY_DESCRIPTORS
     };
 
     napi_value cons = RegisterNapiClass(env, exports, "ColorReliefLayer", properties,
@@ -74,27 +60,9 @@ napi_value ColorReliefLayerNAPI::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-napi_value ColorReliefLayerNAPI::New(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    args.RequireMinArgs(2);
-    if (args.HasError()) return nullptr;
-
-    std::string layerId = args.GetString(0, "layerId");
-    std::string sourceId = args.GetString(1, "sourceId");
-    if (args.HasError()) return nullptr;
-
-    ColorReliefLayerNAPI* layerObj = new ColorReliefLayerNAPI(layerId, sourceId);
-    napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
-
-    napi_value typeValue;
-    napi_create_string_utf8(env, "ColorReliefLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
-
-    return thisVar;
-}
+DEFINE_LAYER_NEW(ColorReliefLayerNAPI, "ColorReliefLayer", 2, new ColorReliefLayerNAPI(layerId, sourceId),
+        std::string layerId = args.GetString(0, "layerId");
+        std::string sourceId = args.GetString(1, "sourceId");)
 
 napi_value ColorReliefLayerNAPI::CreateInstance(napi_env env, mbgl::style::ColorReliefLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "ColorReliefLayer",
