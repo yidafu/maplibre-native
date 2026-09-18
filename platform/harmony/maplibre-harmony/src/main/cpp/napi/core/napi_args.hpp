@@ -318,6 +318,46 @@ public:
     bool GetArrayElementBool(napi_value array, uint32_t index, bool defaultValue = false);
 
 private:
+    // ========== 取值模板 ==========
+    //
+    // 下面四个模板是 GetXxx / GetXxxOr / GetXxxProperty / GetArrayElementXxx
+    // 四组访问器的共同骨架，类型差异统一由 NapiScalarTraits<T>（见
+    // napi_scalar_traits.hpp）描述。模板只在 napi_args.cpp 内实例化，因此
+    // 定义放在该 .cpp 中即可。
+    //
+    // 支持的类型：int32_t / int64_t / uint32_t / double / bool / std::string。
+
+    /**
+     * 参数位置的标量取值：依次校验索引、JS 类型，失败时 SetError 并返回 fallback。
+     */
+    template <typename T>
+    T ReadArg(size_t index, const char* name, T fallback);
+
+    /**
+     * 可选参数取值：参数缺失或类型不符时静默返回 defaultValue（不产生错误）。
+     * 若底层读取意外失败，会回滚错误状态并返回 defaultValue。
+     */
+    template <typename T>
+    T ReadArgOr(size_t index, T defaultValue);
+
+    /**
+     * 读取对象上的命名属性；任何一步失败（含类型不符）都静默返回 defaultValue，
+     * 且不产生 JS 异常。
+     */
+    template <typename T>
+    T ReadProperty(napi_value obj, const char* key, T defaultValue);
+
+    /**
+     * 读取数组元素；任何一步失败都静默返回 defaultValue。
+     */
+    template <typename T>
+    T ReadArrayElement(napi_value array, uint32_t index, T defaultValue);
+
+    /**
+     * 组装 "Argument 'xxx' must be <expected>" 文案并抛出 JS 异常。
+     */
+    void SetTypeError(size_t index, const char* name, const char* expected);
+
     napi_env env_;
     napi_value thisObj_;  // Stores the `this` object
     size_t argc_;

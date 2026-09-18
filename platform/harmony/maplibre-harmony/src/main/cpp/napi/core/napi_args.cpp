@@ -3,6 +3,7 @@
 //
 
 #include "napi_args.hpp"
+#include "napi_scalar_traits.hpp"
 #include "utils/logger.h"
 #include <sstream>
 
@@ -64,6 +65,12 @@ std::string NapiArgs::GetParamName(size_t index, const char* name) const {
     return std::string("[") + std::to_string(index) + "]";
 }
 
+void NapiArgs::SetTypeError(size_t index, const char* name, const char* expected) {
+    std::ostringstream oss;
+    oss << "Argument " << GetParamName(index, name) << " must be " << expected;
+    SetError(oss.str());
+}
+
 void NapiArgs::RequireMinArgs(size_t min) {
     if (argc_ < min) {
         std::ostringstream oss;
@@ -95,174 +102,136 @@ napi_value NapiArgs::GetValue(size_t index) {
     return args_[index];
 }
 
+// ========== Shared accessor skeletons ==========
+//
+// 下面四个模板承载 GetXxx / GetXxxOr / GetXxxProperty / GetArrayElementXxx
+// 四组访问器完全相同的控制流，类型相关差异（jsType / 文案 / napi_get_value_*）
+// 全部来自 NapiScalarTraits<T>。四组公开访问器因此退化为一行转发。
+//
+// 这些模板只在当前 TU 内实例化，故定义直接放在 .cpp 中。
+
+template <typename T>
+T NapiArgs::ReadArg(size_t index, const char* name, T fallback) {
+    if (!CheckIndex(index, name)) {
+        return fallback;
+    }
+
+    napi_valuetype type;
+    // 短路求值：typeof 失败时不会读取未初始化的 type
+    if (napi_typeof(env_, args_[index], &type) != napi_ok ||
+        type != NapiScalarTraits<T>::jsType) {
+        SetTypeError(index, name, NapiScalarTraits<T>::jsTypeName);
+        return fallback;
+    }
+
+    T result = fallback;
+    const char* failure = nullptr;
+    if (NapiScalarTraits<T>::read(env_, args_[index], &result, &failure) != napi_ok) {
+        SetError(failure != nullptr ? failure : "Failed to get value");
+        return fallback;
+    }
+
+    return result;
+}
+
+template <typename T>
+T NapiArgs::ReadArgOr(size_t index, T defaultValue) {
+    if (!Has(index) || !IsType(index, NapiScalarTraits<T>::jsType)) {
+        return defaultValue;
+    }
+
+    // 保留当前错误状态：一旦底层读取失败，按「可选参数」语义静默降级，
+    // 不把错误传播给调用方，也不覆盖此前已有的错误。
+    const bool hadError = hasError_;
+    const std::string prevError = errorMessage_;
+
+    const T result = ReadArg<T>(index, nullptr, defaultValue);
+
+    if (hasError_ && !hadError) {
+        hasError_ = hadError;
+        errorMessage_ = prevError;
+        return defaultValue;
+    }
+
+    return result;
+}
+
+template <typename T>
+T NapiArgs::ReadProperty(napi_value obj, const char* key, T defaultValue) {
+    if (!obj || !key) {
+        return defaultValue;
+    }
+
+    napi_value value = nullptr;
+    if (napi_get_named_property(env_, obj, key, &value) != napi_ok) {
+        return defaultValue;
+    }
+
+    napi_valuetype type;
+    if (napi_typeof(env_, value, &type) != napi_ok ||
+        type != NapiScalarTraits<T>::jsType) {
+        return defaultValue;
+    }
+
+    T result = defaultValue;
+    const char* failure = nullptr;
+    if (NapiScalarTraits<T>::read(env_, value, &result, &failure) != napi_ok) {
+        return defaultValue;
+    }
+
+    return result;
+}
+
+template <typename T>
+T NapiArgs::ReadArrayElement(napi_value array, uint32_t index, T defaultValue) {
+    if (!array) {
+        return defaultValue;
+    }
+
+    napi_value element = nullptr;
+    if (napi_get_element(env_, array, index, &element) != napi_ok) {
+        return defaultValue;
+    }
+
+    napi_valuetype type;
+    if (napi_typeof(env_, element, &type) != napi_ok ||
+        type != NapiScalarTraits<T>::jsType) {
+        return defaultValue;
+    }
+
+    T result = defaultValue;
+    const char* failure = nullptr;
+    if (NapiScalarTraits<T>::read(env_, element, &result, &failure) != napi_ok) {
+        return defaultValue;
+    }
+
+    return result;
+}
+
 // ========== Primitive Type Implementations ==========
 
 std::string NapiArgs::GetString(size_t index, const char* name) {
-    if (!CheckIndex(index, name)) {
-        return "";
-    }
-    
-    napi_valuetype type;
-    napi_status status = napi_typeof(env_, args_[index], &type);
-    
-    if (status != napi_ok || type != napi_string) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be a string";
-        SetError(oss.str());
-        return "";
-    }
-    
-    size_t length = 0;
-    status = napi_get_value_string_utf8(env_, args_[index], nullptr, 0, &length);
-    
-    if (status != napi_ok) {
-        SetError("Failed to get string length");
-        return "";
-    }
-    
-    if (length == 0) {
-        return "";
-    }
-    
-    std::string result(length, '\0');
-    status = napi_get_value_string_utf8(env_, args_[index], &result[0], length + 1, &length);
-    
-    if (status != napi_ok) {
-        SetError("Failed to get string value");
-        return "";
-    }
-    
-    return result;
+    return ReadArg<std::string>(index, name, std::string());
 }
 
 int32_t NapiArgs::GetInt32(size_t index, const char* name) {
-    if (!CheckIndex(index, name)) {
-        return 0;
-    }
-    
-    napi_valuetype type;
-    napi_status status = napi_typeof(env_, args_[index], &type);
-    
-    if (status != napi_ok || type != napi_number) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be a number";
-        SetError(oss.str());
-        return 0;
-    }
-    
-    int32_t result = 0;
-    status = napi_get_value_int32(env_, args_[index], &result);
-    
-    if (status != napi_ok) {
-        SetError("Failed to get int32 value");
-        return 0;
-    }
-    
-    return result;
+    return ReadArg<int32_t>(index, name, 0);
 }
 
 int64_t NapiArgs::GetInt64(size_t index, const char* name) {
-    if (!CheckIndex(index, name)) {
-        return 0;
-    }
-    
-    napi_valuetype type;
-    napi_status status = napi_typeof(env_, args_[index], &type);
-    
-    if (status != napi_ok || type != napi_number) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be a number";
-        SetError(oss.str());
-        return 0;
-    }
-    
-    int64_t result = 0;
-    status = napi_get_value_int64(env_, args_[index], &result);
-    
-    if (status != napi_ok) {
-        SetError("Failed to get int64 value");
-        return 0;
-    }
-    
-    return result;
+    return ReadArg<int64_t>(index, name, 0);
 }
 
 uint32_t NapiArgs::GetUint32(size_t index, const char* name) {
-    if (!CheckIndex(index, name)) {
-        return 0;
-    }
-    
-    napi_valuetype type;
-    napi_status status = napi_typeof(env_, args_[index], &type);
-    
-    if (status != napi_ok || type != napi_number) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be a number";
-        SetError(oss.str());
-        return 0;
-    }
-    
-    uint32_t result = 0;
-    status = napi_get_value_uint32(env_, args_[index], &result);
-    
-    if (status != napi_ok) {
-        SetError("Failed to get uint32 value");
-        return 0;
-    }
-    
-    return result;
+    return ReadArg<uint32_t>(index, name, 0);
 }
 
 double NapiArgs::GetDouble(size_t index, const char* name) {
-    if (!CheckIndex(index, name)) {
-        return 0.0;
-    }
-    
-    napi_valuetype type;
-    napi_status status = napi_typeof(env_, args_[index], &type);
-    
-    if (status != napi_ok || type != napi_number) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be a number";
-        SetError(oss.str());
-        return 0.0;
-    }
-    
-    double result = 0.0;
-    status = napi_get_value_double(env_, args_[index], &result);
-    
-    if (status != napi_ok) {
-        SetError("Failed to get double value");
-        return 0.0;
-    }
-    
-    return result;
+    return ReadArg<double>(index, name, 0.0);
 }
 
 bool NapiArgs::GetBool(size_t index, const char* name) {
-    if (!CheckIndex(index, name)) {
-        return false;
-    }
-    
-    napi_valuetype type;
-    napi_status status = napi_typeof(env_, args_[index], &type);
-    
-    if (status != napi_ok || type != napi_boolean) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be a boolean";
-        SetError(oss.str());
-        return false;
-    }
-    
-    bool result = false;
-    status = napi_get_value_bool(env_, args_[index], &result);
-    
-    if (status != napi_ok) {
-        SetError("Failed to get bool value");
-        return false;
-    }
-    
-    return result;
+    return ReadArg<bool>(index, name, false);
 }
 
 int64_t NapiArgs::GetBigInt(size_t index, const char* name) {
@@ -274,9 +243,7 @@ int64_t NapiArgs::GetBigInt(size_t index, const char* name) {
     napi_status status = napi_typeof(env_, args_[index], &type);
     
     if (status != napi_ok || type != napi_bigint) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be a BigInt";
-        SetError(oss.str());
+        SetTypeError(index, name, "a BigInt");
         return 0;
     }
     
@@ -308,9 +275,7 @@ napi_value NapiArgs::GetObject(size_t index, const char* name) {
     napi_status status = napi_typeof(env_, args_[index], &type);
     
     if (status != napi_ok || type != napi_object) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be an object";
-        SetError(oss.str());
+        SetTypeError(index, name, "an object");
         return nullptr;
     }
     
@@ -319,9 +284,7 @@ napi_value NapiArgs::GetObject(size_t index, const char* name) {
     status = napi_is_array(env_, args_[index], &isArray);
     
     if (status == napi_ok && isArray) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be an object, not an array";
-        SetError(oss.str());
+        SetTypeError(index, name, "an object, not an array");
         return nullptr;
     }
     
@@ -337,9 +300,7 @@ napi_value NapiArgs::GetArray(size_t index, const char* name) {
     napi_status status = napi_is_array(env_, args_[index], &isArray);
     
     if (status != napi_ok || !isArray) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be an array";
-        SetError(oss.str());
+        SetTypeError(index, name, "an array");
         return nullptr;
     }
     
@@ -355,9 +316,7 @@ napi_value NapiArgs::GetFunction(size_t index, const char* name) {
     napi_status status = napi_typeof(env_, args_[index], &type);
     
     if (status != napi_ok || type != napi_function) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be a function";
-        SetError(oss.str());
+        SetTypeError(index, name, "a function");
         return nullptr;
     }
     
@@ -374,9 +333,7 @@ void* NapiArgs::GetBuffer(size_t index, size_t* length, const char* name) {
     napi_status status = napi_is_buffer(env_, args_[index], &isBuffer);
     
     if (status != napi_ok || !isBuffer) {
-        std::ostringstream oss;
-        oss << "Argument " << GetParamName(index, name) << " must be a Buffer";
-        SetError(oss.str());
+        SetTypeError(index, name, "a Buffer");
         if (length) *length = 0;
         return nullptr;
     }
@@ -401,306 +358,54 @@ void* NapiArgs::GetBuffer(size_t index, size_t* length, const char* name) {
 // ========== Optional Parameter Implementations ==========
 
 std::string NapiArgs::GetStringOr(size_t index, const std::string& defaultValue) {
-    if (!Has(index)) {
-        return defaultValue;
-    }
-    
-    if (!IsType(index, napi_string)) {
-        return defaultValue;
-    }
-    
-    // Temporarily preserve current error state
-    bool hadError = hasError_;
-    std::string prevError = errorMessage_;
-    
-    std::string result = GetString(index, nullptr);
-    
-    // If retrieval fails, restore prior error state and return default value
-    if (hasError_ && !hadError) {
-        hasError_ = hadError;
-        errorMessage_ = prevError;
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadArgOr<std::string>(index, defaultValue);
 }
 
 int32_t NapiArgs::GetInt32Or(size_t index, int32_t defaultValue) {
-    if (!Has(index) || !IsType(index, napi_number)) {
-        return defaultValue;
-    }
-    
-    bool hadError = hasError_;
-    std::string prevError = errorMessage_;
-    
-    int32_t result = GetInt32(index, nullptr);
-    
-    if (hasError_ && !hadError) {
-        hasError_ = hadError;
-        errorMessage_ = prevError;
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadArgOr<int32_t>(index, defaultValue);
 }
 
 int64_t NapiArgs::GetInt64Or(size_t index, int64_t defaultValue) {
-    if (!Has(index) || !IsType(index, napi_number)) {
-        return defaultValue;
-    }
-    
-    bool hadError = hasError_;
-    std::string prevError = errorMessage_;
-    
-    int64_t result = GetInt64(index, nullptr);
-    
-    if (hasError_ && !hadError) {
-        hasError_ = hadError;
-        errorMessage_ = prevError;
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadArgOr<int64_t>(index, defaultValue);
 }
 
 uint32_t NapiArgs::GetUint32Or(size_t index, uint32_t defaultValue) {
-    if (!Has(index) || !IsType(index, napi_number)) {
-        return defaultValue;
-    }
-    
-    bool hadError = hasError_;
-    std::string prevError = errorMessage_;
-    
-    uint32_t result = GetUint32(index, nullptr);
-    
-    if (hasError_ && !hadError) {
-        hasError_ = hadError;
-        errorMessage_ = prevError;
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadArgOr<uint32_t>(index, defaultValue);
 }
 
 double NapiArgs::GetDoubleOr(size_t index, double defaultValue) {
-    if (!Has(index) || !IsType(index, napi_number)) {
-        return defaultValue;
-    }
-    
-    bool hadError = hasError_;
-    std::string prevError = errorMessage_;
-    
-    double result = GetDouble(index, nullptr);
-    
-    if (hasError_ && !hadError) {
-        hasError_ = hadError;
-        errorMessage_ = prevError;
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadArgOr<double>(index, defaultValue);
 }
 
 bool NapiArgs::GetBoolOr(size_t index, bool defaultValue) {
-    if (!Has(index) || !IsType(index, napi_boolean)) {
-        return defaultValue;
-    }
-    
-    bool hadError = hasError_;
-    std::string prevError = errorMessage_;
-    
-    bool result = GetBool(index, nullptr);
-    
-    if (hasError_ && !hadError) {
-        hasError_ = hadError;
-        errorMessage_ = prevError;
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadArgOr<bool>(index, defaultValue);
 }
 
 // ========== Object Property Helper Methods ==========
 
 int32_t NapiArgs::GetInt32Property(napi_value obj, const char* key, int32_t defaultValue) {
-    if (!obj || !key) {
-        return defaultValue;
-    }
-    
-    napi_value value;
-    napi_status status = napi_get_named_property(env_, obj, key, &value);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    napi_valuetype type;
-    status = napi_typeof(env_, value, &type);
-    
-    if (status != napi_ok || type != napi_number) {
-        return defaultValue;
-    }
-    
-    int32_t result = 0;
-    status = napi_get_value_int32(env_, value, &result);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadProperty<int32_t>(obj, key, defaultValue);
 }
 
 uint32_t NapiArgs::GetUint32Property(napi_value obj, const char* key, uint32_t defaultValue) {
-    if (!obj || !key) {
-        return defaultValue;
-    }
-    
-    napi_value value;
-    napi_status status = napi_get_named_property(env_, obj, key, &value);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    napi_valuetype type;
-    status = napi_typeof(env_, value, &type);
-    
-    if (status != napi_ok || type != napi_number) {
-        return defaultValue;
-    }
-    
-    uint32_t result = 0;
-    status = napi_get_value_uint32(env_, value, &result);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadProperty<uint32_t>(obj, key, defaultValue);
 }
 
-std::string NapiArgs::GetStringProperty(napi_value obj, const char* key, const std::string& defaultValue) {
-    if (!obj || !key) {
-        return defaultValue;
-    }
-    
-    napi_value value;
-    napi_status status = napi_get_named_property(env_, obj, key, &value);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    napi_valuetype type;
-    status = napi_typeof(env_, value, &type);
-    
-    if (status != napi_ok || type != napi_string) {
-        return defaultValue;
-    }
-    
-    size_t length = 0;
-    status = napi_get_value_string_utf8(env_, value, nullptr, 0, &length);
-    
-    if (status != napi_ok || length == 0) {
-        return defaultValue;
-    }
-    
-    std::string result(length, '\0');
-    status = napi_get_value_string_utf8(env_, value, &result[0], length + 1, &length);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    return result;
+std::string NapiArgs::GetStringProperty(napi_value obj, const char* key,
+                                        const std::string& defaultValue) {
+    return ReadProperty<std::string>(obj, key, defaultValue);
 }
 
 int64_t NapiArgs::GetInt64Property(napi_value obj, const char* key, int64_t defaultValue) {
-    if (!obj || !key) {
-        return defaultValue;
-    }
-    
-    napi_value value;
-    napi_status status = napi_get_named_property(env_, obj, key, &value);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    napi_valuetype type;
-    status = napi_typeof(env_, value, &type);
-    
-    if (status != napi_ok || type != napi_number) {
-        return defaultValue;
-    }
-    
-    int64_t result = 0;
-    status = napi_get_value_int64(env_, value, &result);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadProperty<int64_t>(obj, key, defaultValue);
 }
 
 double NapiArgs::GetDoubleProperty(napi_value obj, const char* key, double defaultValue) {
-    if (!obj || !key) {
-        return defaultValue;
-    }
-    
-    napi_value value;
-    napi_status status = napi_get_named_property(env_, obj, key, &value);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    napi_valuetype type;
-    status = napi_typeof(env_, value, &type);
-    
-    if (status != napi_ok || type != napi_number) {
-        return defaultValue;
-    }
-    
-    double result = 0.0;
-    status = napi_get_value_double(env_, value, &result);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadProperty<double>(obj, key, defaultValue);
 }
 
 bool NapiArgs::GetBoolProperty(napi_value obj, const char* key, bool defaultValue) {
-    if (!obj || !key) {
-        return defaultValue;
-    }
-    
-    napi_value value;
-    napi_status status = napi_get_named_property(env_, obj, key, &value);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    napi_valuetype type;
-    status = napi_typeof(env_, value, &type);
-    
-    if (status != napi_ok || type != napi_boolean) {
-        return defaultValue;
-    }
-    
-    bool result = false;
-    status = napi_get_value_bool(env_, value, &result);
-    
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-    
-    return result;
+    return ReadProperty<bool>(obj, key, defaultValue);
 }
 
 // ========== Convenience Method Implementations ==========
@@ -753,130 +458,23 @@ uint32_t NapiArgs::GetArrayLength(napi_value array) {
     return length;
 }
 
-std::string NapiArgs::GetArrayElementString(napi_value array, uint32_t index, const std::string& defaultValue) {
-    if (!array) {
-        return defaultValue;
-    }
-
-    napi_value element;
-    napi_status status = napi_get_element(env_, array, index, &element);
-
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-
-    napi_valuetype type;
-    status = napi_typeof(env_, element, &type);
-
-    if (status != napi_ok || type != napi_string) {
-        return defaultValue;
-    }
-
-    size_t length = 0;
-    status = napi_get_value_string_utf8(env_, element, nullptr, 0, &length);
-
-    if (status != napi_ok || length == 0) {
-        return defaultValue;
-    }
-
-    std::string result(length, '\0');
-    status = napi_get_value_string_utf8(env_, element, &result[0], length + 1, &length);
-
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-
-    return result;
+std::string NapiArgs::GetArrayElementString(napi_value array, uint32_t index,
+                                            const std::string& defaultValue) {
+    return ReadArrayElement<std::string>(array, index, defaultValue);
 }
 
 int32_t NapiArgs::GetArrayElementInt32(napi_value array, uint32_t index, int32_t defaultValue) {
-    if (!array) {
-        return defaultValue;
-    }
-
-    napi_value element;
-    napi_status status = napi_get_element(env_, array, index, &element);
-
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-
-    napi_valuetype type;
-    status = napi_typeof(env_, element, &type);
-
-    if (status != napi_ok || type != napi_number) {
-        return defaultValue;
-    }
-
-    int32_t result = 0;
-    status = napi_get_value_int32(env_, element, &result);
-
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-
-    return result;
+    return ReadArrayElement<int32_t>(array, index, defaultValue);
 }
 
 double NapiArgs::GetArrayElementDouble(napi_value array, uint32_t index, double defaultValue) {
-    if (!array) {
-        return defaultValue;
-    }
-
-    napi_value element;
-    napi_status status = napi_get_element(env_, array, index, &element);
-
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-
-    napi_valuetype type;
-    status = napi_typeof(env_, element, &type);
-
-    if (status != napi_ok || type != napi_number) {
-        return defaultValue;
-    }
-
-    double result = 0.0;
-    status = napi_get_value_double(env_, element, &result);
-
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-
-    return result;
+    return ReadArrayElement<double>(array, index, defaultValue);
 }
 
 bool NapiArgs::GetArrayElementBool(napi_value array, uint32_t index, bool defaultValue) {
-    if (!array) {
-        return defaultValue;
-    }
-
-    napi_value element;
-    napi_status status = napi_get_element(env_, array, index, &element);
-
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-
-    napi_valuetype type;
-    status = napi_typeof(env_, element, &type);
-
-    if (status != napi_ok || type != napi_boolean) {
-        return defaultValue;
-    }
-
-    bool result = false;
-    status = napi_get_value_bool(env_, element, &result);
-
-    if (status != napi_ok) {
-        return defaultValue;
-    }
-
-    return result;
+    return ReadArrayElement<bool>(array, index, defaultValue);
 }
 
 } // namespace napi
 } // namespace harmony
 } // namespace mbgl
-
