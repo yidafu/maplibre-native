@@ -1,8 +1,10 @@
 /**
- * PropertyTypes - Layer expression type definitions
+ * Expression - Layer expression type definitions
  *
- * Re-export expression definitions from the NAPI layer while extending ETS Expression support.
- * Expressions can be provided as constant values, Expression instances, or Expression literals.
+ * Filter/expression helpers built on top of the NAPI expression literals.
+ * The upstream expression type set (ExpressionValue, InterpolationType,
+ * ComparisonExpression, ... ) is re-exported from PropertyTypes - see the note
+ * below; this module used to carry its own copy of that same 15-name list.
  */
 
 import { ComparisonExpression, ExpressionLiteral, LogicalExpression, LookupExpression } from 'libmaplibre.so';
@@ -10,24 +12,10 @@ import { ComparisonExpression, ExpressionLiteral, LogicalExpression, LookupExpre
 // Re-export Expression for downstream modules
 export { Expression } from '../expressions/Expression';
 
-// Re-export all expression types from libmaplibre.so
-export type {
-  ExpressionValue,
-  ExpressionLiteral,
-  InterpolationType,
-  ComparisonExpression,
-  LogicalExpression,
-  LookupExpression,
-  MathExpression,
-  ConditionalExpression,
-  InterpolationExpression,
-  TypeExpression,
-  StringExpression,
-  ColorExpression,
-  FeatureDataExpression,
-  ContextExpression,
-  VariableExpression
-} from 'libmaplibre.so';
+// NOTE: the expression types themselves are surfaced by ./PropertyTypes
+// (which re-exports them from libmaplibre.so). This file used to repeat the
+// identical 15-name `export type { ... }` block, so the two modules could drift
+// apart without anyone noticing. Import them from './PropertyTypes' instead.
 
 // ==================== Filter expressions ====================
 
