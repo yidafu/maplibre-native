@@ -682,219 +682,219 @@ export struct MapView {
   // ===== Camera event listeners =====
 
   addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
-    this.controller.addOnCameraWillChangeListener(listener);
+    this.controller.getMapView()?.addOnCameraWillChangeListener(listener);
   }
 
   removeOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
-    this.controller.removeOnCameraWillChangeListener(listener);
+    this.controller.getMapView()?.removeOnCameraWillChangeListener(listener);
   }
 
   addOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
-    this.controller.addOnCameraIsChangingListener(listener);
+    this.controller.getMapView()?.addOnCameraIsChangingListener(listener);
   }
 
   removeOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
-    this.controller.removeOnCameraIsChangingListener(listener);
+    this.controller.getMapView()?.removeOnCameraIsChangingListener(listener);
   }
 
   addOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
-    this.controller.addOnCameraDidChangeListener(listener);
+    this.controller.getMapView()?.addOnCameraDidChangeListener(listener);
   }
 
   removeOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
-    this.controller.removeOnCameraDidChangeListener(listener);
+    this.controller.getMapView()?.removeOnCameraDidChangeListener(listener);
   }
 
   // ===== Map loading listeners =====
 
   addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
-    this.controller.addOnWillStartLoadingMapListener(listener);
+    this.controller.getMapView()?.addOnWillStartLoadingMapListener(listener);
   }
 
   removeOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
-    this.controller.removeOnWillStartLoadingMapListener(listener);
+    this.controller.getMapView()?.removeOnWillStartLoadingMapListener(listener);
   }
 
   addOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
-    this.controller.addOnDidFinishLoadingMapListener(listener);
+    this.controller.getMapView()?.addOnDidFinishLoadingMapListener(listener);
   }
 
   removeOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
-    this.controller.removeOnDidFinishLoadingMapListener(listener);
+    this.controller.getMapView()?.removeOnDidFinishLoadingMapListener(listener);
   }
 
   addOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
-    this.controller.addOnDidFailLoadingMapListener(listener);
+    this.controller.getMapView()?.addOnDidFailLoadingMapListener(listener);
   }
 
   removeOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
-    this.controller.removeOnDidFailLoadingMapListener(listener);
+    this.controller.getMapView()?.removeOnDidFailLoadingMapListener(listener);
   }
 
   // ===== Rendering listeners =====
 
   addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
-    this.controller.addOnWillStartRenderingFrameListener(listener);
+    this.controller.getMapView()?.addOnWillStartRenderingFrameListener(listener);
   }
 
   removeOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
-    this.controller.removeOnWillStartRenderingFrameListener(listener);
+    this.controller.getMapView()?.removeOnWillStartRenderingFrameListener(listener);
   }
 
   addOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
-    this.controller.addOnDidFinishRenderingFrameListener(listener);
+    this.controller.getMapView()?.addOnDidFinishRenderingFrameListener(listener);
   }
 
   removeOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
-    this.controller.removeOnDidFinishRenderingFrameListener(listener);
+    this.controller.getMapView()?.removeOnDidFinishRenderingFrameListener(listener);
   }
 
   addOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
-    this.controller.addOnDidFinishRenderingFrameWithStatsListener(listener);
+    this.controller.getMapView()?.addOnDidFinishRenderingFrameWithStatsListener(listener);
   }
 
   removeOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
-    this.controller.removeOnDidFinishRenderingFrameWithStatsListener(listener);
+    this.controller.getMapView()?.removeOnDidFinishRenderingFrameWithStatsListener(listener);
   }
 
   addOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
-    this.controller.addOnWillStartRenderingMapListener(listener);
+    this.controller.getMapView()?.addOnWillStartRenderingMapListener(listener);
   }
 
   removeOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
-    this.controller.removeOnWillStartRenderingMapListener(listener);
+    this.controller.getMapView()?.removeOnWillStartRenderingMapListener(listener);
   }
 
   addOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
-    this.controller.addOnDidFinishRenderingMapListener(listener);
+    this.controller.getMapView()?.addOnDidFinishRenderingMapListener(listener);
   }
 
   removeOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
-    this.controller.removeOnDidFinishRenderingMapListener(listener);
+    this.controller.getMapView()?.removeOnDidFinishRenderingMapListener(listener);
   }
 
   // ===== Style listeners =====
 
   addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
-    this.controller.addOnDidFinishLoadingStyleListener(listener);
+    this.controller.getMapView()?.addOnDidFinishLoadingStyleListener(listener);
   }
 
   removeOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
-    this.controller.removeOnDidFinishLoadingStyleListener(listener);
+    this.controller.getMapView()?.removeOnDidFinishLoadingStyleListener(listener);
   }
 
   addOnStyleImageMissingListener(listener: OnStyleImageMissingListener): void {
-    this.controller.addOnStyleImageMissingListener(listener);
+    this.controller.getMapView()?.addOnStyleImageMissingListener(listener);
   }
 
   removeOnStyleImageMissingListener(listener: OnStyleImageMissingListener): void {
-    this.controller.removeOnStyleImageMissingListener(listener);
+    this.controller.getMapView()?.removeOnStyleImageMissingListener(listener);
   }
 
   addOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
-    this.controller.addOnCanRemoveUnusedStyleImageListener(listener);
+    this.controller.getMapView()?.addOnCanRemoveUnusedStyleImageListener(listener);
   }
 
   removeOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
-    this.controller.removeOnCanRemoveUnusedStyleImageListener(listener);
+    this.controller.getMapView()?.removeOnCanRemoveUnusedStyleImageListener(listener);
   }
 
   // ===== Other listeners =====
 
   addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
-    this.controller.addOnDidBecomeIdleListener(listener);
+    this.controller.getMapView()?.addOnDidBecomeIdleListener(listener);
   }
 
   removeOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
-    this.controller.removeOnDidBecomeIdleListener(listener);
+    this.controller.getMapView()?.removeOnDidBecomeIdleListener(listener);
   }
 
   addOnSourceChangedListener(listener: OnSourceChangedListener): void {
-    this.controller.addOnSourceChangedListener(listener);
+    this.controller.getMapView()?.addOnSourceChangedListener(listener);
   }
 
   removeOnSourceChangedListener(listener: OnSourceChangedListener): void {
-    this.controller.removeOnSourceChangedListener(listener);
+    this.controller.getMapView()?.removeOnSourceChangedListener(listener);
   }
 
   addOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
-    this.controller.addOnPreCompileShaderListener(listener);
+    this.controller.getMapView()?.addOnPreCompileShaderListener(listener);
   }
 
   removeOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
-    this.controller.removeOnPreCompileShaderListener(listener);
+    this.controller.getMapView()?.removeOnPreCompileShaderListener(listener);
   }
 
   addOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
-    this.controller.addOnPostCompileShaderListener(listener);
+    this.controller.getMapView()?.addOnPostCompileShaderListener(listener);
   }
 
   removeOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
-    this.controller.removeOnPostCompileShaderListener(listener);
+    this.controller.getMapView()?.removeOnPostCompileShaderListener(listener);
   }
 
   addOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
-    this.controller.addOnShaderCompileFailedListener(listener);
+    this.controller.getMapView()?.addOnShaderCompileFailedListener(listener);
   }
 
   removeOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
-    this.controller.removeOnShaderCompileFailedListener(listener);
+    this.controller.getMapView()?.removeOnShaderCompileFailedListener(listener);
   }
 
   addOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
-    this.controller.addOnGlyphsLoadedListener(listener);
+    this.controller.getMapView()?.addOnGlyphsLoadedListener(listener);
   }
 
   removeOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
-    this.controller.removeOnGlyphsLoadedListener(listener);
+    this.controller.getMapView()?.removeOnGlyphsLoadedListener(listener);
   }
 
   addOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
-    this.controller.addOnGlyphsErrorListener(listener);
+    this.controller.getMapView()?.addOnGlyphsErrorListener(listener);
   }
 
   removeOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
-    this.controller.removeOnGlyphsErrorListener(listener);
+    this.controller.getMapView()?.removeOnGlyphsErrorListener(listener);
   }
 
   addOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
-    this.controller.addOnGlyphsRequestedListener(listener);
+    this.controller.getMapView()?.addOnGlyphsRequestedListener(listener);
   }
 
   removeOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
-    this.controller.removeOnGlyphsRequestedListener(listener);
+    this.controller.getMapView()?.removeOnGlyphsRequestedListener(listener);
   }
 
   addOnTileActionListener(listener: OnTileActionListener): void {
-    this.controller.addOnTileActionListener(listener);
+    this.controller.getMapView()?.addOnTileActionListener(listener);
   }
 
   removeOnTileActionListener(listener: OnTileActionListener): void {
-    this.controller.removeOnTileActionListener(listener);
+    this.controller.getMapView()?.removeOnTileActionListener(listener);
   }
 
   addOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
-    this.controller.addOnSpriteLoadedListener(listener);
+    this.controller.getMapView()?.addOnSpriteLoadedListener(listener);
   }
 
   removeOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
-    this.controller.removeOnSpriteLoadedListener(listener);
+    this.controller.getMapView()?.removeOnSpriteLoadedListener(listener);
   }
 
   addOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
-    this.controller.addOnSpriteErrorListener(listener);
+    this.controller.getMapView()?.addOnSpriteErrorListener(listener);
   }
 
   removeOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
-    this.controller.removeOnSpriteErrorListener(listener);
+    this.controller.getMapView()?.removeOnSpriteErrorListener(listener);
   }
 
   addOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
-    this.controller.addOnSpriteRequestedListener(listener);
+    this.controller.getMapView()?.addOnSpriteRequestedListener(listener);
   }
 
   removeOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
-    this.controller.removeOnSpriteRequestedListener(listener);
+    this.controller.getMapView()?.removeOnSpriteRequestedListener(listener);
   }
 
   /**
