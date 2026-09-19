@@ -678,7 +678,7 @@ void HarmonyGLRendererBackend::logShaderInfo(GLuint program) {
 void HarmonyGLRendererBackend::updateViewPort() {
     assert(gfx::BackendScope::exists());
     assertOnCorrectThread();
-    setViewport(0, 0, size);
+    setViewport(0, 0, getSize());
 }
 
 void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
@@ -693,7 +693,7 @@ void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
     uint32_t physicalWidth = static_cast<uint32_t>(width * pixelRatio_);
     uint32_t physicalHeight = static_cast<uint32_t>(height * pixelRatio_);
     
-    size = {physicalWidth, physicalHeight};
+    setRenderableSize({physicalWidth, physicalHeight});
     
     // ✅ Critical fix: update the OpenGL viewport (when the context is active)
     // This keeps the framebuffer size and viewport in sync
@@ -701,12 +701,12 @@ void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
     if (gfx::BackendScope::exists()) {
         try {
             // Update the context's assumed viewport state (without triggering assertions)
-            getContext<gl::Context>().viewport = {0, 0, size};
+            getContext<gl::Context>().viewport = {0, 0, getSize()};
             
             // If the context is currently active, update it immediately with glViewport
             EGLContext currentContext = eglGetCurrentContext();
             if (currentContext == eglContext_) {
-                glViewport(0, 0, static_cast<GLsizei>(size.width), static_cast<GLsizei>(size.height));
+                glViewport(0, 0, static_cast<GLsizei>(getSize().width), static_cast<GLsizei>(getSize().height));
             } else {
             }
         } catch (...) {
@@ -768,7 +768,7 @@ void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
 PremultipliedImage HarmonyGLRendererBackend::readFramebuffer() {
     assert(gfx::BackendScope::exists());
     assertOnCorrectThread();
-    return getContext<gl::Context>().readFramebuffer<PremultipliedImage>(size);
+    return getContext<gl::Context>().readFramebuffer<PremultipliedImage>(getSize());
 }
 
 // updateAssumedState is now implemented in the wrapper
@@ -798,7 +798,7 @@ void HarmonyGLRendererBackend::updateAssumedState() {
     getContext<gl::Context>().bindFramebuffer.setCurrentValue(0);
     
     // Set viewport directly (skip setViewport which asserts)
-    getContext<gl::Context>().viewport = {0, 0, size};
+    getContext<gl::Context>().viewport = {0, 0, getSize()};
 }
 
 // initShaders is inherited from gl::RendererBackend
@@ -901,13 +901,13 @@ void HarmonyGLRendererBackend::activate() {
             auto ensureViewport = [this]() {
                 GLint viewport[4];
                 glGetIntegerv(GL_VIEWPORT, viewport);
-                if (viewport[2] != static_cast<GLint>(size.width) ||
-                    viewport[3] != static_cast<GLint>(size.height)) {
+                if (viewport[2] != static_cast<GLint>(getSize().width) ||
+                    viewport[3] != static_cast<GLint>(getSize().height)) {
                     Logger::warn("HarmonyGL", "⚠️ Viewport size mismatch! Current=[%d, %d], Expected=[%u, %u] - Fixing...",
-                                 viewport[2], viewport[3], size.width, size.height);
-                    glViewport(0, 0, static_cast<GLsizei>(size.width), static_cast<GLsizei>(size.height));
+                                 viewport[2], viewport[3], getSize().width, getSize().height);
+                    glViewport(0, 0, static_cast<GLsizei>(getSize().width), static_cast<GLsizei>(getSize().height));
                     if (gfx::BackendScope::exists()) {
-                        getContext<gl::Context>().viewport = {0, 0, size};
+                        getContext<gl::Context>().viewport = {0, 0, getSize()};
                     }
                 }
             };
@@ -967,10 +967,10 @@ void HarmonyGLRendererBackend::activate() {
                                  eglErrorString(makeCurrentError), makeCurrentError);
                     bool recovered = tryRecoverEGL();
                     if (recovered) {
-                        if (size.width > 0 && size.height > 0) {
+                        if (getSize().width > 0 && getSize().height > 0) {
                             const double safeRatio = (pixelRatio_ > 0.01f) ? static_cast<double>(pixelRatio_) : 1.0;
-                            int logicalWidth = static_cast<int>(std::lround(static_cast<double>(size.width) / safeRatio));
-                            int logicalHeight = static_cast<int>(std::lround(static_cast<double>(size.height) / safeRatio));
+                            int logicalWidth = static_cast<int>(std::lround(static_cast<double>(getSize().width) / safeRatio));
+                            int logicalHeight = static_cast<int>(std::lround(static_cast<double>(getSize().height) / safeRatio));
                             logicalWidth = std::max(logicalWidth, 1);
                             logicalHeight = std::max(logicalHeight, 1);
                             try {

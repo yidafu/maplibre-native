@@ -50,5 +50,9 @@ void detachThread() {
     // Provide an empty implementation to satisfy the linker.
 }
 
+void runTask(const std::function<void()>& task) {
+    task();
+}
+
 } // namespace platform
-} // namespace mbgl
+} // namespace mln

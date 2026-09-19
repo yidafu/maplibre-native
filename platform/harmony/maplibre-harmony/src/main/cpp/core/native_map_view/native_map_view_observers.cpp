@@ -253,8 +253,8 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
         // Retrieve encoding and rendering time from renderingStats
         const auto& stats = status.renderingStats;
         // encodingTime and renderingTime are in seconds; convert them to milliseconds
-        double encodingTime = stats.encodingTime * 1000.0;
-        double renderingTime = stats.renderingTime * 1000.0;
+        double encodingTime = stats ? stats->encodingTime * 1000.0 : 0.0;
+        double renderingTime = stats ? stats->renderingTime * 1000.0 : 0.0;
 
         // ThreadSafeCallback passes exactly one argument: the plain frame
         // listener receives `fully` (timings go through the WithStats variant

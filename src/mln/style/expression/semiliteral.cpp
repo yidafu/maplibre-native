@@ -9,8 +9,8 @@ namespace mln::style::expression {
 namespace {
 type::Array arrayType(const std::vector<std::unique_ptr<Expression>>& elements) {
     const auto itemType = elements.empty() ? type::Value : elements.front()->getType();
-    const bool homogeneous = std::ranges::all_of(elements,
-                                                 [&](const auto& element) { return element->getType() == itemType; });
+    const bool homogeneous = std::all_of(elements.begin(), elements.end(),
+                                         [&](const auto& element) { return element->getType() == itemType; });
     return type::Array(homogeneous ? itemType : type::Value, elements.size());
 }
 } // namespace

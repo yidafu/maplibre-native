@@ -217,7 +217,7 @@ void HarmonyVulkanRendererBackend::resizeFramebuffer(int width, int height) {
     }
 
     // Update the renderable size
-    size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+    setRenderableSize({static_cast<uint32_t>(width), static_cast<uint32_t>(height)});
 
     // Request surface update if context is available
     if (context) {
