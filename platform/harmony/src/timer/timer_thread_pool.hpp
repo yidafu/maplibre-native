@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mbgl/util/noncopyable.hpp>
+#include <mln/util/noncopyable.hpp>
 
 #include <atomic>
 #include <condition_variable>
@@ -11,7 +11,7 @@
 #include <vector>
 
 
-namespace mbgl {
+namespace mln {
 namespace util {
 
 /**
@@ -89,5 +89,5 @@ private:
 };
 
 } // namespace util
-} // namespace mbgl
+} // namespace mln
 

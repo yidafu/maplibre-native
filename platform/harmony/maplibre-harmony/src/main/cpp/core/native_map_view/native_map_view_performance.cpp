@@ -4,11 +4,11 @@
 #include "rendering/harmony_renderer.hpp"
 #include "core/thread_safe_callback.hpp"
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
-using mbgl::harmony::ThreadSafeCallback;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
+using mln::harmony::ThreadSafeCallback;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 napi_value NativeMapView::setMaximumFps(napi_env env, napi_callback_info info) {
@@ -236,5 +236,5 @@ napi_value NativeMapView::setOnFpsChangedListener(napi_env env, napi_callback_in
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

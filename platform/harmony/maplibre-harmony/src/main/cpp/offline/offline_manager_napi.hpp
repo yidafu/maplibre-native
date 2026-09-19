@@ -1,11 +1,11 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/storage/database_file_source.hpp>
-#include <mbgl/storage/offline.hpp>
+#include <mln/storage/database_file_source.hpp>
+#include <mln/storage/offline.hpp>
 #include <memory>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -37,10 +37,10 @@ public:
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
 private:
-    explicit OfflineManagerNAPI(std::shared_ptr<mbgl::DatabaseFileSource> fileSource);
+    explicit OfflineManagerNAPI(std::shared_ptr<mln::DatabaseFileSource> fileSource);
     ~OfflineManagerNAPI();
     
-    std::shared_ptr<mbgl::DatabaseFileSource> fileSource_;
+    std::shared_ptr<mln::DatabaseFileSource> fileSource_;
     napi_env env_;
     napi_ref wrapper_;
 
@@ -56,5 +56,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

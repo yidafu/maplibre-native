@@ -15,9 +15,9 @@
  * https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V5/libuv-V5
  */
 
-#include <mbgl/util/timer.hpp>
-#include <mbgl/util/logging.hpp>
-#include <mbgl/util/run_loop.hpp>
+#include <mln/util/timer.hpp>
+#include <mln/util/logging.hpp>
+#include <mln/util/run_loop.hpp>
 
 #include "timer_thread_pool.hpp"
 
@@ -27,7 +27,7 @@
 #include <atomic>
 
 
-namespace mbgl {
+namespace mln {
 namespace util {
 
 class Timer::Impl {
@@ -130,5 +130,5 @@ void Timer::stop() {
 }
 
 } // namespace util
-} // namespace mbgl
+} // namespace mln
 

@@ -4,12 +4,12 @@
 #include "napi/core/napi_args.hpp"
 #include "geometry/lat_lng_harmony.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-// Use Logger from mbgl::harmony namespace
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+// Use Logger from mln::harmony namespace
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
 // Note: Static member initialization, Constructor, Destructor, and Init function are defined in marker_napi_base.cpp
 
@@ -79,7 +79,7 @@ napi_value MarkerNAPI::Remove(napi_env env, napi_callback_info info) {
 
 MARKER_SETTER(SetId,
     args.RequireMinArgs(1);
-    self->annotationId = static_cast<mbgl::AnnotationID>(args.GetInt64(0, "id")))
+    self->annotationId = static_cast<mln::AnnotationID>(args.GetInt64(0, "id")))
 
 napi_value MarkerNAPI::SetMapLibreMap(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -140,9 +140,9 @@ MARKER_SETTER(AnimateToPosition,
     args.RequireMinArgs(2);
     napi_value targetPosValue = args.GetObject(0, "targetPosition");
     if (!args.HasError()) {
-        mbgl::LatLng latLng;
+        mln::LatLng latLng;
         if (LatLngHarmony::ParseLatLng(env, targetPosValue, latLng)) {
-            self->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
+            self->position = mln::Point<double>(latLng.longitude(), latLng.latitude());
             Logger::info("MarkerNAPI", "[Animation] animateToPosition: target=(%f, %f)", latLng.latitude(), latLng.longitude());
         } else {
             Logger::error("MarkerNAPI", "AnimateToPosition: Failed to parse target LatLng");
@@ -189,4 +189,4 @@ MARKER_SETTER(SetAnchor,
     self->anchorV = args.GetDouble(1, "v"))
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

@@ -2,13 +2,13 @@
 
 #include <arkui/native_gesture.h>
 #include <arkui/native_node.h>
-#include <mbgl/map/map.hpp>
-#include <mbgl/util/geo.hpp>
+#include <mln/map/map.hpp>
+#include <mln/util/geo.hpp>
 #include <atomic>
 #include <functional>
 #include <memory>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace gesture {
 
@@ -17,7 +17,7 @@ namespace gesture {
  *
  * Replaces the ArkTS MapGestureDetector (1849 lines) by creating gesture recognizers
  * directly in C++ via ArkUI_NativeGestureAPI_1. Gesture callbacks are received in C++
- * and directly manipulate mbgl::Map camera methods — zero NAPI calls during gesture.
+ * and directly manipulate mln::Map camera methods — zero NAPI calls during gesture.
  *
  * Gesture types supported:
  *   Pan (1-finger), Pinch (2-finger), Rotation (2-finger),
@@ -36,25 +36,25 @@ public:
      * Must be called on the main thread after the map and XComponent node are available.
      *
      * @param xcomponentNode  ArkUI_NodeHandle of the XComponent (the rendering surface)
-     * @param map             mbgl::Map pointer for camera manipulation
+     * @param map             mln::Map pointer for camera manipulation
      * @param pixelRatio       Device pixel ratio (e.g., 2.0, 3.0)
      * @return true if initialization succeeded
      */
     bool initialize(ArkUI_NodeHandle xcomponentNode,
-                       mbgl::Map* map,
+                       mln::Map* map,
                        float pixelRatio,
                        std::function<void(std::function<void()>)> renderThreadDispatcher);
 
     /**
-     * Rebind to a new mbgl::Map after the renderer (and its Map) was rebuilt
+     * Rebind to a new mln::Map after the renderer (and its Map) was rebuilt
      * (hardReset / initializeRenderer / ensureResourcesReadyOrRecover). Pass
      * nullptr while the old Map is being torn down so in-flight gesture
      * callbacks on any thread observe a null map instead of a freed one.
      */
-    void reattach(mbgl::Map* map) { map_.store(map, std::memory_order_release); }
+    void reattach(mln::Map* map) { map_.store(map, std::memory_order_release); }
 
     /** Current map pointer (safe to read from any thread). */
-    mbgl::Map* map() const { return map_.load(std::memory_order_acquire); }
+    mln::Map* map() const { return map_.load(std::memory_order_acquire); }
 
     /** Destroy all gesture recognizers and release resources. */
     void destroy();
@@ -99,7 +99,7 @@ private:
     // Atomic because gesture callbacks read it on the UI thread, dispatched
     // lambdas read it on the render thread, and rebuild paths write it on the
     // JS thread (see reattach()).
-    std::atomic<mbgl::Map*> map_{nullptr};
+    std::atomic<mln::Map*> map_{nullptr};
     float pixelRatio_ = 1.0f;
 
     // ---- Render thread dispatcher ----
@@ -200,4 +200,4 @@ private:
 
 } // namespace gesture
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

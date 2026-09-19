@@ -6,24 +6,24 @@
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "source_napi_utils.hpp"
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::napi::NapiArgs;
 namespace harmony {
 
 // Static member initialization
 napi_ref VectorSourceNAPI::constructor = nullptr;
 napi_env VectorSourceNAPI::constructorEnv = nullptr;
 
-VectorSourceNAPI::VectorSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::VectorSource> source)
+VectorSourceNAPI::VectorSourceNAPI(const std::string& id, std::unique_ptr<mln::style::VectorSource> source)
     : SourceNapiBase(id, std::move(source)) {
     Logger::info("VectorSourceNAPI", "VectorSource instance created: %s", id.c_str());
 }
 
-VectorSourceNAPI::VectorSourceNAPI(mbgl::style::VectorSource* sourcePtr)
+VectorSourceNAPI::VectorSourceNAPI(mln::style::VectorSource* sourcePtr)
     : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
         Logger::info("VectorSourceNAPI", "VectorSource created from existing source (WeakPtr): %s", id.c_str());
@@ -70,8 +70,8 @@ napi_value VectorSourceNAPI::New(napi_env env, napi_callback_info info) {
     try {
         // VectorSource requires a urlOrTileset parameter.
         // Use an empty string by default; setURL can update it later.
-        mbgl::variant<std::string, mbgl::Tileset> urlOrTileset = std::string("");
-        auto source = std::make_unique<mbgl::style::VectorSource>(
+        mln::variant<std::string, mln::Tileset> urlOrTileset = std::string("");
+        auto source = std::make_unique<mln::style::VectorSource>(
             sourceId,
             std::move(urlOrTileset)
         );
@@ -99,7 +99,7 @@ napi_value VectorSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-DEFINE_SOURCE_CREATE_INSTANCE(VectorSourceNAPI, "VectorSource", mbgl::style::VectorSource)
+DEFINE_SOURCE_CREATE_INSTANCE(VectorSourceNAPI, "VectorSource", mln::style::VectorSource)
 
 DEFINE_SOURCE_GET_ID(VectorSourceNAPI)
 
@@ -167,5 +167,5 @@ napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

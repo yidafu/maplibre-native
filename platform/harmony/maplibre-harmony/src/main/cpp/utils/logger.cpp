@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <iostream>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 void Logger::debug(const char* tag, const char* format, ...) {
@@ -67,5 +67,5 @@ void Logger::error(const char* tag, const char* format, ...) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

@@ -5,7 +5,7 @@
 #include <mutex>
 #include <memory>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -86,5 +86,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

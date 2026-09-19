@@ -1,13 +1,13 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/style/sources/image_source.hpp>
+#include <mln/style/sources/image_source.hpp>
 #include <string>
 #include <memory>
 
 #include "source_napi_base.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -15,16 +15,16 @@ namespace harmony {
  *
  * There is no video source in mbgl core; mirroring the historic iOS
  * MGLVideoSource, this is a platform-level composition over an
- * mbgl::style::ImageSource. The video player runs on the ArkTS side; each
+ * mln::style::ImageSource. The video player runs on the ArkTS side; each
  * sampled frame is pushed into the map with updateImage().
  *
  * Ownership state and the shared accessors live in SourceNapiBase.
  */
-class VideoSourceNAPI : public SourceNapiBase<VideoSourceNAPI, mbgl::style::ImageSource> {
+class VideoSourceNAPI : public SourceNapiBase<VideoSourceNAPI, mln::style::ImageSource> {
 public:
-    VideoSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::ImageSource> source);
+    VideoSourceNAPI(const std::string& id, std::unique_ptr<mln::style::ImageSource> source);
     // Construct from an existing Source (uses WeakPtr, does not take ownership)
-    explicit VideoSourceNAPI(mbgl::style::ImageSource* sourcePtr);
+    explicit VideoSourceNAPI(mln::style::ImageSource* sourcePtr);
 
     ~VideoSourceNAPI();
 
@@ -32,7 +32,7 @@ public:
     static napi_value Init(napi_env env, napi_value exports);
     static napi_value New(napi_env env, napi_callback_info info);
     // Create a NAPI instance from an existing native object
-    static napi_value CreateInstance(napi_env env, mbgl::style::ImageSource* sourcePtr);
+    static napi_value CreateInstance(napi_env env, mln::style::ImageSource* sourcePtr);
 
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
 
@@ -50,4 +50,4 @@ public:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

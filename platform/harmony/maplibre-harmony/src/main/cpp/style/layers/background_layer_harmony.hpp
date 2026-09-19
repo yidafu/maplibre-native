@@ -1,11 +1,11 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/style/layers/background_layer.hpp>
+#include <mln/style/layers/background_layer.hpp>
 #include <memory>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -23,10 +23,10 @@ public:
     static napi_value New(napi_env env, napi_callback_info info);
     
     // Construct from an existing layer (uses WeakPtr, does not take ownership)
-    BackgroundLayerNAPI(mbgl::style::BackgroundLayer* layerPtr);
+    BackgroundLayerNAPI(mln::style::BackgroundLayer* layerPtr);
 
     // Create a NAPI instance from an existing native object
-    static napi_value CreateInstance(napi_env env, mbgl::style::BackgroundLayer* layerPtr);
+    static napi_value CreateInstance(napi_env env, mln::style::BackgroundLayer* layerPtr);
     
     // Destructor callback
     static void Destructor(napi_env env, void* nativeObject, void* hint);
@@ -62,7 +62,7 @@ public:
     std::string getId() const { return layer ? layer->getID() : ""; }
     
     // Release layer ownership (for Style.addLayer)
-    std::unique_ptr<mbgl::style::Layer> releaseLayer() {
+    std::unique_ptr<mln::style::Layer> releaseLayer() {
         if (!layer) {
             throw std::runtime_error("Layer already added to style");
         }
@@ -70,15 +70,15 @@ public:
     }
     
     // Get native layer pointer (for property access after adding)
-    mbgl::style::BackgroundLayer* getLayer() { 
+    mln::style::BackgroundLayer* getLayer() { 
         if (!layer && weakLayer) {
-            return static_cast<mbgl::style::BackgroundLayer*>(weakLayer.get());
+            return static_cast<mln::style::BackgroundLayer*>(weakLayer.get());
         }
         return layer.get(); 
     }
     
     // Attach to style after adding (creates WeakPtr)
-    void attachToStyle(mbgl::style::BackgroundLayer* layerPtr) {
+    void attachToStyle(mln::style::BackgroundLayer* layerPtr) {
         if (layerPtr) {
             weakLayer = layerPtr->makeWeakPtr();
         }
@@ -90,10 +90,10 @@ private:
     
     static napi_ref constructor;
     static napi_env constructorEnv;
-    std::unique_ptr<mbgl::style::BackgroundLayer> layer;
-    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
+    std::unique_ptr<mln::style::BackgroundLayer> layer;
+    mapbox::base::WeakPtr<mln::style::Layer> weakLayer;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

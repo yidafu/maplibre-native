@@ -4,22 +4,22 @@
 #include "napi/core/napi_args.hpp"
 #include <cmath>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using Logger = mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using Logger = mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
 // ==================== LatLngHarmony Helper Implementation ====================
 
-napi_value LatLngHarmony::CreateLatLngObject(napi_env env, const mbgl::LatLng& latLng) {
+napi_value LatLngHarmony::CreateLatLngObject(napi_env env, const mln::LatLng& latLng) {
     // Object literal {latitude, longitude}
     return CreateDoublePropsObject(env, "LatLngHarmony",
                                    {{"latitude", latLng.latitude()},
                                     {"longitude", latLng.longitude()}});
 }
 
-bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& outLatLng) {
+bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mln::LatLng& outLatLng) {
     double latitude = 0.0;
     double longitude = 0.0;
     if (!ParseDoubleProps(env, value, "LatLngHarmony",
@@ -37,11 +37,11 @@ bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& ou
         return false;
     }
 
-    outLatLng = mbgl::LatLng(latitude, longitude);
+    outLatLng = mln::LatLng(latitude, longitude);
     return true;
 }
 
-bool LatLngHarmony::ParseLatLngWithArgs(mbgl::harmony::napi::NapiArgs& args, napi_value obj, mbgl::LatLng& outLatLng) {
+bool LatLngHarmony::ParseLatLngWithArgs(mln::harmony::napi::NapiArgs& args, napi_value obj, mln::LatLng& outLatLng) {
     // Use NapiArgs helper methods to parse object properties
     double latitude = args.GetDoubleProperty(obj, "latitude", 0.0);
     double longitude = args.GetDoubleProperty(obj, "longitude", 0.0);
@@ -61,12 +61,12 @@ bool LatLngHarmony::ParseLatLngWithArgs(mbgl::harmony::napi::NapiArgs& args, nap
         return false;
     }
     
-    outLatLng = mbgl::LatLng(latitude, longitude);
+    outLatLng = mln::LatLng(latitude, longitude);
     return true;
 }
 
-mbgl::LatLng LatLngHarmony::ParseLatLngOr(napi_env env, napi_value value, const mbgl::LatLng& defaultValue) {
-    mbgl::LatLng result;
+mln::LatLng LatLngHarmony::ParseLatLngOr(napi_env env, napi_value value, const mln::LatLng& defaultValue) {
+    mln::LatLng result;
     if (ParseLatLng(env, value, result)) {
         return result;
     }
@@ -74,5 +74,5 @@ mbgl::LatLng LatLngHarmony::ParseLatLngOr(napi_env env, napi_value value, const 
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

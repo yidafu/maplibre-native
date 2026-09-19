@@ -5,27 +5,27 @@
 #include "core/thread_safe_callback.hpp"
 #include "utils/logger.h"
 
-#include <mbgl/storage/file_source_manager.hpp>
-#include <mbgl/storage/resource_options.hpp>
-#include <mbgl/util/client_options.hpp>
-#include <mbgl/util/string.hpp>
+#include <mln/storage/file_source_manager.hpp>
+#include <mln/storage/resource_options.hpp>
+#include <mln/util/client_options.hpp>
+#include <mln/util/string.hpp>
 
 #include <functional>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using Logger = mbgl::harmony::Logger;
-using NapiArgs = mbgl::harmony::napi::NapiArgs;
+using Logger = mln::harmony::Logger;
+using NapiArgs = mln::harmony::napi::NapiArgs;
 
 namespace {
 
 // Create a named thread-safe callback, or throw into JS and return nullptr
 // when creation fails.
-std::shared_ptr<mbgl::harmony::ThreadSafeCallback> MakeTsFn(
+std::shared_ptr<mln::harmony::ThreadSafeCallback> MakeTsFn(
     napi_env env, napi_value callback, const char* name) {
-    auto tsfn = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
-        mbgl::harmony::ThreadSafeCallback::Create(env, callback, name).release());
+    auto tsfn = std::shared_ptr<mln::harmony::ThreadSafeCallback>(
+        mln::harmony::ThreadSafeCallback::Create(env, callback, name).release());
     if (!tsfn) {
         napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
         return nullptr;
@@ -48,7 +48,7 @@ OfflineManagerNAPI* UnwrapManager(napi_env env, napi_callback_info info) {
 // Build the napi_value passed to a JS callback for an error completion: the
 // exception text as a UTF-8 string.
 napi_value ErrorToStringValue(napi_env env, const std::exception_ptr& error) {
-    std::string errorMsg = mbgl::util::toString(error);
+    std::string errorMsg = mln::util::toString(error);
     napi_value errorValue;
     napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
     return errorValue;
@@ -65,7 +65,7 @@ napi_value UndefinedValue(napi_env env) {
 // report success/failure: forwards the error string (or undefined) to the
 // JS thread.
 std::function<void(std::exception_ptr)> MakeVoidDbCallback(
-    std::shared_ptr<mbgl::harmony::ThreadSafeCallback> tsfn) {
+    std::shared_ptr<mln::harmony::ThreadSafeCallback> tsfn) {
     return [tsfn = std::move(tsfn)](std::exception_ptr error) mutable {
         tsfn->Call([error = std::move(error)](napi_env env) -> napi_value {
             if (error) {
@@ -111,7 +111,7 @@ napi_value OfflineManagerNAPI::InvokeVoidDb(napi_env env, napi_callback_info inf
 
 // ========== Constructors and Destructors ==========
 
-OfflineManagerNAPI::OfflineManagerNAPI(std::shared_ptr<mbgl::DatabaseFileSource> fileSource)
+OfflineManagerNAPI::OfflineManagerNAPI(std::shared_ptr<mln::DatabaseFileSource> fileSource)
     : fileSource_(fileSource), env_(nullptr), wrapper_(nullptr) {}
 
 OfflineManagerNAPI::~OfflineManagerNAPI() {
@@ -176,15 +176,15 @@ napi_value OfflineManagerNAPI::Constructor(napi_env env, napi_callback_info info
     if (args.HasError()) return nullptr;
     
     // Create ResourceOptions and ClientOptions
-    mbgl::ResourceOptions resourceOptions;
+    mln::ResourceOptions resourceOptions;
     resourceOptions.withCachePath(cachePath);
     
-    mbgl::ClientOptions clientOptions;
+    mln::ClientOptions clientOptions;
     
     // Acquire DatabaseFileSource instance
-    auto fileSource = std::static_pointer_cast<mbgl::DatabaseFileSource>(
-        mbgl::FileSourceManager::get()->getFileSource(
-            mbgl::FileSourceType::Database,
+    auto fileSource = std::static_pointer_cast<mln::DatabaseFileSource>(
+        mln::FileSourceManager::get()->getFileSource(
+            mln::FileSourceType::Database,
             resourceOptions,
             clientOptions
         )
@@ -243,7 +243,7 @@ napi_value OfflineManagerNAPI::ListOfflineRegions(napi_env env, napi_callback_in
     // Call into the core library
     auto fileSource = obj->fileSource_;
     fileSource->listOfflineRegions([tsfCallback, fileSource](
-        mbgl::expected<mbgl::OfflineRegions, std::exception_ptr> regions) {
+        mln::expected<mln::OfflineRegions, std::exception_ptr> regions) {
 
         // Execute on main thread via thread-safe callback
         tsfCallback->Call([regions = std::move(regions), fileSource](napi_env env) mutable -> napi_value {
@@ -289,10 +289,10 @@ napi_value OfflineManagerNAPI::CreateOfflineRegion(napi_env env, napi_callback_i
     napi_value metadataValue = argv[1];
 
     // Parse definition
-    mbgl::OfflineRegionDefinition definition = OfflineRegionDefinitionNAPI::FromNapiObject(env, definitionObj);
+    mln::OfflineRegionDefinition definition = OfflineRegionDefinitionNAPI::FromNapiObject(env, definitionObj);
 
     // Parse metadata (ArrayBuffer)
-    mbgl::OfflineRegionMetadata metadata;
+    mln::OfflineRegionMetadata metadata;
     napi_valuetype metadataType;
     napi_typeof(env, metadataValue, &metadataType);
     if (metadataType != napi_null && metadataType != napi_undefined) {
@@ -314,7 +314,7 @@ napi_value OfflineManagerNAPI::CreateOfflineRegion(napi_env env, napi_callback_i
     fileSource->createOfflineRegion(
         definition,
         metadata,
-        [tsfCallback, fileSource](mbgl::expected<mbgl::OfflineRegion, std::exception_ptr> region) {
+        [tsfCallback, fileSource](mln::expected<mln::OfflineRegion, std::exception_ptr> region) {
 
             // Execute on main thread via thread-safe callback
             tsfCallback->Call([region = std::move(region), fileSource](napi_env env) mutable -> napi_value {
@@ -356,7 +356,7 @@ napi_value OfflineManagerNAPI::GetOfflineRegion(napi_env env, napi_callback_info
 
     auto fileSource = obj->fileSource_;
     fileSource->getOfflineRegion(regionId, [tsfCallback, fileSource](
-        mbgl::expected<std::optional<mbgl::OfflineRegion>, std::exception_ptr> result) {
+        mln::expected<std::optional<mln::OfflineRegion>, std::exception_ptr> result) {
 
         // Execute on main thread via thread-safe callback
         tsfCallback->Call([result = std::move(result), fileSource](napi_env env) mutable -> napi_value {
@@ -400,7 +400,7 @@ napi_value OfflineManagerNAPI::MergeOfflineRegions(napi_env env, napi_callback_i
 
     auto fileSource = obj->fileSource_;
     fileSource->mergeOfflineRegions(path, [tsfCallback, fileSource](
-        mbgl::expected<mbgl::OfflineRegions, std::exception_ptr> regions) {
+        mln::expected<mln::OfflineRegions, std::exception_ptr> regions) {
 
         // Execute on main thread via thread-safe callback
         tsfCallback->Call([regions = std::move(regions), fileSource](napi_env env) mutable -> napi_value {
@@ -425,28 +425,28 @@ napi_value OfflineManagerNAPI::MergeOfflineRegions(napi_env env, napi_callback_i
 
 napi_value OfflineManagerNAPI::ResetDatabase(napi_env env, napi_callback_info info) {
     return InvokeVoidDb(env, info, 1, 0, "ResetDatabase",
-        [](mbgl::DatabaseFileSource& fileSource, std::function<void(std::exception_ptr)> onDone) {
+        [](mln::DatabaseFileSource& fileSource, std::function<void(std::exception_ptr)> onDone) {
             fileSource.resetDatabase(std::move(onDone));
         });
 }
 
 napi_value OfflineManagerNAPI::PackDatabase(napi_env env, napi_callback_info info) {
     return InvokeVoidDb(env, info, 1, 0, "PackDatabase",
-        [](mbgl::DatabaseFileSource& fileSource, std::function<void(std::exception_ptr)> onDone) {
+        [](mln::DatabaseFileSource& fileSource, std::function<void(std::exception_ptr)> onDone) {
             fileSource.packDatabase(std::move(onDone));
         });
 }
 
 napi_value OfflineManagerNAPI::InvalidateAmbientCache(napi_env env, napi_callback_info info) {
     return InvokeVoidDb(env, info, 1, 0, "InvalidateAmbientCache",
-        [](mbgl::DatabaseFileSource& fileSource, std::function<void(std::exception_ptr)> onDone) {
+        [](mln::DatabaseFileSource& fileSource, std::function<void(std::exception_ptr)> onDone) {
             fileSource.invalidateAmbientCache(std::move(onDone));
         });
 }
 
 napi_value OfflineManagerNAPI::ClearAmbientCache(napi_env env, napi_callback_info info) {
     return InvokeVoidDb(env, info, 1, 0, "ClearAmbientCache",
-        [](mbgl::DatabaseFileSource& fileSource, std::function<void(std::exception_ptr)> onDone) {
+        [](mln::DatabaseFileSource& fileSource, std::function<void(std::exception_ptr)> onDone) {
             fileSource.clearAmbientCache(std::move(onDone));
         });
 }
@@ -460,7 +460,7 @@ napi_value OfflineManagerNAPI::SetMaximumAmbientCacheSize(napi_env env, napi_cal
     if (args.HasError()) return nullptr;
 
     return InvokeVoidDb(env, info, 2, 1, "SetMaximumAmbientCacheSize",
-        [size](mbgl::DatabaseFileSource& fileSource, std::function<void(std::exception_ptr)> onDone) {
+        [size](mln::DatabaseFileSource& fileSource, std::function<void(std::exception_ptr)> onDone) {
             fileSource.setMaximumAmbientCacheSize(static_cast<uint64_t>(size), std::move(onDone));
         });
 }
@@ -504,5 +504,5 @@ napi_value OfflineManagerNAPI::RunPackDatabaseAutomatically(napi_env env, napi_c
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

@@ -1,11 +1,11 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/util/image.hpp>
+#include <mln/util/image.hpp>
 #include <string>
 #include <memory>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -44,7 +44,7 @@ public:
     bool isReleasedInternal() const { return !image; }
     
     // Get the image data (returns nullptr if released)
-    std::shared_ptr<mbgl::PremultipliedImage> getImage() const { return image; }
+    std::shared_ptr<mln::PremultipliedImage> getImage() const { return image; }
     
     // Helper to check if a napi_value is an Icon object
     static bool IsIconObject(napi_env env, napi_value value);
@@ -63,7 +63,7 @@ public:
      */
     static napi_value CreateFromImage(napi_env env, 
                                      const std::string& id,
-                                     std::shared_ptr<mbgl::PremultipliedImage> image,
+                                     std::shared_ptr<mln::PremultipliedImage> image,
                                      float scale);
     
 private:
@@ -72,7 +72,7 @@ private:
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
     explicit IconNAPI(std::string id, int width, int height, float scale, 
-                      std::shared_ptr<mbgl::PremultipliedImage> image);
+                      std::shared_ptr<mln::PremultipliedImage> image);
     ~IconNAPI();
     
     // Icon state
@@ -80,9 +80,9 @@ private:
     int width;
     int height;
     float scale;
-    std::shared_ptr<mbgl::PremultipliedImage> image;  // nullptr when released
+    std::shared_ptr<mln::PremultipliedImage> image;  // nullptr when released
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

@@ -7,26 +7,26 @@
 #include "style/filter_conversion.hpp"
 #include "style/conversion/property_value.hpp"
 #include "style/conversion/harmony_conversion.hpp"
-#include <mbgl/style/color_ramp_property_value.hpp>
-#include <mbgl/style/conversion/color_ramp_property_value.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/style/color_ramp_property_value.hpp>
+#include <mln/style/conversion/color_ramp_property_value.hpp>
+#include <mln/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "layer_property_macros.hpp"
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
 napi_ref ColorReliefLayerNAPI::constructor = nullptr;
 napi_env ColorReliefLayerNAPI::constructorEnv = nullptr;
 
 ColorReliefLayerNAPI::ColorReliefLayerNAPI(const std::string& layerId, const std::string& sourceId)
-    : layer(std::make_unique<mbgl::style::ColorReliefLayer>(layerId, sourceId)) {
+    : layer(std::make_unique<mln::style::ColorReliefLayer>(layerId, sourceId)) {
 }
 
-ColorReliefLayerNAPI::ColorReliefLayerNAPI(mbgl::style::ColorReliefLayer* layerPtr) {
+ColorReliefLayerNAPI::ColorReliefLayerNAPI(mln::style::ColorReliefLayer* layerPtr) {
     if (layerPtr) {
         weakLayer = layerPtr->makeWeakPtr();
         Logger::info("ColorReliefLayerNAPI", "ColorReliefLayer created from existing layer (WeakPtr)");
@@ -64,7 +64,7 @@ DEFINE_LAYER_NEW(ColorReliefLayerNAPI, "ColorReliefLayer", 2, new ColorReliefLay
         std::string layerId = args.GetString(0, "layerId");
         std::string sourceId = args.GetString(1, "sourceId");)
 
-napi_value ColorReliefLayerNAPI::CreateInstance(napi_env env, mbgl::style::ColorReliefLayer* layerPtr) {
+napi_value ColorReliefLayerNAPI::CreateInstance(napi_env env, mln::style::ColorReliefLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "ColorReliefLayer",
                                 layerPtr ? new ColorReliefLayerNAPI(layerPtr) : nullptr);
 }
@@ -73,17 +73,17 @@ napi_value ColorReliefLayerNAPI::CreateInstance(napi_env env, mbgl::style::Color
 // Paint Property Setters
 // ============================================================================
 
-DEFINE_LAYER_COLORRAMP_SETTER(ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer, SetColorReliefColor, "colorReliefColor", setColorReliefColor)
+DEFINE_LAYER_COLORRAMP_SETTER(ColorReliefLayerNAPI, mln::style::ColorReliefLayer, SetColorReliefColor, "colorReliefColor", setColorReliefColor)
 
-DEFINE_LAYER_SETTER(ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer, SetColorReliefOpacity, setPaintProperty, "colorReliefOpacity", setColorReliefOpacity, float)
+DEFINE_LAYER_SETTER(ColorReliefLayerNAPI, mln::style::ColorReliefLayer, SetColorReliefOpacity, setPaintProperty, "colorReliefOpacity", setColorReliefOpacity, float)
 
 // ============================================================================
 // Paint Property Getters
 // ============================================================================
 
-DEFINE_LAYER_COLORRAMP_GETTER(ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer, GetColorReliefColor, getColorReliefColor)
+DEFINE_LAYER_COLORRAMP_GETTER(ColorReliefLayerNAPI, mln::style::ColorReliefLayer, GetColorReliefColor, getColorReliefColor)
 
-DEFINE_LAYER_GETTER(ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer, GetColorReliefOpacity, getColorReliefOpacity, float)
+DEFINE_LAYER_GETTER(ColorReliefLayerNAPI, mln::style::ColorReliefLayer, GetColorReliefOpacity, getColorReliefOpacity, float)
 
 // ============================================================================
 // Base Layer Methods
@@ -154,12 +154,12 @@ napi_value ColorReliefLayerNAPI::GetFilter(napi_env env, napi_callback_info info
 // ==================== Generic Property Methods ====================
 
 napi_value ColorReliefLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
-    return SetPropertyImpl<ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer>(env, info);
+    return SetPropertyImpl<ColorReliefLayerNAPI, mln::style::ColorReliefLayer>(env, info);
 }
 
 napi_value ColorReliefLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
-    return SetPropertiesImpl<ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer>(env, info);
+    return SetPropertiesImpl<ColorReliefLayerNAPI, mln::style::ColorReliefLayer>(env, info);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

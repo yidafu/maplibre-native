@@ -1,9 +1,9 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/util/geo.hpp>
+#include <mln/util/geo.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -47,9 +47,9 @@ public:
      * @param outInsets Output EdgeInsets
      * @return Whether parsing succeeded
      */
-    static bool ParseAsEdgeInsets(napi_env env, napi_value value, mbgl::EdgeInsets& outInsets);
+    static bool ParseAsEdgeInsets(napi_env env, napi_value value, mln::EdgeInsets& outInsets);
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

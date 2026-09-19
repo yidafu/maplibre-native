@@ -7,11 +7,11 @@
 #include "geojson/util.hpp"
 #include "style/filter_conversion.hpp"
 #include "style/conversion/harmony_conversion.hpp"
-#include <mbgl/style/conversion/json.hpp>
-#include <mbgl/style/conversion/geojson.hpp>
-#include <mbgl/style/conversion/geojson_options.hpp>
-#include <mbgl/style/expression/dsl.hpp>
-#include <mbgl/util/geojson.hpp>
+#include <mln/style/conversion/json.hpp>
+#include <mln/style/conversion/geojson.hpp>
+#include <mln/style/conversion/geojson_options.hpp>
+#include <mln/style/expression/dsl.hpp>
+#include <mln/util/geojson.hpp>
 
 #include <mutex>
 #include <sstream>
@@ -20,21 +20,21 @@
 #include "source_napi_utils.hpp"
 #include "query_source_features.hpp"
 #include "geojson/napi_geojson_value.hpp"
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
-using namespace mbgl::harmony::geojson;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
+using namespace mln::harmony::geojson;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 namespace {
 
 // Convert one JS expression of a clusterProperties entry into an mbgl
 // expression. `role` ("map" / "reduce") is used for logging only.
-std::unique_ptr<mbgl::style::expression::Expression> convertClusterExpression(
+std::unique_ptr<mln::style::expression::Expression> convertClusterExpression(
     napi_env env, napi_value exprValue, const std::string& propertyName, const char* role) {
-    mbgl::style::conversion::Convertible convertible(mbgl::harmony::NapiValue(env, exprValue));
-    auto parsed = mbgl::style::expression::dsl::createExpression(convertible);
+    mln::style::conversion::Convertible convertible(mln::harmony::NapiValue(env, exprValue));
+    auto parsed = mln::style::expression::dsl::createExpression(convertible);
     if (!parsed) {
         Logger::error("GeoJsonSourceNAPI",
                       "clusterProperties[\"%s\"]: failed to convert %s expression",
@@ -58,12 +58,12 @@ GeoJsonSourceNAPI::QuerySourceFeaturesFn s_sourceFeaturesFn;
 void* s_hooksOwner = nullptr;
 } // anonymous namespace
 
-GeoJsonSourceNAPI::GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::GeoJSONSource> source)
+GeoJsonSourceNAPI::GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mln::style::GeoJSONSource> source)
     : SourceNapiBase(id, std::move(source)) {
     Logger::info("GeoJsonSourceNAPI", "GeoJsonSource instance created: %s", id.c_str());
 }
 
-GeoJsonSourceNAPI::GeoJsonSourceNAPI(mbgl::style::GeoJSONSource* sourcePtr)
+GeoJsonSourceNAPI::GeoJsonSourceNAPI(mln::style::GeoJSONSource* sourcePtr)
     : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
         if (weakSource) {
@@ -76,12 +76,12 @@ GeoJsonSourceNAPI::GeoJsonSourceNAPI(mbgl::style::GeoJSONSource* sourcePtr)
     }
 }
 
-mbgl::style::GeoJSONSource* GeoJsonSourceNAPI::getSource() const {
+mln::style::GeoJSONSource* GeoJsonSourceNAPI::getSource() const {
     if (source) {
         return source.get();
     }
     if (weakSource) {
-        return static_cast<mbgl::style::GeoJSONSource*>(weakSource.get());
+        return static_cast<mln::style::GeoJSONSource*>(weakSource.get());
     }
     // No owned source and no live weak reference: the source was removed from
     // the style (or WeakPtr init failed). Returning nullptr is the only safe
@@ -89,7 +89,7 @@ mbgl::style::GeoJSONSource* GeoJsonSourceNAPI::getSource() const {
     return nullptr;
 }
 
-void GeoJsonSourceNAPI::attachToStyle(mbgl::style::GeoJSONSource* sourcePtr) {
+void GeoJsonSourceNAPI::attachToStyle(mln::style::GeoJSONSource* sourcePtr) {
     if (!sourcePtr) {
         Logger::warn("GeoJsonSourceNAPI", "attachToStyle called with null source pointer");
         return;
@@ -199,7 +199,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
     
     try {
         // Parse options
-        mbgl::style::GeoJSONOptions options;
+        mln::style::GeoJSONOptions options;
         
         if (argc >= 2) {
             // Parse the options object
@@ -271,7 +271,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                                     napi_get_element(env, expressionArray, 0, &reduceExprValue);
                                     napi_get_element(env, expressionArray, 1, &mapExprValue);
 
-                                    std::unique_ptr<mbgl::style::expression::Expression> reduce;
+                                    std::unique_ptr<mln::style::expression::Expression> reduce;
                                     napi_valuetype reduceType = napi_undefined;
                                     napi_typeof(env, reduceExprValue, &reduceType);
 
@@ -283,7 +283,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                                         std::stringstream ss;
                                         ss << R"([")" << reduceOp << R"(", ["accumulated"], ["get", ")"
                                            << propertyName << R"("]])";
-                                        reduce = mbgl::style::expression::dsl::createExpression(ss.str().c_str());
+                                        reduce = mln::style::expression::dsl::createExpression(ss.str().c_str());
                                         if (!reduce) {
                                             Logger::error("GeoJsonSourceNAPI",
                                                           "clusterProperties[\"%s\"]: failed to convert reduce operator \"%s\"",
@@ -322,8 +322,8 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
         }
         
         // Create the GeoJSONSource
-        auto immutableOptions = mbgl::makeMutable<mbgl::style::GeoJSONOptions>(std::move(options));
-        auto source = std::make_unique<mbgl::style::GeoJSONSource>(sourceId, std::move(immutableOptions));
+        auto immutableOptions = mln::makeMutable<mln::style::GeoJSONOptions>(std::move(options));
+        auto source = std::make_unique<mln::style::GeoJSONSource>(sourceId, std::move(immutableOptions));
         
         // Create the C++ NAPI object
         GeoJsonSourceNAPI* sourceNapi = new GeoJsonSourceNAPI(sourceId, std::move(source));
@@ -350,7 +350,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-DEFINE_SOURCE_CREATE_INSTANCE(GeoJsonSourceNAPI, "GeoJsonSource", mbgl::style::GeoJSONSource)
+DEFINE_SOURCE_CREATE_INSTANCE(GeoJsonSourceNAPI, "GeoJsonSource", mln::style::GeoJSONSource)
 
 // ==================== Getters ====================
 
@@ -489,8 +489,8 @@ static uint64_t ParseClusterId(napi_env env, napi_value value) {
 
 // Build the synthetic feature that carries the cluster id into the
 // supercluster extension query.
-static mbgl::Feature MakeClusterFeature(uint64_t clusterId) {
-    mbgl::Feature feature;
+static mln::Feature MakeClusterFeature(uint64_t clusterId) {
+    mln::Feature feature;
     feature.properties["cluster_id"] = clusterId;
     return feature;
 }
@@ -526,7 +526,7 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
         // Parse clusterId (number or feature object carrying "cluster_id")
         uint64_t clusterId = ParseClusterId(env, args[0]);
         
-        mbgl::Feature clusterFeature = MakeClusterFeature(clusterId);
+        mln::Feature clusterFeature = MakeClusterFeature(clusterId);
         
         // Query the extension
         auto extResult = queryFeatureExtensionsFn()(
@@ -537,12 +537,12 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
             std::nullopt);
         
         // The result is either a FeatureCollection or a Value
-        if (extResult.is<mbgl::FeatureCollection>()) {
-            auto& collection = extResult.get<mbgl::FeatureCollection>();
+        if (extResult.is<mln::FeatureCollection>()) {
+            auto& collection = extResult.get<mln::FeatureCollection>();
             Logger::info("GeoJsonSourceNAPI", "GetClusterChildren: %zu children for cluster %llu",
                         collection.size(), clusterId);
             // Convert FeatureCollection to vector<Feature> for the converter
-            std::vector<mbgl::Feature> features(collection.begin(), collection.end());
+            std::vector<mln::Feature> features(collection.begin(), collection.end());
             return GeoJsonConverter::FeatureArrayToJsArray(env, features);
         }
         
@@ -598,10 +598,10 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
         uint64_t limit = static_cast<uint64_t>(limitValue);
         uint64_t offset = static_cast<uint64_t>(offsetValue);
         
-        mbgl::Feature clusterFeature = MakeClusterFeature(clusterId);
+        mln::Feature clusterFeature = MakeClusterFeature(clusterId);
         
         // Build args map (must use uint64_t for getProperty<uint64_t> in render_geojson_source.cpp)
-        std::map<std::string, mbgl::Value> queryArgs;
+        std::map<std::string, mln::Value> queryArgs;
         queryArgs["limit"] = static_cast<uint64_t>(limit);
         queryArgs["offset"] = static_cast<uint64_t>(offset);
         
@@ -614,12 +614,12 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
             std::make_optional(std::move(queryArgs)));
         
         // The result is either a FeatureCollection or a Value
-        if (extResult.is<mbgl::FeatureCollection>()) {
-            auto& collection = extResult.get<mbgl::FeatureCollection>();
+        if (extResult.is<mln::FeatureCollection>()) {
+            auto& collection = extResult.get<mln::FeatureCollection>();
             Logger::info("GeoJsonSourceNAPI", "GetClusterLeaves: %zu leaves for cluster %llu (limit=%llu, offset=%llu)",
                         collection.size(), clusterId, limit, offset);
             // Convert FeatureCollection to vector<Feature> for the converter
-            std::vector<mbgl::Feature> features(collection.begin(), collection.end());
+            std::vector<mln::Feature> features(collection.begin(), collection.end());
             return GeoJsonConverter::FeatureArrayToJsArray(env, features);
         }
         
@@ -663,7 +663,7 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
         // Parse clusterId (number or feature object carrying "cluster_id")
         uint64_t clusterId = ParseClusterId(env, args[0]);
         
-        mbgl::Feature clusterFeature = MakeClusterFeature(clusterId);
+        mln::Feature clusterFeature = MakeClusterFeature(clusterId);
         
         // Query the extension
         auto extResult = queryFeatureExtensionsFn()(
@@ -674,8 +674,8 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
             std::nullopt);
         
         // The result is either a Value (number) or a FeatureCollection
-        if (extResult.is<mbgl::Value>()) {
-            auto& val = extResult.get<mbgl::Value>();
+        if (extResult.is<mln::Value>()) {
+            auto& val = extResult.get<mln::Value>();
             if (val.is<double>()) {
                 double zoom = val.get<double>();
                 Logger::info("GeoJsonSourceNAPI", "GetClusterExpansionZoom: cluster %llu -> zoom %.2f", 
@@ -704,5 +704,5 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

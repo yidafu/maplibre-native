@@ -6,9 +6,9 @@
 #include <chrono>
 #include <algorithm>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace gesture {
 
@@ -26,7 +26,7 @@ NativeGestureManager::~NativeGestureManager() {
 // Initialize — acquire API table, create recognizers, attach to node
 // ============================================================================
 
-bool NativeGestureManager::initialize(ArkUI_NodeHandle node, mbgl::Map* map, float pixelRatio,
+bool NativeGestureManager::initialize(ArkUI_NodeHandle node, mln::Map* map, float pixelRatio,
                                           std::function<void(std::function<void()>)> dispatcher) {
     if (!node || !map) {
         Logger::error("NativeGestureManager", "initialize: node or map is null");
@@ -188,10 +188,10 @@ void NativeGestureManager::onPanCallback(ArkUI_GestureEvent* event, void* userDa
         // Dispatch map operations to the render thread
         self->renderThreadDispatcher_([self, deltaX, deltaY]() {
             if (self->map()) {
-                self->map()->moveBy(mbgl::ScreenCoordinate{
+                self->map()->moveBy(mln::ScreenCoordinate{
                     static_cast<double>(deltaX),
                     static_cast<double>(deltaY)
-                }, mbgl::AnimationOptions{});
+                }, mln::AnimationOptions{});
             }
         });
 
@@ -264,9 +264,9 @@ void NativeGestureManager::onPinchCallback(ArkUI_GestureEvent* event, void* user
         // Dispatch zoom update to render thread
         self->renderThreadDispatcher_([self, newZoom, anchorX, anchorY]() {
             if (!self->map()) return;
-            self->map()->jumpTo(mbgl::CameraOptions()
+            self->map()->jumpTo(mln::CameraOptions()
                 .withZoom(newZoom)
-                .withAnchor(mbgl::ScreenCoordinate{anchorX, anchorY}));
+                .withAnchor(mln::ScreenCoordinate{anchorX, anchorY}));
         });
 
     } else if (action == GESTURE_EVENT_ACTION_END || action == GESTURE_EVENT_ACTION_CANCEL) {
@@ -312,7 +312,7 @@ void NativeGestureManager::onRotateCallback(ArkUI_GestureEvent* event, void* use
             self->cachedBearing_ = self->map()->getCameraOptions().bearing.value_or(0.0);
             // Lock the rotation anchor to the map center at gesture start
             // for a natural rotation pivot (instead of top-left corner).
-            mbgl::Size mapSize = self->map()->getMapOptions().size();
+            mln::Size mapSize = self->map()->getMapOptions().size();
             self->rotationAnchorX_ = mapSize.width / 2.0;
             self->rotationAnchorY_ = mapSize.height / 2.0;
             self->map()->setGestureInProgress(true);
@@ -328,9 +328,9 @@ void NativeGestureManager::onRotateCallback(ArkUI_GestureEvent* event, void* use
             double newBearing = std::fmod(
                 self->cachedBearing_ - static_cast<double>(angle) * ROTATION_RATE, 360.0);
             if (newBearing < 0.0) newBearing += 360.0;
-            self->map()->jumpTo(mbgl::CameraOptions()
+            self->map()->jumpTo(mln::CameraOptions()
                 .withBearing(newBearing)
-                .withAnchor(mbgl::ScreenCoordinate{
+                .withAnchor(mln::ScreenCoordinate{
                     self->rotationAnchorX_, self->rotationAnchorY_}));
         });
 
@@ -392,8 +392,8 @@ void NativeGestureManager::onDoubleTapCallback(ArkUI_GestureEvent* event, void* 
         self->renderThreadDispatcher_([self]() {
             if (!self->map()) return;
             double currentZoom = self->map()->getCameraOptions().zoom.value_or(0.0);
-            self->map()->easeTo(mbgl::CameraOptions().withZoom(currentZoom + 1.0),
-                               mbgl::AnimationOptions{mbgl::Milliseconds(300)});
+            self->map()->easeTo(mln::CameraOptions().withZoom(currentZoom + 1.0),
+                               mln::AnimationOptions{mln::Milliseconds(300)});
             Logger::debug("NativeGestureManager", "Double-tap zoom: %.2f -> %.2f", currentZoom, currentZoom + 1.0);
         });
     }
@@ -458,7 +458,7 @@ void NativeGestureManager::onTiltCallback(ArkUI_GestureEvent* event, void* userD
             if (!self->map()) return;
             double currentPitch = self->map()->getCameraOptions().pitch.value_or(0.0);
             double newPitch = std::clamp(currentPitch + deltaPitch, 0.0, 60.0);
-            self->map()->jumpTo(mbgl::CameraOptions().withPitch(newPitch));
+            self->map()->jumpTo(mln::CameraOptions().withPitch(newPitch));
         });
 
     } else if (action == GESTURE_EVENT_ACTION_END || action == GESTURE_EVENT_ACTION_CANCEL) {
@@ -494,8 +494,8 @@ void NativeGestureManager::performPanFling(float velocityX, float velocityY) {
     Logger::debug("NativeGestureManager", "Pan fling: offset=(%.1f, %.1f) duration=%.0fms",
                   offsetX, offsetY, duration);
 
-    map()->moveBy(mbgl::ScreenCoordinate{offsetX, offsetY},
-                 mbgl::AnimationOptions{static_cast<mbgl::Milliseconds>(static_cast<int64_t>(duration))});
+    map()->moveBy(mln::ScreenCoordinate{offsetX, offsetY},
+                 mln::AnimationOptions{static_cast<mln::Milliseconds>(static_cast<int64_t>(duration))});
 }
 
 void NativeGestureManager::performScaleInertia(float scaleVelocity) {
@@ -515,10 +515,10 @@ void NativeGestureManager::performScaleInertia(float scaleVelocity) {
     Logger::debug("NativeGestureManager", "Scale inertia: zoom %f -> %f, duration=%fms",
                   currentZoom, finalZoom, duration);
 
-    map()->easeTo(mbgl::CameraOptions()
+    map()->easeTo(mln::CameraOptions()
         .withZoom(finalZoom)
-        .withAnchor(mbgl::ScreenCoordinate{fixedScaleAnchorX_, fixedScaleAnchorY_}),
-        mbgl::AnimationOptions{static_cast<mbgl::Milliseconds>(static_cast<int64_t>(duration))});
+        .withAnchor(mln::ScreenCoordinate{fixedScaleAnchorX_, fixedScaleAnchorY_}),
+        mln::AnimationOptions{static_cast<mln::Milliseconds>(static_cast<int64_t>(duration))});
 }
 
 void NativeGestureManager::performRotateInertia(float angularVelocity) {
@@ -539,12 +539,12 @@ void NativeGestureManager::performRotateInertia(float angularVelocity) {
     Logger::debug("NativeGestureManager", "Rotate inertia: bearing %f -> %f deg, duration=%fms",
                   currentBearing, newBearing, duration);
 
-    map()->easeTo(mbgl::CameraOptions()
+    map()->easeTo(mln::CameraOptions()
         .withBearing(newBearing)
-        .withAnchor(mbgl::ScreenCoordinate{rotationAnchorX_, rotationAnchorY_}),
-        mbgl::AnimationOptions{static_cast<mbgl::Milliseconds>(static_cast<int64_t>(duration))});
+        .withAnchor(mln::ScreenCoordinate{rotationAnchorX_, rotationAnchorY_}),
+        mln::AnimationOptions{static_cast<mln::Milliseconds>(static_cast<int64_t>(duration))});
 }
 
 } // namespace gesture
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

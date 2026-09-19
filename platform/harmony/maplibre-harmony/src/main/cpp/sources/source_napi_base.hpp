@@ -6,7 +6,7 @@
 // All seven wrappers (GeoJSON, Image, Video, Raster, RasterDEM, Vector,
 // CustomGeometry) used to carry a byte-identical copy of the same ownership
 // state and the same four accessors, differing only in the core source type.
-// Conceptually they are one thing: "a JS wrapper around an mbgl::style::XSource
+// Conceptually they are one thing: "a JS wrapper around an mln::style::XSource
 // that either owns it (until Style::addSource takes over) or reaches it through
 // a WeakPtr". That concept lives here once.
 //
@@ -18,19 +18,19 @@
 // initialisation. Those override by hiding (non-virtual members, never called
 // through a base pointer), and their return semantics are identical.
 
-#include <mbgl/style/source.hpp>
+#include <mln/style/source.hpp>
 
 #include <memory>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
  * Ownership + WeakPtr state shared by every source NAPI wrapper.
  *
  * @tparam Derived the wrapper class (CRTP)
- * @tparam SourceT the concrete `mbgl::style::XSource` being wrapped
+ * @tparam SourceT the concrete `mln::style::XSource` being wrapped
  */
 template <typename Derived, typename SourceT>
 class SourceNapiBase {
@@ -60,7 +60,7 @@ public:
     std::string getId() const { return id; }
 
     /** Hand ownership to Style::addSource; arm the WeakPtr via attachToStyle(). */
-    std::unique_ptr<mbgl::style::Source> releaseSource() {
+    std::unique_ptr<mln::style::Source> releaseSource() {
         ownsSource = false;
         return std::move(source);
     }
@@ -81,10 +81,10 @@ protected:
     std::string id;
     std::unique_ptr<SourceT> source;
     bool ownsSource;
-    mapbox::base::WeakPtr<mbgl::style::Source> weakSource;
+    mapbox::base::WeakPtr<mln::style::Source> weakSource;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBRE_HARMONY_SOURCE_NAPI_BASE_HPP

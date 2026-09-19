@@ -14,7 +14,7 @@
 #define DECLARE_NAPI_STATIC_FUNCTION(name, func) \
     { name, nullptr, func, nullptr, nullptr, nullptr, napi_default, nullptr }
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace napi {
     // Parses the surface id argument of an init/create callback.

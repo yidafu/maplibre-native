@@ -1,9 +1,9 @@
 #include "url_transform_manager.hpp"
 #include "utils/logger.h"
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 URLTransformManager& URLTransformManager::getInstance() {
@@ -33,7 +33,7 @@ bool URLTransformManager::hasCallback() const {
     return callback_ != nullptr;
 }
 
-std::string URLTransformManager::transform(mbgl::Resource::Kind kind, const std::string& url) {
+std::string URLTransformManager::transform(mln::Resource::Kind kind, const std::string& url) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     // If no callback is set, return the original URL
@@ -76,5 +76,5 @@ std::string URLTransformManager::transform(mbgl::Resource::Kind kind, const std:
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

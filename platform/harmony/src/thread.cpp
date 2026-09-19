@@ -1,13 +1,13 @@
-#include <mbgl/util/logging.hpp>
-#include <mbgl/util/platform.hpp>
-#include <mbgl/platform/thread.hpp>
+#include <mln/util/logging.hpp>
+#include <mln/util/platform.hpp>
+#include <mln/platform/thread.hpp>
 
 #include <sys/prctl.h>
 #include <sys/resource.h>
 
 #include <cassert>
 
-namespace mbgl {
+namespace mln {
 namespace platform {
 
 std::string getCurrentThreadName() {

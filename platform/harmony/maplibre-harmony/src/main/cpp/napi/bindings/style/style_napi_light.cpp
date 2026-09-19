@@ -4,10 +4,10 @@
 #include "utils/logger.h"
 #include "style/transition_options_harmony.hpp"
 
-#include <mbgl/map/map.hpp>
-#include <mbgl/style/light.hpp>
-#include <mbgl/style/types.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/map/map.hpp>
+#include <mln/style/light.hpp>
+#include <mln/style/types.hpp>
+#include <mln/util/color.hpp>
 
 #include <array>
 #include <functional>
@@ -15,11 +15,11 @@
 #include <string>
 #include <vector>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
-using mbgl::harmony::napi::GetStringFromValue;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
+using mln::harmony::napi::GetStringFromValue;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
@@ -45,7 +45,7 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
     
     // Applies are collected during parsing and committed to the light in one
     // render-thread dispatch at the end of this function.
-    std::vector<std::function<void(mbgl::style::Light&)>> pendingApply;
+    std::vector<std::function<void(mln::style::Light&)>> pendingApply;
 
     try {
         napi_valuetype valueType = napi_undefined;
@@ -98,10 +98,10 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
             if (hasProperty(lightOptions, "anchor", anchorValue)) {
                 std::string anchor = GetStringFromValue(env, anchorValue);
                 if (anchor == "map" || anchor == "viewport") {
-                    const mbgl::style::LightAnchorType anchorType = (anchor == "map")
-                        ? mbgl::style::LightAnchorType::Map
-                        : mbgl::style::LightAnchorType::Viewport;
-                    pendingApply.push_back([anchorType](mbgl::style::Light& light) {
+                    const mln::style::LightAnchorType anchorType = (anchor == "map")
+                        ? mln::style::LightAnchorType::Map
+                        : mln::style::LightAnchorType::Viewport;
+                    pendingApply.push_back([anchorType](mln::style::Light& light) {
                         light.setAnchor(anchorType);
                     });
                 } else {
@@ -156,8 +156,8 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
                 }
 
                 if (parsed) {
-                    mbgl::style::Position position(spherical);
-                    pendingApply.push_back([position](mbgl::style::Light& light) {
+                    mln::style::Position position(spherical);
+                    pendingApply.push_back([position](mln::style::Light& light) {
                         light.setPosition(position);
                     });
                 } else {
@@ -171,10 +171,10 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
             napi_value colorValue;
             if (hasProperty(lightOptions, "color", colorValue)) {
                 std::string colorStr = GetStringFromValue(env, colorValue);
-                auto parsedColor = mbgl::Color::parse(colorStr);
+                auto parsedColor = mln::Color::parse(colorStr);
                 if (parsedColor) {
-                    const mbgl::Color color = *parsedColor;
-                    pendingApply.push_back([color](mbgl::style::Light& light) {
+                    const mln::Color color = *parsedColor;
+                    pendingApply.push_back([color](mln::style::Light& light) {
                         light.setColor(color);
                     });
                 } else {
@@ -190,7 +190,7 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
                 double intensity = 0.0;
                 if (napi_get_value_double(env, intensityValue, &intensity) == napi_ok) {
                     const float intensityF = static_cast<float>(intensity);
-                    pendingApply.push_back([intensityF](mbgl::style::Light& light) {
+                    pendingApply.push_back([intensityF](mln::style::Light& light) {
                         light.setIntensity(intensityF);
                     });
                 } else {
@@ -200,7 +200,7 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
         }
 
         auto applyTransition = [&](const char* propertyName,
-                                   const std::function<void(const mbgl::style::TransitionOptions&)>& setter) {
+                                   const std::function<void(const mln::style::TransitionOptions&)>& setter) {
             napi_value transitionValue;
             if (!hasProperty(lightOptions, propertyName, transitionValue)) {
                 return;
@@ -213,32 +213,32 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
                 return;
             }
 
-            mbgl::style::TransitionOptions options;
+            mln::style::TransitionOptions options;
             TransitionOptionsHarmony::ParseTransitionOptions(env, transitionValue, options);
             setter(options);
         };
 
-        applyTransition("positionTransition", [&](const mbgl::style::TransitionOptions& options) {
-            pendingApply.push_back([options](mbgl::style::Light& light) {
+        applyTransition("positionTransition", [&](const mln::style::TransitionOptions& options) {
+            pendingApply.push_back([options](mln::style::Light& light) {
                 light.setPositionTransition(options);
             });
         });
 
-        applyTransition("colorTransition", [&](const mbgl::style::TransitionOptions& options) {
-            pendingApply.push_back([options](mbgl::style::Light& light) {
+        applyTransition("colorTransition", [&](const mln::style::TransitionOptions& options) {
+            pendingApply.push_back([options](mln::style::Light& light) {
                 light.setColorTransition(options);
             });
         });
 
-        applyTransition("intensityTransition", [&](const mbgl::style::TransitionOptions& options) {
-            pendingApply.push_back([options](mbgl::style::Light& light) {
+        applyTransition("intensityTransition", [&](const mln::style::TransitionOptions& options) {
+            pendingApply.push_back([options](mln::style::Light& light) {
                 light.setIntensityTransition(options);
             });
         });
 
         if (!pendingApply.empty()) {
-            style->runOnMap([&](mbgl::Map& m) {
-                mbgl::style::Light* light = m.getStyle().getLight();
+            style->runOnMap([&](mln::Map& m) {
+                mln::style::Light* light = m.getStyle().getLight();
                 if (!light) {
                     return;
                 }
@@ -259,4 +259,4 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

@@ -5,28 +5,28 @@
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
 #include "style/layers/layer_property_utils.hpp"
-#include <mbgl/style/layers/circle_layer.hpp>
-#include <mbgl/style/property_value.hpp>
-#include <mbgl/style/types.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/style/layers/circle_layer.hpp>
+#include <mln/style/property_value.hpp>
+#include <mln/style/types.hpp>
+#include <mln/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "layer_property_macros.hpp"
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
 // Static member initialization
 napi_ref CircleLayerNAPI::constructor = nullptr;
 napi_env CircleLayerNAPI::constructorEnv = nullptr;
 
 CircleLayerNAPI::CircleLayerNAPI(const std::string& layerId, const std::string& sourceId)
-    : layer(std::make_unique<mbgl::style::CircleLayer>(layerId, sourceId)) {
+    : layer(std::make_unique<mln::style::CircleLayer>(layerId, sourceId)) {
 }
 
-CircleLayerNAPI::CircleLayerNAPI(mbgl::style::CircleLayer* layerPtr) {
+CircleLayerNAPI::CircleLayerNAPI(mln::style::CircleLayer* layerPtr) {
     if (layerPtr) {
         weakLayer = layerPtr->makeWeakPtr();
         Logger::info("CircleLayerNAPI", "CircleLayer created from existing layer (WeakPtr)");
@@ -78,7 +78,7 @@ DEFINE_LAYER_NEW(CircleLayerNAPI, "CircleLayer", 2, new CircleLayerNAPI(layerId,
         std::string layerId = args.GetString(0, "layerId");
         std::string sourceId = args.GetString(1, "sourceId");)
 
-napi_value CircleLayerNAPI::CreateInstance(napi_env env, mbgl::style::CircleLayer* layerPtr) {
+napi_value CircleLayerNAPI::CreateInstance(napi_env env, mln::style::CircleLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "CircleLayer",
                                 layerPtr ? new CircleLayerNAPI(layerPtr) : nullptr);
 }
@@ -88,29 +88,29 @@ napi_value CircleLayerNAPI::CreateInstance(napi_env env, mbgl::style::CircleLaye
 // Paint Property Setters (Expression supported)
 // ============================================================================
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleRadius, setPaintProperty, "circle-radius", setCircleRadius, float)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCircleRadius, setPaintProperty, "circle-radius", setCircleRadius, float)
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleColor, setPaintProperty, "circle-color", setCircleColor, mbgl::Color)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCircleColor, setPaintProperty, "circle-color", setCircleColor, mln::Color)
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleOpacity, setPaintProperty, "circle-opacity", setCircleOpacity, float)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCircleOpacity, setPaintProperty, "circle-opacity", setCircleOpacity, float)
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleBlur, setPaintProperty, "circle-blur", setCircleBlur, float)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCircleBlur, setPaintProperty, "circle-blur", setCircleBlur, float)
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleStrokeWidth, setPaintProperty, "circle-stroke-width", setCircleStrokeWidth, float)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCircleStrokeWidth, setPaintProperty, "circle-stroke-width", setCircleStrokeWidth, float)
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleStrokeColor, setPaintProperty, "circle-stroke-color", setCircleStrokeColor, mbgl::Color)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCircleStrokeColor, setPaintProperty, "circle-stroke-color", setCircleStrokeColor, mln::Color)
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleStrokeOpacity, setPaintProperty, "circle-stroke-opacity", setCircleStrokeOpacity, float)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCircleStrokeOpacity, setPaintProperty, "circle-stroke-opacity", setCircleStrokeOpacity, float)
 
 // ============================================================================
 // Property Getters (return constants or Expressions)
 // ============================================================================
 
-DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleRadius, getCircleRadius, float)
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mln::style::CircleLayer, GetCircleRadius, getCircleRadius, float)
 
-DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleColor, getCircleColor, mbgl::Color)
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mln::style::CircleLayer, GetCircleColor, getCircleColor, mln::Color)
 
-DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleOpacity, getCircleOpacity, float)
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mln::style::CircleLayer, GetCircleOpacity, getCircleOpacity, float)
 
 // ============================================================================
 // Base Layer Methods
@@ -188,35 +188,35 @@ napi_value CircleLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
 // New Properties
 // ============================================================================
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleTranslate, setPaintProperty, "circle-translate", setCircleTranslate, std::array<float,2>)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCircleTranslate, setPaintProperty, "circle-translate", setCircleTranslate, std::array<float,2>)
 
-DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleTranslate, getCircleTranslate, std::array<float,2>)
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mln::style::CircleLayer, GetCircleTranslate, getCircleTranslate, std::array<float,2>)
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleTranslateAnchor, setPaintProperty, "circle-translate-anchor", setCircleTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCircleTranslateAnchor, setPaintProperty, "circle-translate-anchor", setCircleTranslateAnchor, mln::style::TranslateAnchorType)
 
-DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleTranslateAnchor, getCircleTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mln::style::CircleLayer, GetCircleTranslateAnchor, getCircleTranslateAnchor, mln::style::TranslateAnchorType)
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCirclePitchScale, setPaintProperty, "circle-pitch-scale", setCirclePitchScale, mbgl::style::CirclePitchScaleType)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCirclePitchScale, setPaintProperty, "circle-pitch-scale", setCirclePitchScale, mln::style::CirclePitchScaleType)
 
-DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCirclePitchScale, getCirclePitchScale, mbgl::style::CirclePitchScaleType)
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mln::style::CircleLayer, GetCirclePitchScale, getCirclePitchScale, mln::style::CirclePitchScaleType)
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCirclePitchAlignment, setLayoutProperty, "circle-pitch-alignment", setCirclePitchAlignment, mbgl::style::AlignmentType)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCirclePitchAlignment, setLayoutProperty, "circle-pitch-alignment", setCirclePitchAlignment, mln::style::AlignmentType)
 
-DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCirclePitchAlignment, getCirclePitchAlignment, mbgl::style::AlignmentType)
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mln::style::CircleLayer, GetCirclePitchAlignment, getCirclePitchAlignment, mln::style::AlignmentType)
 
-DEFINE_LAYER_SETTER(CircleLayerNAPI, mbgl::style::CircleLayer, SetCircleSortKey, setLayoutProperty, "circle-sort-key", setCircleSortKey, float)
+DEFINE_LAYER_SETTER(CircleLayerNAPI, mln::style::CircleLayer, SetCircleSortKey, setLayoutProperty, "circle-sort-key", setCircleSortKey, float)
 
-DEFINE_LAYER_GETTER(CircleLayerNAPI, mbgl::style::CircleLayer, GetCircleSortKey, getCircleSortKey, float)
+DEFINE_LAYER_GETTER(CircleLayerNAPI, mln::style::CircleLayer, GetCircleSortKey, getCircleSortKey, float)
 
 // ==================== Generic Property Methods ====================
 
 napi_value CircleLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
-    return SetPropertyImpl<CircleLayerNAPI, mbgl::style::CircleLayer>(env, info);
+    return SetPropertyImpl<CircleLayerNAPI, mln::style::CircleLayer>(env, info);
 }
 
 napi_value CircleLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
-    return SetPropertiesImpl<CircleLayerNAPI, mbgl::style::CircleLayer>(env, info);
+    return SetPropertiesImpl<CircleLayerNAPI, mln::style::CircleLayer>(env, info);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

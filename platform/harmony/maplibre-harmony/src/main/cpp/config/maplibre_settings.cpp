@@ -1,12 +1,12 @@
 #include "maplibre_settings.hpp"
-#include <mbgl/util/logging.hpp>
+#include <mln/util/logging.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 MapLibreSettings::MapLibreSettings() {
     // Default to the MapLibre open-source configuration
-    tileServerOptions_ = mbgl::TileServerOptions::MapLibreConfiguration();
+    tileServerOptions_ = mln::TileServerOptions::MapLibreConfiguration();
     apiKey_ = "";
 }
 
@@ -15,39 +15,39 @@ MapLibreSettings& MapLibreSettings::getInstance() {
     return instance;
 }
 
-void MapLibreSettings::setTileServerOptions(const mbgl::TileServerOptions& options) {
+void MapLibreSettings::setTileServerOptions(const mln::TileServerOptions& options) {
     std::lock_guard<std::mutex> lock(mutex_);
     tileServerOptions_ = options.clone();
     
-    Log::Info(mbgl::Event::General, 
+    Log::Info(mln::Event::General, 
         "MapLibreSettings: TileServerOptions updated - baseURL: " + tileServerOptions_.baseURL() + 
         ", uriScheme: " + tileServerOptions_.uriSchemeAlias());
 }
 
-mbgl::TileServerOptions MapLibreSettings::getTileServerOptions() const {
+mln::TileServerOptions MapLibreSettings::getTileServerOptions() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return tileServerOptions_.clone();
 }
 
 void MapLibreSettings::useMapboxConfiguration() {
     std::lock_guard<std::mutex> lock(mutex_);
-    tileServerOptions_ = mbgl::TileServerOptions::MapboxConfiguration();
+    tileServerOptions_ = mln::TileServerOptions::MapboxConfiguration();
     
-    Log::Info(mbgl::Event::General, "MapLibreSettings: Switched to Mapbox configuration");
+    Log::Info(mln::Event::General, "MapLibreSettings: Switched to Mapbox configuration");
 }
 
 void MapLibreSettings::useMapTilerConfiguration() {
     std::lock_guard<std::mutex> lock(mutex_);
-    tileServerOptions_ = mbgl::TileServerOptions::MapTilerConfiguration();
+    tileServerOptions_ = mln::TileServerOptions::MapTilerConfiguration();
     
-    Log::Info(mbgl::Event::General, "MapLibreSettings: Switched to MapTiler configuration");
+    Log::Info(mln::Event::General, "MapLibreSettings: Switched to MapTiler configuration");
 }
 
 void MapLibreSettings::useMapLibreConfiguration() {
     std::lock_guard<std::mutex> lock(mutex_);
-    tileServerOptions_ = mbgl::TileServerOptions::MapLibreConfiguration();
+    tileServerOptions_ = mln::TileServerOptions::MapLibreConfiguration();
     
-    Log::Info(mbgl::Event::General, "MapLibreSettings: Switched to MapLibre configuration");
+    Log::Info(mln::Event::General, "MapLibreSettings: Switched to MapLibre configuration");
 }
 
 void MapLibreSettings::setApiKey(const std::string& apiKey) {
@@ -56,10 +56,10 @@ void MapLibreSettings::setApiKey(const std::string& apiKey) {
     
     // Log only whether a token is set—never the value (security)
     if (!apiKey_.empty()) {
-        Log::Info(mbgl::Event::General, 
+        Log::Info(mln::Event::General, 
             "MapLibreSettings: API Key set (length: " + std::to_string(apiKey_.length()) + ")");
     } else {
-        Log::Info(mbgl::Event::General, "MapLibreSettings: API Key cleared");
+        Log::Info(mln::Event::General, "MapLibreSettings: API Key cleared");
     }
 }
 
@@ -73,7 +73,7 @@ void MapLibreSettings::setBaseURL(const std::string& baseURL) {
     auto newOptions = tileServerOptions_.clone().withBaseURL(baseURL);
     tileServerOptions_ = std::move(newOptions);
     
-    Log::Info(mbgl::Event::General, "MapLibreSettings: Base URL set to: " + baseURL);
+    Log::Info(mln::Event::General, "MapLibreSettings: Base URL set to: " + baseURL);
 }
 
 std::string MapLibreSettings::getBaseURL() const {
@@ -81,7 +81,7 @@ std::string MapLibreSettings::getBaseURL() const {
     return tileServerOptions_.baseURL();
 }
 
-mbgl::ResourceOptions MapLibreSettings::applyToResourceOptions(mbgl::ResourceOptions options) const {
+mln::ResourceOptions MapLibreSettings::applyToResourceOptions(mln::ResourceOptions options) const {
     std::lock_guard<std::mutex> lock(mutex_);
     
     // Apply the TileServerOptions
@@ -92,7 +92,7 @@ mbgl::ResourceOptions MapLibreSettings::applyToResourceOptions(mbgl::ResourceOpt
         options.withApiKey(apiKey_);
     }
     
-    Log::Info(mbgl::Event::General, 
+    Log::Info(mln::Event::General, 
         "MapLibreSettings: Applied configuration to ResourceOptions - baseURL: " + 
         tileServerOptions_.baseURL() + ", hasApiKey: " + (apiKey_.empty() ? "false" : "true"));
     
@@ -100,5 +100,5 @@ mbgl::ResourceOptions MapLibreSettings::applyToResourceOptions(mbgl::ResourceOpt
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

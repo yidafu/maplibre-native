@@ -1,11 +1,11 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/style/layer.hpp>
-#include <mbgl/style/source.hpp>
+#include <mln/style/layer.hpp>
+#include <mln/style/source.hpp>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -28,14 +28,14 @@ public:
      * Create a NAPI wrapper for a layer based on its type
      * Returns a NAPI object representing the layer, or undefined if type is not supported
      */
-    static napi_value createLayerWrapper(napi_env env, mbgl::style::Layer* layer,
+    static napi_value createLayerWrapper(napi_env env, mln::style::Layer* layer,
                                          WrapperFallback fallback = WrapperFallback::InfoObject);
 
     /**
      * Create a NAPI wrapper for a source based on its type
      * Returns a NAPI object representing the source, or undefined if type is not supported
      */
-    static napi_value createSourceWrapper(napi_env env, mbgl::style::Source* source,
+    static napi_value createSourceWrapper(napi_env env, mln::style::Source* source,
                                           WrapperFallback fallback = WrapperFallback::InfoObject);
 
     /**
@@ -43,12 +43,12 @@ public:
      * "custom-vector", ...). Shared by every caller that renders a source type
      * as a string.
      */
-    static std::string SourceTypeToString(mbgl::style::SourceType type);
+    static std::string SourceTypeToString(mln::style::SourceType type);
 
 private:
     LayerSourceFactory() = delete;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

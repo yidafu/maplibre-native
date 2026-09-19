@@ -5,21 +5,21 @@
 #include "style/filter_conversion.hpp"
 #include "utils/logger.h"
 
-#include <mbgl/style/layer.hpp>
+#include <mln/style/layer.hpp>
 #include <napi/native_api.h>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
 /**
  * Common Layer Base Methods
  * 
  * Provides implementation for setProperty and setProperties methods
- * that work with all layer types through the mbgl::style::Layer base class.
+ * that work with all layer types through the mln::style::Layer base class.
  */
 
 /**
@@ -72,7 +72,7 @@ bool SetLayerProperty(napi_env env, LayerT* layer, const std::string& propertyNa
  * Usage in layer NAPI class:
  * ```cpp
  * napi_value FillLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
- *     return SetPropertyImpl<FillLayerNAPI, mbgl::style::FillLayer>(env, info);
+ *     return SetPropertyImpl<FillLayerNAPI, mln::style::FillLayer>(env, info);
  * }
  * ```
  */
@@ -128,7 +128,7 @@ napi_value SetPropertyImpl(napi_env env, napi_callback_info info) {
  * Usage in layer NAPI class:
  * ```cpp
  * napi_value FillLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
- *     return SetPropertiesImpl<FillLayerNAPI, mbgl::style::FillLayer>(env, info);
+ *     return SetPropertiesImpl<FillLayerNAPI, mln::style::FillLayer>(env, info);
  * }
  * ```
  */
@@ -212,7 +212,7 @@ napi_value SetPropertiesImpl(napi_env env, napi_callback_info info) {
 // filter). Every layer NAPI class keeps its static napi callback declaration
 // and forwards to these templates; NAPI must expose `getLayer()` returning
 // its concrete mbgl layer pointer (implicitly convertible to
-// mbgl::style::Layer*, which owns the whole shared surface).
+// mln::style::Layer*, which owns the whole shared surface).
 //
 // Canonical guard semantics (previously duplicated with formatting drift in
 // 11 files, normalized here):
@@ -280,9 +280,9 @@ inline napi_value LayerSetVisibility(napi_env env, napi_callback_info info) {
 
     std::string visibility = args.GetString(0, "visibility");
     if (visibility == "visible") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
+        layerObj->getLayer()->setVisibility(mln::style::VisibilityType::Visible);
     } else if (visibility == "none") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
+        layerObj->getLayer()->setVisibility(mln::style::VisibilityType::None);
     }
 
     return thisVar;
@@ -301,7 +301,7 @@ inline napi_value LayerGetVisibility(napi_env env, napi_callback_info info) {
     }
 
     auto visibility = layerObj->getLayer()->getVisibility();
-    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
+    const char* visStr = (visibility == mln::style::VisibilityType::Visible) ? "visible" : "none";
 
     napi_value result;
     napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
@@ -469,5 +469,5 @@ inline napi_value LayerGetFilter(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

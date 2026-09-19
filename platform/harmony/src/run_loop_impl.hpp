@@ -1,7 +1,7 @@
 #pragma once
 
-#include <mbgl/util/run_loop.hpp>
-#include <mbgl/util/util.hpp>
+#include <mln/util/run_loop.hpp>
+#include <mln/util/util.hpp>
 
 #include <uv.h>
 #include <memory>
@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <thread>
 
-namespace mbgl {
+namespace mln {
 namespace util {
 
 // Forward declaration
@@ -53,4 +53,4 @@ private:
 };
 
 } // namespace util
-} // namespace mbgl
+} // namespace mln

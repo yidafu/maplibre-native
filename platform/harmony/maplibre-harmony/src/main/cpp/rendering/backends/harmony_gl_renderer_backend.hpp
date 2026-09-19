@@ -5,8 +5,8 @@
 #include <GLES3/gl3.h>
 #include <GLES2/gl2.h>
 
-#include <mbgl/gfx/renderable.hpp>
-#include <mbgl/gl/renderer_backend.hpp>
+#include <mln/gfx/renderable.hpp>
+#include <mln/gl/renderer_backend.hpp>
 #include "harmony_renderer_backend.hpp"
 #include "egl_display_manager.hpp"
 #include <atomic>
@@ -14,18 +14,18 @@
 #include <memory>
 #include <thread>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 class HarmonyGLRendererBackend : public HarmonyRendererBackend,
-                                 public mbgl::gl::RendererBackend,
-                                 public mbgl::gfx::Renderable {
+                                 public mln::gl::RendererBackend,
+                                 public mln::gfx::Renderable {
     friend class HarmonyGLRenderableResource;
 public:
     HarmonyGLRendererBackend();
     ~HarmonyGLRendererBackend() override;
 
-    mbgl::gfx::RendererBackend& getImpl() override { return *this; }
+    mln::gfx::RendererBackend& getImpl() override { return *this; }
 
     void setNativeWindow(void* window) override;
     void updateViewPort() override;
@@ -41,11 +41,11 @@ public:
     void updatePixelRatioFromDevice();
 
     // gfx::RendererBackend pure virtual methods
-    mbgl::gfx::Renderable& getDefaultRenderable() override { return *this; }
+    mln::gfx::Renderable& getDefaultRenderable() override { return *this; }
 
     // gl::RendererBackend pure virtual methods
     void updateAssumedState() override;
-    mbgl::gl::ProcAddress getExtensionFunctionPointer(const char*) override;
+    mln::gl::ProcAddress getExtensionFunctionPointer(const char*) override;
 
     // Added: pause/resume rendering (prevents crashes when switching pages)
     void pauseRendering() override;
@@ -108,6 +108,6 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 

@@ -6,11 +6,11 @@
 #include <string>
 #include <map>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::HTTPRequestConfig;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::Logger;
+using mln::harmony::HTTPRequestConfig;
+using mln::harmony::napi::NapiArgs;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 napi_value NetworkNAPI::Init(napi_env env, napi_value exports) {
@@ -196,5 +196,5 @@ napi_value NetworkNAPI::GetCustomHttpHeaders(napi_env env, napi_callback_info in
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

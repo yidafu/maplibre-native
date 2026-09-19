@@ -3,13 +3,13 @@
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
 #include "style/layer_source_factory_harmony.hpp"
-#include <mbgl/style/style.hpp>
-#include <mbgl/style/source.hpp>
+#include <mln/style/style.hpp>
+#include <mln/style/source.hpp>
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // ==================== Source management ====================
@@ -42,7 +42,7 @@ napi_value StyleNAPI::RemoveSource(napi_env env, napi_callback_info info) {
     
     try {
         bool removed = false;
-        style->runOnMap([&](mbgl::Map& m) {
+        style->runOnMap([&](mln::Map& m) {
             if (m.getStyle().getSource(sourceId)) {
                 m.getStyle().removeSource(sourceId);
                 removed = true;
@@ -91,9 +91,9 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
     }
     
     // Resolve the source on the render thread; the NAPI peer is built below.
-    mbgl::style::Source* source = nullptr;
+    mln::style::Source* source = nullptr;
     try {
-        style->runOnMap([&](mbgl::Map& m) {
+        style->runOnMap([&](mln::Map& m) {
             source = m.getStyle().getSource(sourceId);
         });
     } catch (const std::exception& e) {
@@ -114,8 +114,8 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
         // Create the corresponding NAPI instance through the shared factory
         // (same per-type CreateInstance dispatch as before). Null fallback
         // keeps the historical "unknown source type" branch observable.
-        napi_value wrapper = mbgl::harmony::LayerSourceFactory::createSourceWrapper(
-            env, source, mbgl::harmony::WrapperFallback::Null);
+        napi_value wrapper = mln::harmony::LayerSourceFactory::createSourceWrapper(
+            env, source, mln::harmony::WrapperFallback::Null);
         napi_valuetype wrapperType = napi_undefined;
         napi_typeof(env, wrapper, &wrapperType);
         if (wrapperType == napi_null) {
@@ -145,8 +145,8 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
     
     try {
         // Snapshot the source list on the render thread
-        std::vector<mbgl::style::Source*> sourceList;
-        style->runOnMap([&](mbgl::Map& m) {
+        std::vector<mln::style::Source*> sourceList;
+        style->runOnMap([&](mln::Map& m) {
             const auto& sources = m.getStyle().getSources();
             sourceList.reserve(sources.size());
             for (const auto& source : sources) {
@@ -170,7 +170,7 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
             napi_set_named_property(env, sourceObj, "id", idValue);
             
             // Determine the source type (single shared spelling)
-            const std::string typeStr = mbgl::harmony::LayerSourceFactory::SourceTypeToString(source->getType());
+            const std::string typeStr = mln::harmony::LayerSourceFactory::SourceTypeToString(source->getType());
 
             napi_value typeValue = CreateStringValue(env, typeStr);
             napi_set_named_property(env, sourceObj, "type", typeValue);
@@ -188,5 +188,5 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

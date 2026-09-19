@@ -7,13 +7,13 @@
 #include "core/gesture/native_gesture_manager.hpp"
 #include "core/map_registry.hpp"
 #include "utils/logger.h"
-#include <mbgl/map/map.hpp>
+#include <mln/map/map.hpp>
 #include <chrono>
-#include <mbgl/tile/tile_operation.hpp>
-#include <mbgl/util/geometry.hpp>
-#include <mbgl/util/run_loop.hpp>
-#include <mbgl/util/size.hpp>
-#include <mbgl/util/constants.hpp>
+#include <mln/tile/tile_operation.hpp>
+#include <mln/util/geometry.hpp>
+#include <mln/util/run_loop.hpp>
+#include <mln/util/size.hpp>
+#include <mln/util/constants.hpp>
 
 #include <string>
 #include <memory>
@@ -26,7 +26,7 @@
 #include <mutex>
 #include <vector>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 class FileSource;
@@ -35,9 +35,9 @@ class RenderingStats;
 
 struct HarmonyViewAnnotation {
     int64_t id = 0;
-    mbgl::LatLng anchor;
-    mbgl::Size size{0, 0};
-    mbgl::ScreenCoordinate offset{0.0, 0.0};
+    mln::LatLng anchor;
+    mln::Size size{0, 0};
+    mln::ScreenCoordinate offset{0.0, 0.0};
     double anchorHeight = 0;  // Height for anchor positioning (separate from render size)
     double anchorU = 0.5;     // Horizontal anchor (0=left, 0.5=center, 1=right)
     double anchorV = 1.0;     // Vertical anchor (0=top, 0.5=center, 1=bottom)
@@ -47,14 +47,14 @@ struct HarmonyViewAnnotation {
     bool scalesWithViewingDistance = false;
     bool rotatesWithCamera = false;
     double minZoom = 0.0;
-    double maxZoom = mbgl::util::DEFAULT_MAX_ZOOM;
+    double maxZoom = mln::util::DEFAULT_MAX_ZOOM;
 };
 
 struct HarmonyViewAnnotationFrame {
     int64_t id = 0;
-    mbgl::ScreenCoordinate screen{0.0, 0.0};
-    mbgl::Size size{0, 0};
-    mbgl::ScreenCoordinate offset{0.0, 0.0};
+    mln::ScreenCoordinate screen{0.0, 0.0};
+    mln::Size size{0, 0};
+    mln::ScreenCoordinate offset{0.0, 0.0};
     double scale = 1.0;
     double rotation = 0.0;
     double opacity = 1.0;
@@ -108,7 +108,7 @@ public:
         return static_cast<double>(pixelRatio);
     }
 
-    // mbgl::RendererBackend (mbgl::MapObserver) //
+    // mln::RendererBackend (mln::MapObserver) //
     void onCameraWillChange(MapObserver::CameraChangeMode) override;
     void onCameraIsChanging() override;
     void onCameraDidChange(MapObserver::CameraChangeMode) override;
@@ -121,7 +121,7 @@ public:
     void onDidFinishRenderingMap(MapObserver::RenderMode) override;
     void onDidBecomeIdle() override;
     void onDidFinishLoadingStyle() override;
-    void onSourceChanged(mbgl::style::Source&) override;
+    void onSourceChanged(mln::style::Source&) override;
     void onStyleImageMissing(const std::string&) override;
     bool onCanRemoveUnusedStyleImage(const std::string&) override;
 
@@ -267,23 +267,23 @@ public:
     static napi_value cancelAllRequests(napi_env env, napi_callback_info info);
 
     // Shader compilation
-    void onRegisterShaders(mbgl::gfx::ShaderRegistry&) override;
-    void onPreCompileShader(mbgl::shaders::BuiltIn, mbgl::gfx::Backend::Type, const std::string&) override;
-    void onPostCompileShader(mbgl::shaders::BuiltIn, mbgl::gfx::Backend::Type, const std::string&) override;
-    void onShaderCompileFailed(mbgl::shaders::BuiltIn, mbgl::gfx::Backend::Type, const std::string&) override;
+    void onRegisterShaders(mln::gfx::ShaderRegistry&) override;
+    void onPreCompileShader(mln::shaders::BuiltIn, mln::gfx::Backend::Type, const std::string&) override;
+    void onPostCompileShader(mln::shaders::BuiltIn, mln::gfx::Backend::Type, const std::string&) override;
+    void onShaderCompileFailed(mln::shaders::BuiltIn, mln::gfx::Backend::Type, const std::string&) override;
 
     // Glyph requests
-    void onGlyphsLoaded(const mbgl::FontStack&, const mbgl::GlyphRange&) override;
-    void onGlyphsError(const mbgl::FontStack&, const mbgl::GlyphRange&, std::exception_ptr) override;
-    void onGlyphsRequested(const mbgl::FontStack&, const mbgl::GlyphRange&) override;
+    void onGlyphsLoaded(const mln::FontStack&, const mln::GlyphRange&) override;
+    void onGlyphsError(const mln::FontStack&, const mln::GlyphRange&, std::exception_ptr) override;
+    void onGlyphsRequested(const mln::FontStack&, const mln::GlyphRange&) override;
 
     // Tile requests
-    void onTileAction(mbgl::TileOperation, const mbgl::OverscaledTileID&, const std::string&) override;
+    void onTileAction(mln::TileOperation, const mln::OverscaledTileID&, const std::string&) override;
 
     // Sprite requests
-    void onSpriteLoaded(const std::optional<mbgl::style::Sprite>&) override;
-    void onSpriteError(const std::optional<mbgl::style::Sprite>&, std::exception_ptr) override;
-    void onSpriteRequested(const std::optional<mbgl::style::Sprite>&) override;
+    void onSpriteLoaded(const std::optional<mln::style::Sprite>&) override;
+    void onSpriteError(const std::optional<mln::style::Sprite>&, std::exception_ptr) override;
+    void onSpriteRequested(const std::optional<mln::style::Sprite>&) override;
     
     // Gesture listener management (map click / long-click)
     static napi_value addOnMapClickListener(napi_env env, napi_callback_info info);
@@ -408,7 +408,7 @@ private:
                                 size_t argc,
                                 napi_value* argv);
 
-    mbgl::Map& getMap();
+    mln::Map& getMap();
 
     // Publish (or re-publish) the current Map in the MapRegistry so style
     // wrappers (StyleNAPI etc.) can resolve a liveness token and a
@@ -473,10 +473,10 @@ private:
     std::shared_ptr<ThreadSafeCallback> fpsChangedCallback_;  // Callback invoked when FPS changes
     
     // Unified callback manager
-    std::shared_ptr<mbgl::harmony::CallbackManager> callbackManager_;
+    std::shared_ptr<mln::harmony::CallbackManager> callbackManager_;
 
     // Native gesture manager (replaces ArkTS MapGestureDetector)
-    std::unique_ptr<mbgl::harmony::gesture::NativeGestureManager> gestureManager_;
+    std::unique_ptr<mln::harmony::gesture::NativeGestureManager> gestureManager_;
     
     // Application cache directory path
     std::string cachePath_;
@@ -586,7 +586,7 @@ private:
      * @param func Operation to perform; receives a Map* argument and returns a result.
      * @return The result of the operation, or the default value if it fails.
      */
-    template<typename Func, typename Result = std::invoke_result_t<Func, mbgl::Map*>>
+    template<typename Func, typename Result = std::invoke_result_t<Func, mln::Map*>>
     Result invokeOnMapThreadSync(Func&& func, Result defaultValue = Result{}) {
         if (!harmonyRenderer || !map) {
             return defaultValue;
@@ -636,13 +636,13 @@ private:
     }
     
     // Ensure these are initialised last
-    mbgl::Map* map = nullptr;  // Reference to Map owned by HarmonyMapRenderThread
+    mln::Map* map = nullptr;  // Reference to Map owned by HarmonyMapRenderThread
 
     // Liveness token for the current map, published in the MapRegistry
     std::shared_ptr<MapToken> mapToken_;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBREHARMONY_NATIVE_MAP_VIEW_HARMONY_HPP

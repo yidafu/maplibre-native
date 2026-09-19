@@ -1,8 +1,8 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/style/sources/custom_geometry_source.hpp>
-#include <mbgl/renderer/query.hpp>
+#include <mln/style/sources/custom_geometry_source.hpp>
+#include <mln/renderer/query.hpp>
 #include <functional>
 #include <memory>
 #include <string>
@@ -10,19 +10,19 @@
 
 #include "source_napi_base.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 class ThreadSafeCallback;
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
  * CustomGeometrySourceNAPI - NAPI wrapper for CustomGeometrySource
  *
- * Wraps mbgl::style::CustomGeometrySource (application-managed tile geometry).
+ * Wraps mln::style::CustomGeometrySource (application-managed tile geometry).
  * Mirrors the Android CustomGeometrySource peer: the core source invokes
  * fetchTile/cancelTile from tile worker threads, and this wrapper forwards
  * them to the JS thread via ThreadSafeCallback. Tile data is pushed back with
@@ -31,11 +31,11 @@ namespace harmony {
  * Ownership state and the shared accessors live in SourceNapiBase.
  */
 class CustomGeometrySourceNAPI
-    : public SourceNapiBase<CustomGeometrySourceNAPI, mbgl::style::CustomGeometrySource> {
+    : public SourceNapiBase<CustomGeometrySourceNAPI, mln::style::CustomGeometrySource> {
 public:
-    CustomGeometrySourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::CustomGeometrySource> source);
+    CustomGeometrySourceNAPI(const std::string& id, std::unique_ptr<mln::style::CustomGeometrySource> source);
     // Construct from an existing Source (uses WeakPtr, does not take ownership)
-    explicit CustomGeometrySourceNAPI(mbgl::style::CustomGeometrySource* sourcePtr);
+    explicit CustomGeometrySourceNAPI(mln::style::CustomGeometrySource* sourcePtr);
 
     ~CustomGeometrySourceNAPI();
 
@@ -43,7 +43,7 @@ public:
     static napi_value Init(napi_env env, napi_value exports);
     static napi_value New(napi_env env, napi_callback_info info);
     // Create a NAPI instance from an existing native object
-    static napi_value CreateInstance(napi_env env, mbgl::style::CustomGeometrySource* sourcePtr);
+    static napi_value CreateInstance(napi_env env, mln::style::CustomGeometrySource* sourcePtr);
 
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
 
@@ -58,8 +58,8 @@ public:
     // Query
     static napi_value QuerySourceFeatures(napi_env env, napi_callback_info info);
 
-    using QuerySourceFeaturesFn = std::function<std::vector<mbgl::Feature>(
-        const std::string&, const mbgl::SourceQueryOptions&)>;
+    using QuerySourceFeaturesFn = std::function<std::vector<mln::Feature>(
+        const std::string&, const mln::SourceQueryOptions&)>;
     // Registered per-owner (the HarmonyRenderer raw pointer) so multiple map
     // instances don't clobber each other; clearing is owner-checked so
     // destroying one map never disables another map's hooks.
@@ -75,9 +75,9 @@ private:
     // Shared with the TileFunction lambdas held by the core source so the
     // callbacks stay callable until the source itself is destroyed, even if
     // the JS wrapper is garbage collected first.
-    std::shared_ptr<mbgl::harmony::ThreadSafeCallback> fetchTileCb;
-    std::shared_ptr<mbgl::harmony::ThreadSafeCallback> cancelTileCb;
+    std::shared_ptr<mln::harmony::ThreadSafeCallback> fetchTileCb;
+    std::shared_ptr<mln::harmony::ThreadSafeCallback> cancelTileCb;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

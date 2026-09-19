@@ -17,7 +17,7 @@
 
 #include <uv.h>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 struct LoopGuard {
@@ -59,4 +59,4 @@ inline void retireLoopGuard(uv_loop_t* loop) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

@@ -6,9 +6,9 @@
 #include <atomic>
 #include <condition_variable>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 CallbackManager::CallbackManager(napi_env env)
@@ -344,5 +344,5 @@ bool CallbackManager::AreCallbacksEqual(napi_ref storedRef, napi_value callback)
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

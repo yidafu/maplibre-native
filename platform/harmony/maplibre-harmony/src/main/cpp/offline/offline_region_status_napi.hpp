@@ -1,9 +1,9 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/storage/offline.hpp>
+#include <mln/storage/offline.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -12,9 +12,9 @@ namespace harmony {
 class OfflineRegionStatusNAPI {
 public:
     // Convert a C++ status struct into a NAPI object
-    static napi_value ToNapiObject(napi_env env, const mbgl::OfflineRegionStatus& status);
+    static napi_value ToNapiObject(napi_env env, const mln::OfflineRegionStatus& status);
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

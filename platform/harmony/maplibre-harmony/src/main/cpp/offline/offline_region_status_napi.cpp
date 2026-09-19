@@ -1,15 +1,15 @@
 #include "offline_region_status_napi.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-napi_value OfflineRegionStatusNAPI::ToNapiObject(napi_env env, const mbgl::OfflineRegionStatus& status) {
+napi_value OfflineRegionStatusNAPI::ToNapiObject(napi_env env, const mln::OfflineRegionStatus& status) {
     napi_value obj;
     napi_create_object(env, &obj);
     
     // downloadState
     napi_value downloadStateValue;
-    int32_t downloadState = (status.downloadState == mbgl::OfflineRegionDownloadState::Active) ? 1 : 0;
+    int32_t downloadState = (status.downloadState == mln::OfflineRegionDownloadState::Active) ? 1 : 0;
     napi_create_int32(env, downloadState, &downloadStateValue);
     napi_set_named_property(env, obj, "downloadState", downloadStateValue);
     
@@ -57,5 +57,5 @@ napi_value OfflineRegionStatusNAPI::ToNapiObject(napi_env env, const mbgl::Offli
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

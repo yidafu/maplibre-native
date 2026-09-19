@@ -15,25 +15,25 @@
 #include "../napi/bindings/image/image_napi.hpp"
 #include "../napi/bindings/icon/icon_napi.hpp"
 
-#include <mbgl/map/camera.hpp>
-#include <mbgl/style/layer.hpp>
-#include <mbgl/style/style.hpp>
-#include <mbgl/style/source.hpp>
-#include <mbgl/style/image.hpp>
+#include <mln/map/camera.hpp>
+#include <mln/style/layer.hpp>
+#include <mln/style/style.hpp>
+#include <mln/style/source.hpp>
+#include <mln/style/image.hpp>
 #include <napi/native_api.h>
 #include <string>
 #include <memory>
 #include <vector>
 #include <cstring>
 
-using mbgl::harmony::ThreadSafeCallback;
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::ThreadSafeCallback;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::napi::NapiArgs;
 
 // Forward declarations
 napi_value SnapshotterStart(napi_env env, napi_callback_info info);
@@ -121,15 +121,15 @@ MapSnapshotterInstance* RequireSnapshotter(NapiArgs& args, const char* op = null
  * Parse {target: {latitude, longitude}, zoom, bearing, tilt} into CameraOptions.
  * Shared by CreateMapSnapshotter and SnapshotterSetCameraPosition.
  */
-mbgl::CameraOptions ParseCameraPositionArgs(NapiArgs& args, napi_value cameraObj) {
-    mbgl::CameraOptions camera;
+mln::CameraOptions ParseCameraPositionArgs(NapiArgs& args, napi_value cameraObj) {
+    mln::CameraOptions camera;
 
     // Parse target (LatLng)
     napi_value targetVal;
     if (napi_get_named_property(args.Env(), cameraObj, "target", &targetVal) == napi_ok) {
         double lat = args.GetDoubleProperty(targetVal, "latitude", 0.0);
         double lng = args.GetDoubleProperty(targetVal, "longitude", 0.0);
-        camera.center = mbgl::LatLng(lat, lng);
+        camera.center = mln::LatLng(lat, lng);
     }
 
     // Parse zoom, bearing, tilt
@@ -145,15 +145,15 @@ mbgl::CameraOptions ParseCameraPositionArgs(NapiArgs& args, napi_value cameraObj
  * CreateMapSnapshotter and SnapshotterSetRegion. Note: the key names differ
  * from LatLngBoundsHarmony::ParseLatLngBounds (sw/ne), so this stays local.
  */
-mbgl::LatLngBounds ParseRegionBounds(NapiArgs& args, napi_value regionObj) {
+mln::LatLngBounds ParseRegionBounds(NapiArgs& args, napi_value regionObj) {
     double north = args.GetDoubleProperty(regionObj, "north", 0.0);
     double south = args.GetDoubleProperty(regionObj, "south", 0.0);
     double east = args.GetDoubleProperty(regionObj, "east", 0.0);
     double west = args.GetDoubleProperty(regionObj, "west", 0.0);
 
-    return mbgl::LatLngBounds::hull(
-        mbgl::LatLng(north, east),
-        mbgl::LatLng(south, west)
+    return mln::LatLngBounds::hull(
+        mln::LatLng(north, east),
+        mln::LatLng(south, west)
     );
 }
 
@@ -219,10 +219,10 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
     
     // Create resource options.
     // Note: simplified; ideally fetch cache path from the surrounding context.
-    mbgl::ResourceOptions resourceOptions;
+    mln::ResourceOptions resourceOptions;
     resourceOptions.withCachePath("/data/storage/el2/base/haps/entry/cache/maplibre");
     
-    mbgl::ClientOptions clientOptions;
+    mln::ClientOptions clientOptions;
     
     // Instantiate MapSnapshotterInstance
     auto* snapshotterInstance = new MapSnapshotterInstance(env);
@@ -314,10 +314,10 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
     snapshotterInstance->snapshotter->snapshot(
         [sharedCallback, pixelRatio](
             std::exception_ptr err,
-            mbgl::PremultipliedImage image,
+            mln::PremultipliedImage image,
             std::vector<std::string> attributions,
-            mbgl::MapSnapshotter::PointForFn pointForFn,
-            mbgl::MapSnapshotter::LatLngForFn latLngForFn
+            mln::MapSnapshotter::PointForFn pointForFn,
+            mln::MapSnapshotter::LatLngForFn latLngForFn
         ) {
             // Use ThreadSafeCallback to marshal safely onto the main thread
             Logger::info("SnapshotterNAPI", "Snapshot callback triggered");
@@ -340,14 +340,14 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
                              image.size.width, image.size.height, image.bytes());
                 
                 // Move all data into shared_ptr for automatic lifetime management
-                auto imageData = std::make_shared<mbgl::PremultipliedImage>(std::move(image));
+                auto imageData = std::make_shared<mln::PremultipliedImage>(std::move(image));
                 auto attrs = std::make_shared<std::vector<std::string>>(std::move(attributions));
                 
                 // Use ThreadSafeCallback to create the MapSnapshot object on the main thread
                 sharedCallback->Call([imageData, attrs, pixelRatio, pointForFn, latLngForFn](napi_env env) -> napi_value {
                     // Use CreateMapSnapshotObject to build the MapSnapshot.
                     // Note: move imageData into the returned object.
-                    mbgl::PremultipliedImage imageCopy = std::move(*imageData);
+                    mln::PremultipliedImage imageCopy = std::move(*imageData);
                     napi_value mapSnapshotObj = CreateMapSnapshotObject(
                         env,
                         std::move(imageCopy),
@@ -423,7 +423,7 @@ napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
     napi_value cameraObj = args.GetObject(0, "cameraPosition");
     if (args.HasError()) return args.Undefined();
 
-    mbgl::CameraOptions camera = ParseCameraPositionArgs(args, cameraObj);
+    mln::CameraOptions camera = ParseCameraPositionArgs(args, cameraObj);
 
     snapshotterInstance->snapshotter->setCameraOptions(camera);
     Logger::info("SnapshotterNAPI", "Camera position set");
@@ -571,7 +571,7 @@ napi_value SnapshotterGetLayer(napi_env env, napi_callback_info info) {
     }
 
     try {
-        mbgl::style::Layer* layer = snapshotterInstance->snapshotter->getStyle().getLayer(layerId);
+        mln::style::Layer* layer = snapshotterInstance->snapshotter->getStyle().getLayer(layerId);
         if (!layer) {
             Logger::info("SnapshotterNAPI", "getLayer: Layer not found: %s", layerId.c_str());
             return args.Null();
@@ -620,7 +620,7 @@ napi_value SnapshotterGetSource(napi_env env, napi_callback_info info) {
     }
 
     try {
-        mbgl::style::Source* source = snapshotterInstance->snapshotter->getStyle().getSource(sourceId);
+        mln::style::Source* source = snapshotterInstance->snapshotter->getStyle().getSource(sourceId);
         if (!source) {
             Logger::info("SnapshotterNAPI", "getSource: Source not found: %s", sourceId.c_str());
             return args.Null();
@@ -697,11 +697,11 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
     }
 
     try {
-        std::unique_ptr<mbgl::style::Image> styleImage;
+        std::unique_ptr<mln::style::Image> styleImage;
 
-        if (mbgl::harmony::IconNAPI::IsIconObject(env, dataValue)) {
+        if (mln::harmony::IconNAPI::IsIconObject(env, dataValue)) {
             // Icon created by IconFactory: image data and scale live on the icon.
-            mbgl::harmony::IconNAPI* icon = nullptr;
+            mln::harmony::IconNAPI* icon = nullptr;
             if (napi_unwrap(env, dataValue, reinterpret_cast<void**>(&icon)) != napi_ok) {
                 icon = nullptr;
             }
@@ -720,14 +720,14 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
             const float pixelRatio = icon->getScale() > 0.0f ? icon->getScale() : 1.0f;
 
             // Copy the pixels so the icon stays usable for other consumers.
-            mbgl::PremultipliedImage copy = iconImage->clone();
-            styleImage = std::make_unique<mbgl::style::Image>(imageId, std::move(copy), pixelRatio, sdf);
+            mln::PremultipliedImage copy = iconImage->clone();
+            styleImage = std::make_unique<mln::style::Image>(imageId, std::move(copy), pixelRatio, sdf);
 
             Logger::info("SnapshotterNAPI", "addImage from Icon: %s (%dx%d, ratio: %.2f, sdf: %d)",
                          imageId.c_str(), icon->getWidth(), icon->getHeight(), pixelRatio, sdf);
-        } else if (mbgl::harmony::ImageNAPI::IsImageObject(env, dataValue)) {
+        } else if (mln::harmony::ImageNAPI::IsImageObject(env, dataValue)) {
             // Style Image object: carries its own name, pixel ratio and SDF flag.
-            mbgl::harmony::ImageNAPI* imageNapi = mbgl::harmony::ImageNAPI::Unwrap(env, dataValue);
+            mln::harmony::ImageNAPI* imageNapi = mln::harmony::ImageNAPI::Unwrap(env, dataValue);
             if (!imageNapi) {
                 napi_throw_error(env, nullptr, "Failed to unwrap Image object");
                 return nullptr;
@@ -741,7 +741,7 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
 
             // The explicit name argument wins over the Image's internal name.
             if (!name.empty() && styleImage->getID() != name) {
-                styleImage = std::make_unique<mbgl::style::Image>(
+                styleImage = std::make_unique<mln::style::Image>(
                     name,
                     styleImage->getImage().clone(),
                     styleImage->getPixelRatio(),
@@ -805,9 +805,9 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
                 return nullptr;
             }
 
-            mbgl::PremultipliedImage premultipliedImage({width, height});
+            mln::PremultipliedImage premultipliedImage({width, height});
             std::memcpy(premultipliedImage.data.get(), data, byteLength);
-            styleImage = std::make_unique<mbgl::style::Image>(name, std::move(premultipliedImage), pixelRatio, sdf);
+            styleImage = std::make_unique<mln::style::Image>(name, std::move(premultipliedImage), pixelRatio, sdf);
 
             Logger::info("SnapshotterNAPI", "addImage: %s (%ux%u, ratio: %.2f, sdf: %d)",
                          name.c_str(), width, height, pixelRatio, sdf);
@@ -824,12 +824,12 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 /**
  * MapSnapshotterNAPI::Init implementation.
  */
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 void MapSnapshotterNAPI::Init(napi_env env, napi_value exports) {
@@ -844,5 +844,5 @@ void MapSnapshotterNAPI::Init(napi_env env, napi_value exports) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

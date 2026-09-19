@@ -1,8 +1,8 @@
 #include "harmony_gl_renderer_backend.hpp"
 
-#include <mbgl/gfx/backend_scope.hpp>
-#include <mbgl/gl/context.hpp>
-#include <mbgl/gl/renderable_resource.hpp>
+#include <mln/gfx/backend_scope.hpp>
+#include <mln/gl/context.hpp>
+#include <mln/gl/renderable_resource.hpp>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -20,7 +20,7 @@
 #include <cmath>      // for std::abs
 #include <algorithm>  // for std::max
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
 namespace {
 
@@ -49,10 +49,10 @@ float calculatePixelRatio(float dpi) {
 
 } // anonymous namespace
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-class HarmonyGLRenderableResource final : public mbgl::gl::RenderableResource {
+class HarmonyGLRenderableResource final : public mln::gl::RenderableResource {
 public:
     HarmonyGLRenderableResource(HarmonyGLRendererBackend& backend_) 
         : backend(backend_) {}
@@ -84,8 +84,8 @@ private:
 };
 
 HarmonyGLRendererBackend::HarmonyGLRendererBackend()
-    : mbgl::gl::RendererBackend(gfx::ContextMode::Unique),
-      mbgl::gfx::Renderable({64, 64}, std::make_unique<HarmonyGLRenderableResource>(*this)) {
+    : mln::gl::RendererBackend(gfx::ContextMode::Unique),
+      mln::gfx::Renderable({64, 64}, std::make_unique<HarmonyGLRenderableResource>(*this)) {
     // Register the instance with EGLDisplayManager (for resource limiting and monitoring)
     if (!EGLDisplayManager::getInstance().registerInstance()) {
         Logger::error("HarmonyGLRendererBackend", 
@@ -781,7 +781,7 @@ void HarmonyGLRendererBackend::markContextLost() {
 
 // setFramebufferBinding, setViewport, setScissorTest are inherited from gl::RendererBackend
 
-mbgl::gl::ProcAddress HarmonyGLRendererBackend::getExtensionFunctionPointer(const char* name) {
+mln::gl::ProcAddress HarmonyGLRendererBackend::getExtensionFunctionPointer(const char* name) {
     return reinterpret_cast<gl::ProcAddress>(eglGetProcAddress(name));
 }
 
@@ -1208,19 +1208,19 @@ bool HarmonyGLRendererBackend::hasValidSurface() const {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
-namespace mbgl {
+namespace mln {
 namespace gfx {
 
 template <>
 std::unique_ptr<Backend> Backend::Create<Backend::Type::OpenGL>(OHNativeWindow* window) {
-    auto backend = std::make_unique<mbgl::harmony::HarmonyGLRendererBackend>();
+    auto backend = std::make_unique<mln::harmony::HarmonyGLRendererBackend>();
     backend->setNativeWindow(window);
     return std::unique_ptr<Backend>(backend.release());
 }
 
 } // namespace gfx
-} // namespace mbgl
+} // namespace mln
 
 

@@ -2,7 +2,7 @@
 
 #include <memory>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Provide a simplified JNI environment wrapper for Harmony.
@@ -21,4 +21,4 @@ using UniqueEnv = std::unique_ptr<void, EnvDeleter>;
 UniqueEnv AttachEnv();
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

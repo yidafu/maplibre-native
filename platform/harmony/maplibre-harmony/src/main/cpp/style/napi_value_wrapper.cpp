@@ -1,10 +1,10 @@
 #include "napi_value_wrapper.hpp"
 #include "utils/logger.h"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using Logger = mbgl::harmony::Logger;
+using Logger = mln::harmony::Logger;
 
 // Thread-local storage for napi_env
 thread_local napi_env NapiValue::tl_env = nullptr;
@@ -210,5 +210,5 @@ size_t NapiValue::getLength() const {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

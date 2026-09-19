@@ -2,16 +2,16 @@
 #include "napi_double_props.hpp"
 #include "utils/logger.h"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using Logger = mbgl::harmony::Logger;
+using Logger = mln::harmony::Logger;
 
 napi_value PointHarmony::CreatePointObject(napi_env env, double x, double y) {
     return CreateDoublePropsObject(env, "PointHarmony", {{"x", x}, {"y", y}});
 }
 
-napi_value PointHarmony::CreatePointObject(napi_env env, const mbgl::ScreenCoordinate& coord) {
+napi_value PointHarmony::CreatePointObject(napi_env env, const mln::ScreenCoordinate& coord) {
     return CreatePointObject(env, coord.x, coord.y);
 }
 
@@ -19,15 +19,15 @@ bool PointHarmony::ParsePoint(napi_env env, napi_value value, double& outX, doub
     return ParseDoubleProps(env, value, "PointHarmony", {{"x", &outX}, {"y", &outY}});
 }
 
-bool PointHarmony::ParseScreenCoordinate(napi_env env, napi_value value, mbgl::ScreenCoordinate& outCoord) {
+bool PointHarmony::ParseScreenCoordinate(napi_env env, napi_value value, mln::ScreenCoordinate& outCoord) {
     double x, y;
     if (ParsePoint(env, value, x, y)) {
-        outCoord = mbgl::ScreenCoordinate{x, y};
+        outCoord = mln::ScreenCoordinate{x, y};
         return true;
     }
     return false;
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

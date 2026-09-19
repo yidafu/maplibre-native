@@ -5,25 +5,25 @@
 #include "utils/logger.h"
 #include "style/layers/layer_property_utils.hpp"
 #include "style/filter_conversion.hpp"
-#include <mbgl/style/layers/raster_layer.hpp>
-#include <mbgl/style/property_value.hpp>
+#include <mln/style/layers/raster_layer.hpp>
+#include <mln/style/property_value.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "layer_property_macros.hpp"
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
 napi_ref RasterLayerNAPI::constructor = nullptr;
 napi_env RasterLayerNAPI::constructorEnv = nullptr;
 
 RasterLayerNAPI::RasterLayerNAPI(const std::string& layerId, const std::string& sourceId)
-    : layer(std::make_unique<mbgl::style::RasterLayer>(layerId, sourceId)) {
+    : layer(std::make_unique<mln::style::RasterLayer>(layerId, sourceId)) {
 }
 
-RasterLayerNAPI::RasterLayerNAPI(mbgl::style::RasterLayer* layerPtr) {
+RasterLayerNAPI::RasterLayerNAPI(mln::style::RasterLayer* layerPtr) {
     if (layerPtr) {
         weakLayer = layerPtr->makeWeakPtr();
         Logger::info("RasterLayerNAPI", "RasterLayer created from existing layer (WeakPtr)");
@@ -72,23 +72,23 @@ DEFINE_LAYER_NEW(RasterLayerNAPI, "RasterLayer", 2, new RasterLayerNAPI(layerId,
         std::string layerId = args.GetString(0, "layerId");
         std::string sourceId = args.GetString(1, "sourceId");)
 
-napi_value RasterLayerNAPI::CreateInstance(napi_env env, mbgl::style::RasterLayer* layerPtr) {
+napi_value RasterLayerNAPI::CreateInstance(napi_env env, mln::style::RasterLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "RasterLayer",
                                 layerPtr ? new RasterLayerNAPI(layerPtr) : nullptr);
 }
 
 
-DEFINE_LAYER_SETTER(RasterLayerNAPI, mbgl::style::RasterLayer, SetRasterOpacity, setPaintProperty, "raster-opacity", setRasterOpacity, float)
+DEFINE_LAYER_SETTER(RasterLayerNAPI, mln::style::RasterLayer, SetRasterOpacity, setPaintProperty, "raster-opacity", setRasterOpacity, float)
 
-DEFINE_LAYER_SETTER(RasterLayerNAPI, mbgl::style::RasterLayer, SetRasterHueRotate, setPaintProperty, "raster-hue-rotate", setRasterHueRotate, float)
+DEFINE_LAYER_SETTER(RasterLayerNAPI, mln::style::RasterLayer, SetRasterHueRotate, setPaintProperty, "raster-hue-rotate", setRasterHueRotate, float)
 
-DEFINE_LAYER_SETTER(RasterLayerNAPI, mbgl::style::RasterLayer, SetRasterBrightnessMin, setPaintProperty, "raster-brightness-min", setRasterBrightnessMin, float)
+DEFINE_LAYER_SETTER(RasterLayerNAPI, mln::style::RasterLayer, SetRasterBrightnessMin, setPaintProperty, "raster-brightness-min", setRasterBrightnessMin, float)
 
-DEFINE_LAYER_SETTER(RasterLayerNAPI, mbgl::style::RasterLayer, SetRasterBrightnessMax, setPaintProperty, "raster-brightness-max", setRasterBrightnessMax, float)
+DEFINE_LAYER_SETTER(RasterLayerNAPI, mln::style::RasterLayer, SetRasterBrightnessMax, setPaintProperty, "raster-brightness-max", setRasterBrightnessMax, float)
 
-DEFINE_LAYER_SETTER(RasterLayerNAPI, mbgl::style::RasterLayer, SetRasterSaturation, setPaintProperty, "raster-saturation", setRasterSaturation, float)
+DEFINE_LAYER_SETTER(RasterLayerNAPI, mln::style::RasterLayer, SetRasterSaturation, setPaintProperty, "raster-saturation", setRasterSaturation, float)
 
-DEFINE_LAYER_SETTER(RasterLayerNAPI, mbgl::style::RasterLayer, SetRasterContrast, setPaintProperty, "raster-contrast", setRasterContrast, float)
+DEFINE_LAYER_SETTER(RasterLayerNAPI, mln::style::RasterLayer, SetRasterContrast, setPaintProperty, "raster-contrast", setRasterContrast, float)
 
 napi_value RasterLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     return LayerGetId<RasterLayerNAPI>(env, info);
@@ -106,13 +106,13 @@ napi_value RasterLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
 // New Properties
 // ============================================================================
 
-DEFINE_LAYER_SETTER(RasterLayerNAPI, mbgl::style::RasterLayer, SetRasterFadeDuration, setPaintProperty, "raster-fade-duration", setRasterFadeDuration, float)
+DEFINE_LAYER_SETTER(RasterLayerNAPI, mln::style::RasterLayer, SetRasterFadeDuration, setPaintProperty, "raster-fade-duration", setRasterFadeDuration, float)
 
-DEFINE_LAYER_GETTER(RasterLayerNAPI, mbgl::style::RasterLayer, GetRasterFadeDuration, getRasterFadeDuration, float)
+DEFINE_LAYER_GETTER(RasterLayerNAPI, mln::style::RasterLayer, GetRasterFadeDuration, getRasterFadeDuration, float)
 
-DEFINE_LAYER_SETTER(RasterLayerNAPI, mbgl::style::RasterLayer, SetRasterResampling, setPaintProperty, "raster-resampling", setRasterResampling, mbgl::style::RasterResamplingType)
+DEFINE_LAYER_SETTER(RasterLayerNAPI, mln::style::RasterLayer, SetRasterResampling, setPaintProperty, "raster-resampling", setRasterResampling, mln::style::RasterResamplingType)
 
-DEFINE_LAYER_GETTER(RasterLayerNAPI, mbgl::style::RasterLayer, GetRasterResampling, getRasterResampling, mbgl::style::RasterResamplingType)
+DEFINE_LAYER_GETTER(RasterLayerNAPI, mln::style::RasterLayer, GetRasterResampling, getRasterResampling, mln::style::RasterResamplingType)
 
 // ============================================================================
 // Visibility
@@ -173,12 +173,12 @@ napi_value RasterLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
 // ==================== Generic Property Methods ====================
 
 napi_value RasterLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
-    return SetPropertyImpl<RasterLayerNAPI, mbgl::style::RasterLayer>(env, info);
+    return SetPropertyImpl<RasterLayerNAPI, mln::style::RasterLayer>(env, info);
 }
 
 napi_value RasterLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
-    return SetPropertiesImpl<RasterLayerNAPI, mbgl::style::RasterLayer>(env, info);
+    return SetPropertiesImpl<RasterLayerNAPI, mln::style::RasterLayer>(env, info);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

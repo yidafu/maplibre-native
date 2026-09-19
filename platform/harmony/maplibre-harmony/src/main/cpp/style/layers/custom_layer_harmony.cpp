@@ -3,9 +3,9 @@
 #include <sstream>
 #include <vector>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Vertex shader source - OpenGL ES 3.0
@@ -159,7 +159,7 @@ GLuint ExampleCustomLayerHost::createShaderProgram() {
     return program;
 }
 
-void ExampleCustomLayerHost::initialize(const mbgl::style::CustomLayerInitParameters&) {
+void ExampleCustomLayerHost::initialize(const mln::style::CustomLayerInitParameters&) {
     Logger::info("ExampleCustomLayerHost", "Initialize");
 
     if (initialized_) {
@@ -201,7 +201,7 @@ void ExampleCustomLayerHost::initialize(const mbgl::style::CustomLayerInitParame
     Logger::info("ExampleCustomLayerHost", "Initialize completed successfully");
 }
 
-void ExampleCustomLayerHost::render(const mbgl::style::CustomLayerRenderParameters& parameters) {
+void ExampleCustomLayerHost::render(const mln::style::CustomLayerRenderParameters& parameters) {
     if (!initialized_ || program_ == 0) {
         return;
     }
@@ -304,5 +304,5 @@ void ExampleCustomLayerHost::getColor(float outColor[4]) const {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

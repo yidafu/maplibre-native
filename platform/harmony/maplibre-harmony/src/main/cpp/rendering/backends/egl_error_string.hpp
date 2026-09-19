@@ -5,13 +5,13 @@
 //
 // EGLDisplayManager and HarmonyGLRendererBackend each carried their own
 // byte-identical copy of this switch (one in an anonymous namespace at global
-// scope, one inside mbgl::harmony). Having two copies meant an EGL error could
+// scope, one inside mln::harmony). Having two copies meant an EGL error could
 // be named differently depending on which subsystem logged it, so it lives here
 // once. `inline` keeps it header-only.
 
 #include <EGL/egl.h>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 inline const char* eglErrorString(int error) {
@@ -36,6 +36,6 @@ inline const char* eglErrorString(int error) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBRE_HARMONY_EGL_ERROR_STRING_HPP

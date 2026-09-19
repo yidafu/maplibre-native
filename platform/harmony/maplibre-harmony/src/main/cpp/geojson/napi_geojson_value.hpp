@@ -2,7 +2,7 @@
 #define MAPLIBRE_HARMONY_NAPI_GEOJSON_VALUE_HPP
 
 // Shared conversion of a JS GeoJSON payload (JSON string, or
-// FeatureCollection / Feature / Geometry object) into mbgl::GeoJSON.
+// FeatureCollection / Feature / Geometry object) into mln::GeoJSON.
 // GeoJsonSource::setGeoJson and CustomGeometrySource::setTileData used to
 // hand-duplicate this dispatch.
 
@@ -10,19 +10,19 @@
 #include "geojson/util.hpp"
 #include "geojson/geojson_converter.hpp"
 
-#include <mbgl/style/conversion/json.hpp>
-#include <mbgl/util/geojson.hpp>
+#include <mln/style/conversion/json.hpp>
+#include <mln/util/geojson.hpp>
 
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace geojson {
 
 /** Converted value plus the payload kind, for per-branch caller logging:
  *  "string" for JSON text, otherwise the raw "type" property of the object. */
 struct GeoJSONValueConversion {
-    mbgl::GeoJSON value;
+    mln::GeoJSON value;
     std::string kind;
 };
 
@@ -38,8 +38,8 @@ inline bool NapiValueToGeoJSON(napi_env env, napi_value value,
         // String type: parse JSON
         std::string geoJsonString = napi::GetStringFromValue(env, value);
 
-        mbgl::style::conversion::Error error;
-        auto geoJson = mbgl::style::conversion::convertJSON<mbgl::GeoJSON>(geoJsonString, error);
+        mln::style::conversion::Error error;
+        auto geoJson = mln::style::conversion::convertJSON<mln::GeoJSON>(geoJsonString, error);
 
         if (!geoJson) {
             napi_throw_error(env, nullptr, error.message.c_str());
@@ -59,18 +59,18 @@ inline bool NapiValueToGeoJSON(napi_env env, napi_value value,
         }
 
         if (type == "FeatureCollection") {
-            out.value = mbgl::GeoJSON(GeoJsonConverter::JsObjectToFeatureCollection(env, value));
+            out.value = mln::GeoJSON(GeoJsonConverter::JsObjectToFeatureCollection(env, value));
         } else if (type == "Feature") {
             auto feature = GeoJsonConverter::JsObjectToFeature(env, value);
             // Convert to GeoJSONFeature
-            mbgl::GeoJSONFeature geoJsonFeature;
+            mln::GeoJSONFeature geoJsonFeature;
             geoJsonFeature.geometry = feature.geometry;
             geoJsonFeature.properties = feature.properties;
             geoJsonFeature.id = feature.id;
-            out.value = mbgl::GeoJSON(std::move(geoJsonFeature));
+            out.value = mln::GeoJSON(std::move(geoJsonFeature));
         } else {
             // Geometry object
-            out.value = mbgl::GeoJSON(GeoJsonConverter::JsObjectToGeometry(env, value));
+            out.value = mln::GeoJSON(GeoJsonConverter::JsObjectToGeometry(env, value));
         }
         out.kind = type;
         return true;
@@ -82,6 +82,6 @@ inline bool NapiValueToGeoJSON(napi_env env, napi_value value,
 
 } // namespace geojson
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBRE_HARMONY_NAPI_GEOJSON_VALUE_HPP

@@ -5,28 +5,28 @@
 #include "napi/bindings/image/image_napi.hpp"
 #include "bitmap/bitmap_napi.hpp"
 #include "utils/logger.h"
-#include <mbgl/util/geo.hpp>
+#include <mln/util/geo.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "source_napi_utils.hpp"
 #include "image_payload_napi.hpp"
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::napi::NapiArgs;
 namespace harmony {
 
 napi_ref ImageSourceNAPI::constructor = nullptr;
 napi_env ImageSourceNAPI::constructorEnv = nullptr;
 
-ImageSourceNAPI::ImageSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::ImageSource> source)
+ImageSourceNAPI::ImageSourceNAPI(const std::string& id, std::unique_ptr<mln::style::ImageSource> source)
     : SourceNapiBase(id, std::move(source)) {
     Logger::info("ImageSourceNAPI", "ImageSource instance created: %s", id.c_str());
 }
 
-ImageSourceNAPI::ImageSourceNAPI(mbgl::style::ImageSource* sourcePtr)
+ImageSourceNAPI::ImageSourceNAPI(mln::style::ImageSource* sourcePtr)
     : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
         Logger::info("ImageSourceNAPI", "ImageSource created from existing source (WeakPtr): %s", id.c_str());
@@ -80,7 +80,7 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
     
     try {
         // Parse coordinates argument (four LatLng values, clockwise: top-left, top-right, bottom-right, bottom-left)
-        std::array<mbgl::LatLng, 4> coords = DefaultLatLngQuad();
+        std::array<mln::LatLng, 4> coords = DefaultLatLngQuad();
 
         if (napiArgs.Count() >= 2) {
             napi_value coordsValue = napiArgs.GetValue(1);
@@ -97,7 +97,7 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
             }
         }
         
-        auto source = std::make_unique<mbgl::style::ImageSource>(sourceId, coords);
+        auto source = std::make_unique<mln::style::ImageSource>(sourceId, coords);
         ImageSourceNAPI* sourceNapi = new ImageSourceNAPI(sourceId, std::move(source));
         
         napi_status status = napi_wrap(env, jsThis, sourceNapi, Destructor, nullptr, nullptr);
@@ -121,7 +121,7 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-DEFINE_SOURCE_CREATE_INSTANCE(ImageSourceNAPI, "ImageSource", mbgl::style::ImageSource)
+DEFINE_SOURCE_CREATE_INSTANCE(ImageSourceNAPI, "ImageSource", mln::style::ImageSource)
 
 DEFINE_SOURCE_GET_ID(ImageSourceNAPI)
 
@@ -215,7 +215,7 @@ napi_value ImageSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
     
     // Parse the coordinates argument (four LatLng values)
     napi_value coordsValue = args[0];
-    std::array<mbgl::LatLng, 4> coords;
+    std::array<mln::LatLng, 4> coords;
     if (!ParseLatLngQuad(env, coordsValue, coords)) {
         // Keep the historical, failure-reason-specific error messages
         bool isArray = false;
@@ -247,5 +247,5 @@ napi_value ImageSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

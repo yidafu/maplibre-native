@@ -1,21 +1,21 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/style/image.hpp>
-#include <mbgl/util/image.hpp>
+#include <mln/style/image.hpp>
+#include <mln/util/image.hpp>
 #include <string>
 #include <memory>
 #include <vector>
 #include <optional>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
  * ImageNAPI - NAPI wrapper for Style Image
  * 
  * This class wraps an image's data and metadata, exposing it to ETS/TypeScript via NAPI.
- * It manages the image data in C++ layer and provides conversion to mbgl::style::Image.
+ * It manages the image data in C++ layer and provides conversion to mln::style::Image.
  * 
  * Supports advanced features:
  * - SDF (Signed Distance Field) images for dynamic coloring
@@ -42,7 +42,7 @@ public:
     static napi_value GetContent(napi_env env, napi_callback_info info);
     
     // Conversion method - for internal C++ use
-    std::unique_ptr<mbgl::style::Image> toStyleImage() const;
+    std::unique_ptr<mln::style::Image> toStyleImage() const;
     
     // Internal access methods
     std::string getName() const { return name; }
@@ -69,9 +69,9 @@ private:
         float pixelRatio,
         bool sdf,
         std::shared_ptr<std::vector<uint8_t>> data,
-        std::optional<std::vector<mbgl::style::ImageStretches::value_type>> stretchX = std::nullopt,
-        std::optional<std::vector<mbgl::style::ImageStretches::value_type>> stretchY = std::nullopt,
-        std::optional<mbgl::style::ImageContent> content = std::nullopt
+        std::optional<std::vector<mln::style::ImageStretches::value_type>> stretchX = std::nullopt,
+        std::optional<std::vector<mln::style::ImageStretches::value_type>> stretchY = std::nullopt,
+        std::optional<mln::style::ImageContent> content = std::nullopt
     );
     ~ImageNAPI();
     
@@ -86,13 +86,13 @@ private:
     std::shared_ptr<std::vector<uint8_t>> data;
     
     // Stretchable image support
-    std::optional<std::vector<mbgl::style::ImageStretches::value_type>> stretchX;
-    std::optional<std::vector<mbgl::style::ImageStretches::value_type>> stretchY;
+    std::optional<std::vector<mln::style::ImageStretches::value_type>> stretchX;
+    std::optional<std::vector<mln::style::ImageStretches::value_type>> stretchY;
     
     // Content area for text placement
-    std::optional<mbgl::style::ImageContent> content;
+    std::optional<mln::style::ImageContent> content;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

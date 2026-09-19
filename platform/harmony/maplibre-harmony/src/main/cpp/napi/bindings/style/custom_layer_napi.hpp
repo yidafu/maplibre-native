@@ -1,11 +1,11 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/style/layers/custom_layer.hpp>
+#include <mln/style/layers/custom_layer.hpp>
 #include <memory>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Forward declaration
@@ -50,7 +50,7 @@ public:
     std::string getId() const { return layerId; }
     
     // Release layer ownership (for Style.addLayer)
-    std::unique_ptr<mbgl::style::Layer> releaseLayer() {
+    std::unique_ptr<mln::style::Layer> releaseLayer() {
         if (!layer) {
             throw std::runtime_error("Layer already added to style");
         }
@@ -58,15 +58,15 @@ public:
     }
     
     // Get native layer pointer (for property access after adding)
-    mbgl::style::CustomLayer* getLayer() { 
+    mln::style::CustomLayer* getLayer() { 
         if (!layer && weakLayer) {
-            return static_cast<mbgl::style::CustomLayer*>(weakLayer.get());
+            return static_cast<mln::style::CustomLayer*>(weakLayer.get());
         }
         return layer.get(); 
     }
     
     // Attach to style after adding (creates WeakPtr)
-    void attachToStyle(mbgl::style::CustomLayer* layerPtr) {
+    void attachToStyle(mln::style::CustomLayer* layerPtr) {
         if (layerPtr) {
             weakLayer = layerPtr->makeWeakPtr();
         }
@@ -74,11 +74,11 @@ public:
 
 private:
     explicit CustomLayerNAPI(const std::string& layerId,
-                            std::unique_ptr<mbgl::style::CustomLayer> layer,
+                            std::unique_ptr<mln::style::CustomLayer> layer,
                             ExampleCustomLayerHost* host);
     ~CustomLayerNAPI();
 
-    // The host is owned by the mbgl::style::CustomLayer, so it is only safe to
+    // The host is owned by the mln::style::CustomLayer, so it is only safe to
     // touch while the layer is alive — either still owned here (not yet added
     // to a style) or the style-held layer has not been destroyed by a
     // removeLayer / style reload.
@@ -89,11 +89,11 @@ private:
     static napi_ref constructor;
     static napi_env constructorEnv;
     std::string layerId;
-    std::unique_ptr<mbgl::style::CustomLayer> layer;
-    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
+    std::unique_ptr<mln::style::CustomLayer> layer;
+    mapbox::base::WeakPtr<mln::style::Layer> weakLayer;
     ExampleCustomLayerHost* host;  // Holds a reference to the host for method calls (CustomLayer owns lifecycle)
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

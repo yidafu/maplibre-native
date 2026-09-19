@@ -7,9 +7,9 @@
 
 #pragma once
 
-#include <mbgl/map/map_snapshotter.hpp>
-#include <mbgl/util/image.hpp>
-#include <mbgl/util/geo.hpp>
+#include <mln/map/map_snapshotter.hpp>
+#include <mln/util/image.hpp>
+#include <mln/util/geo.hpp>
 #include <napi/native_api.h>
 
 #include <memory>
@@ -17,7 +17,7 @@
 #include <string>
 #include <functional>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -32,11 +32,11 @@ public:
      */
     MapSnapshotInstance(
         napi_env env,
-        mbgl::PremultipliedImage&& image,
+        mln::PremultipliedImage&& image,
         const std::vector<std::string>& attributions,
         float pixelRatio,
-        mbgl::MapSnapshotter::PointForFn pointForFn,
-        mbgl::MapSnapshotter::LatLngForFn latLngForFn
+        mln::MapSnapshotter::PointForFn pointForFn,
+        mln::MapSnapshotter::LatLngForFn latLngForFn
     );
 
     ~MapSnapshotInstance();
@@ -44,7 +44,7 @@ public:
     /**
      * Retrieve the image data.
      */
-    const mbgl::PremultipliedImage& getImage() const { return image_; }
+    const mln::PremultipliedImage& getImage() const { return image_; }
 
     /**
      * Retrieve the image width.
@@ -69,20 +69,20 @@ public:
     /**
      * Convert geographic coordinates to image pixel coordinates.
      */
-    mbgl::ScreenCoordinate pixelForLatLng(const mbgl::LatLng& latLng) const;
+    mln::ScreenCoordinate pixelForLatLng(const mln::LatLng& latLng) const;
 
     /**
      * Convert image pixel coordinates to geographic coordinates.
      */
-    mbgl::LatLng latLngForPixel(const mbgl::ScreenCoordinate& point) const;
+    mln::LatLng latLngForPixel(const mln::ScreenCoordinate& point) const;
 
 private:
     napi_env env_;
-    mbgl::PremultipliedImage image_;
+    mln::PremultipliedImage image_;
     std::vector<std::string> attributions_;
     float pixelRatio_;
-    mbgl::MapSnapshotter::PointForFn pointForFn_;
-    mbgl::MapSnapshotter::LatLngForFn latLngForFn_;
+    mln::MapSnapshotter::PointForFn pointForFn_;
+    mln::MapSnapshotter::LatLngForFn latLngForFn_;
 };
 
 /**
@@ -98,11 +98,11 @@ private:
  */
 napi_value CreateMapSnapshotObject(
     napi_env env,
-    mbgl::PremultipliedImage&& image,
+    mln::PremultipliedImage&& image,
     const std::vector<std::string>& attributions,
     float pixelRatio,
-    mbgl::MapSnapshotter::PointForFn pointForFn,
-    mbgl::MapSnapshotter::LatLngForFn latLngForFn
+    mln::MapSnapshotter::PointForFn pointForFn,
+    mln::MapSnapshotter::LatLngForFn latLngForFn
 );
 
 /**
@@ -116,5 +116,5 @@ napi_value MapSnapshot_pixelForLatLng(napi_env env, napi_callback_info info);
 napi_value MapSnapshot_latLngForPixel(napi_env env, napi_callback_info info);
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

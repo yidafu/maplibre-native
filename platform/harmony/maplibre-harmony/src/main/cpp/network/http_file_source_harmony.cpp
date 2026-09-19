@@ -1,18 +1,18 @@
 #include <algorithm>
-#include <mbgl/storage/http_file_source.hpp>
-#include <mbgl/storage/resource_options.hpp>
-#include <mbgl/storage/resource.hpp>
-#include <mbgl/storage/response.hpp>
-#include <mbgl/util/client_options.hpp>
-#include <mbgl/util/logging.hpp>
+#include <mln/storage/http_file_source.hpp>
+#include <mln/storage/resource_options.hpp>
+#include <mln/storage/resource.hpp>
+#include <mln/storage/response.hpp>
+#include <mln/util/client_options.hpp>
+#include <mln/util/logging.hpp>
 
-#include <mbgl/util/util.hpp>
-#include <mbgl/util/run_loop.hpp>
-#include <mbgl/util/string.hpp>
-#include <mbgl/util/timer.hpp>
-#include <mbgl/util/chrono.hpp>
-#include <mbgl/util/http_header.hpp>
-#include <mbgl/util/async_task.hpp>
+#include <mln/util/util.hpp>
+#include <mln/util/run_loop.hpp>
+#include <mln/util/string.hpp>
+#include <mln/util/timer.hpp>
+#include <mln/util/chrono.hpp>
+#include <mln/util/http_header.hpp>
+#include <mln/util/async_task.hpp>
 
 #include <curl/curl.h>
 
@@ -36,10 +36,10 @@
 #include "utils/logger.h"
 #include "utils/anr_detector.hpp"
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::ANRDetector;
-using mbgl::harmony::HTTPRequestConfig;
-using mbgl::harmony::URLTransformManager;
+using mln::harmony::Logger;
+using mln::harmony::ANRDetector;
+using mln::harmony::HTTPRequestConfig;
+using mln::harmony::URLTransformManager;
 
 namespace {
 // handleError(CURLMcode) removed; handled by CURLEventLoop now
@@ -79,7 +79,7 @@ void cleanupCURLGlobal() {
 }
 } // namespace
 
-namespace mbgl {
+namespace mln {
 
 class HTTPFileSource::Impl {
 public:
@@ -671,4 +671,4 @@ ClientOptions HTTPFileSource::getClientOptions() {
     return impl->getClientOptions();
 }
 
-} // namespace mbgl
+} // namespace mln

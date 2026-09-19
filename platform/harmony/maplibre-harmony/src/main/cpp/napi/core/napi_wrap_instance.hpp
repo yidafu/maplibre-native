@@ -5,7 +5,7 @@
 #include "napi/native_api.h"
 #include "utils/logger.h"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -65,4 +65,4 @@ inline napi_value WrapExistingInstance(napi_env env,
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

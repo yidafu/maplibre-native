@@ -1,11 +1,11 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/annotation/annotation.hpp>
-#include <mbgl/util/geometry.hpp>
+#include <mln/annotation/annotation.hpp>
+#include <mln/util/geometry.hpp>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -75,18 +75,18 @@ public:
     static napi_value SetMapLibreMap(napi_env env, napi_callback_info info);
     
     // Data access methods (for C++ internal use)
-    mbgl::Point<double> getPositionPoint() const { return position; }
+    mln::Point<double> getPositionPoint() const { return position; }
     std::string getIconId() const { return iconId; }
     std::string getTitle() const { return title; }
     std::string getSnippet() const { return snippet; }
-    mbgl::AnnotationID getAnnotationId() const { return annotationId; }
+    mln::AnnotationID getAnnotationId() const { return annotationId; }
     bool isVisible() const { return visible; }
     double getAlpha() const { return alpha; }
     double getRotation() const { return rotation; }
     bool isDraggableInternal() const { return draggable; }
     int getZIndex() const { return zIndex; }
     
-    void setAnnotationId(mbgl::AnnotationID id) { annotationId = id; }
+    void setAnnotationId(mln::AnnotationID id) { annotationId = id; }
     
 private:
     static napi_ref constructor;
@@ -97,8 +97,8 @@ private:
     ~MarkerNAPI();
     
     // Marker state
-    mbgl::AnnotationID annotationId;
-    mbgl::Point<double> position;       // (longitude, latitude)
+    mln::AnnotationID annotationId;
+    mln::Point<double> position;       // (longitude, latitude)
     std::string iconId;
     std::string title;
     std::string snippet;
@@ -121,5 +121,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

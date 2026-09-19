@@ -3,28 +3,28 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
-#include <mbgl/util/tileset.hpp>
-#include <mbgl/util/range.hpp>
+#include <mln/util/tileset.hpp>
+#include <mln/util/range.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "source_napi_utils.hpp"
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::napi::NapiArgs;
 namespace harmony {
 
 napi_ref RasterDemSourceNAPI::constructor = nullptr;
 napi_env RasterDemSourceNAPI::constructorEnv = nullptr;
 
-RasterDemSourceNAPI::RasterDemSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::RasterDEMSource> source)
+RasterDemSourceNAPI::RasterDemSourceNAPI(const std::string& id, std::unique_ptr<mln::style::RasterDEMSource> source)
     : SourceNapiBase(id, std::move(source)) {
     Logger::info("RasterDemSourceNAPI", "RasterDemSource instance created: %s", id.c_str());
 }
 
-RasterDemSourceNAPI::RasterDemSourceNAPI(mbgl::style::RasterDEMSource* sourcePtr)
+RasterDemSourceNAPI::RasterDemSourceNAPI(mln::style::RasterDEMSource* sourcePtr)
     : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
         Logger::info("RasterDemSourceNAPI", "RasterDemSource created from existing source (WeakPtr): %s", id.c_str());
@@ -79,7 +79,7 @@ napi_value RasterDemSourceNAPI::New(napi_env env, napi_callback_info info) {
     try {
         // Parse options argument using the shared tile-cache parser
         TileCacheOptions cacheOptions;
-        std::optional<mbgl::style::SourceOptions> options = std::nullopt;
+        std::optional<mln::style::SourceOptions> options = std::nullopt;
 
         // Get options object using NapiArgs
         napi_value optionsObj = napiArgs.GetObject(1, "options");
@@ -90,18 +90,18 @@ napi_value RasterDemSourceNAPI::New(napi_env env, napi_callback_info info) {
             // Read encoding
             std::string encoding = napiArgs.GetStringProperty(optionsObj, "encoding", "");
             if (!encoding.empty()) {
-                mbgl::style::SourceOptions sourceOpts;
+                mln::style::SourceOptions sourceOpts;
                 if (encoding == "mapbox") {
-                    sourceOpts.rasterEncoding = mbgl::Tileset::RasterEncoding::Mapbox;
+                    sourceOpts.rasterEncoding = mln::Tileset::RasterEncoding::Mapbox;
                 } else if (encoding == "terrarium") {
-                    sourceOpts.rasterEncoding = mbgl::Tileset::RasterEncoding::Terrarium;
+                    sourceOpts.rasterEncoding = mln::Tileset::RasterEncoding::Terrarium;
                 }
                 options = sourceOpts;
                 Logger::info("RasterDemSourceNAPI", "RasterDemSource encoding: %s", encoding.c_str());
             }
         }
 
-        std::optional<mbgl::Tileset::RasterEncoding> tileEncoding;
+        std::optional<mln::Tileset::RasterEncoding> tileEncoding;
         if (options) {
             tileEncoding = options->rasterEncoding;
         }
@@ -110,7 +110,7 @@ napi_value RasterDemSourceNAPI::New(napi_env env, napi_callback_info info) {
         // Prefer the tiles array; fall back to the URL when tiles are absent
         auto urlOrTileset = MakeUrlOrTileset(cacheOptions, "RasterDemSourceNAPI", "RasterDemSource", tileEncoding);
 
-        auto source = std::make_unique<mbgl::style::RasterDEMSource>(
+        auto source = std::make_unique<mln::style::RasterDEMSource>(
             sourceId,
             std::move(urlOrTileset),
             cacheOptions.tileSize,
@@ -139,7 +139,7 @@ napi_value RasterDemSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-DEFINE_SOURCE_CREATE_INSTANCE(RasterDemSourceNAPI, "RasterDemSource", mbgl::style::RasterDEMSource)
+DEFINE_SOURCE_CREATE_INSTANCE(RasterDemSourceNAPI, "RasterDemSource", mln::style::RasterDEMSource)
 
 DEFINE_SOURCE_GET_ID(RasterDemSourceNAPI)
 
@@ -174,8 +174,8 @@ napi_value RasterDemSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     const uint16_t tileSize = ownedSource->getTileSize();
     
     try {
-        mbgl::variant<std::string, mbgl::Tileset> urlOrTileset = url;
-        auto newSource = std::make_unique<mbgl::style::RasterDEMSource>(
+        mln::variant<std::string, mln::Tileset> urlOrTileset = url;
+        auto newSource = std::make_unique<mln::style::RasterDEMSource>(
             sourceNapi->id,
             std::move(urlOrTileset),
             tileSize
@@ -194,5 +194,5 @@ napi_value RasterDemSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
 DEFINE_SOURCE_SET_TILE_SIZE_UNSUPPORTED(RasterDemSourceNAPI)
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

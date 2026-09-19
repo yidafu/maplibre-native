@@ -3,10 +3,10 @@
 #include "constant.hpp"
 #include "../value_conversion.hpp"
 
-#include <mbgl/style/property_expression.hpp>
+#include <mln/style/property_expression.hpp>
 #include <napi/native_api.h>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace conversion {
 
@@ -19,10 +19,10 @@ namespace conversion {
 template <class T>
 Result<napi_value> propertyExpressionToNapi(
     napi_env env, 
-    const mbgl::style::PropertyExpression<T>& value
+    const mln::style::PropertyExpression<T>& value
 ) {
     // Serialize the expression
-    mbgl::Value serialized = value.getExpression().serialize();
+    mln::Value serialized = value.getExpression().serialize();
     
     // Convert to NAPI value using existing value conversion
     return mbglValueToNapiValue(env, serialized);
@@ -30,5 +30,5 @@ Result<napi_value> propertyExpressionToNapi(
 
 } // namespace conversion
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

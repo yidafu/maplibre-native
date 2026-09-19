@@ -1,8 +1,8 @@
 #include "curl_event_loop.hpp"
 #include "utils/logger.h"
 
-#include <mbgl/util/logging.hpp>
-#include <mbgl/util/string.hpp>
+#include <mln/util/logging.hpp>
+#include <mln/util/string.hpp>
 
 #include <curl/curl.h>
 #include <uv.h>
@@ -16,9 +16,9 @@
 #include <thread>
 #include <vector>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 CURLEventLoop::CURLEventLoop()
@@ -1056,4 +1056,4 @@ void CURLEventLoop::logError(const char* function, const char* error) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

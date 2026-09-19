@@ -5,18 +5,18 @@
 #include "geometry/lat_lng_harmony.hpp"
 #include "napi/bindings/annotation_napi_common.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-// Use Logger from mbgl::harmony namespace
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
-using mbgl::harmony::annotation_napi::JsBool;
-using mbgl::harmony::annotation_napi::JsHexColor;
-using mbgl::harmony::annotation_napi::JsInt32;
-using mbgl::harmony::annotation_napi::JsInt64;
-using mbgl::harmony::annotation_napi::JsNumber;
-using mbgl::harmony::annotation_napi::JsString;
+// Use Logger from mln::harmony namespace
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
+using mln::harmony::annotation_napi::JsBool;
+using mln::harmony::annotation_napi::JsHexColor;
+using mln::harmony::annotation_napi::JsInt32;
+using mln::harmony::annotation_napi::JsInt64;
+using mln::harmony::annotation_napi::JsNumber;
+using mln::harmony::annotation_napi::JsString;
 
 // Static member initialization
 napi_ref PolylineNAPI::constructor = nullptr;
@@ -24,7 +24,7 @@ napi_env PolylineNAPI::constructorEnv = nullptr;
 
 PolylineNAPI::PolylineNAPI()
     : annotationId(-1),
-      color(mbgl::Color::black()),
+      color(mln::Color::black()),
       width(10.0f),
       alpha(1.0f),
       visible(true),
@@ -168,14 +168,14 @@ napi_value PolylineNAPI::New(napi_env env, napi_callback_info info) {
     return thisVar;
 }
 
-// Convert to mbgl::LineAnnotation
-mbgl::LineAnnotation PolylineNAPI::toAnnotation() const {
-    mbgl::LineString<double> lineString;
+// Convert to mln::LineAnnotation
+mln::LineAnnotation PolylineNAPI::toAnnotation() const {
+    mln::LineString<double> lineString;
     for (const auto& point : points) {
         lineString.push_back(point);
     }
     
-    mbgl::LineAnnotation annotation(lineString);
+    mln::LineAnnotation annotation(lineString);
     annotation.opacity = alpha;
     annotation.color = color;
     annotation.width = width;
@@ -206,7 +206,7 @@ DEFINE_ANNOTATION_GETTER(PolylineNAPI, GetId, JsInt64(env, static_cast<int64_t>(
 napi_value PolylineNAPI::GetPattern(napi_env env, napi_callback_info info) {
     ANN_NAPI_THIS(PolylineNAPI, self);
     if (!self || self->pattern.empty()) {
-        return mbgl::harmony::annotation_napi::JsNull(env);
+        return mln::harmony::annotation_napi::JsNull(env);
     }
 
     napi_value result = nullptr;
@@ -251,7 +251,7 @@ DEFINE_ANNOTATION_SETTER(PolylineNAPI, SetCapType,
 
 DEFINE_ANNOTATION_SETTER(PolylineNAPI, SetId,
     args.RequireMinArgs(1);
-    self->annotationId = static_cast<mbgl::AnnotationID>(args.GetInt64(0)))
+    self->annotationId = static_cast<mln::AnnotationID>(args.GetInt64(0)))
 
 // setPattern：无参 / null / undefined 视为清空；数组则整体替换。
 // 元素通过 args.GetArrayElementDouble 读取——取元素失败时回退 0.0，
@@ -286,4 +286,4 @@ DEFINE_ANNOTATION_INSERT_POINT(PolylineNAPI, points)
 DEFINE_ANNOTATION_REMOVE_POINT(PolylineNAPI, points)
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

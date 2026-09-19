@@ -35,7 +35,7 @@
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace annotation_napi {
 
@@ -84,7 +84,7 @@ inline napi_value JsString(napi_env env, const std::string& value) {
 }
 
 /** 颜色统一按 "#RRGGBB" 字符串暴露给 ArkTS 侧。 */
-inline napi_value JsHexColor(napi_env env, const mbgl::Color& color) {
+inline napi_value JsHexColor(napi_env env, const mln::Color& color) {
     return JsString(env, ColorToHex(color));
 }
 
@@ -102,7 +102,7 @@ inline napi_value JsNull(napi_env env) {
 
 } // namespace annotation_napi
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 // ============================================================================
 // 宏：把 this 解包成原生对象指针
@@ -174,7 +174,7 @@ inline napi_value JsNull(napi_env env) {
         const std::string colorStr = args.GetString(0, PropKey);                 \
         if (!colorStr.empty() && colorStr[0] == '#') {                           \
             if (!ParseHexColor(colorStr, self->Member)) {                        \
-                mbgl::harmony::Logger::error(#Cls, "Failed to parse " PropKey    \
+                mln::harmony::Logger::error(#Cls, "Failed to parse " PropKey    \
                                              ": %s", colorStr.c_str());          \
             }                                                                    \
         })
@@ -203,16 +203,16 @@ inline napi_value JsNull(napi_env env) {
         args.RequireMinArgs(1);                                                  \
         ANN_NAPI_THIS(Cls, self);                                                \
         if (!self) {                                                             \
-            return mbgl::harmony::annotation_napi::JsUndefined(env);             \
+            return mln::harmony::annotation_napi::JsUndefined(env);             \
         }                                                                        \
         napi_value pointValue = args.GetObject(0, "point");                      \
         if (!args.HasError()) {                                                  \
-            mbgl::Point<double> point;                                           \
+            mln::Point<double> point;                                           \
             if (ParseLatLngToPoint(env, pointValue, point)) {                    \
                 self->Member.push_back(point);                                   \
             }                                                                    \
         }                                                                        \
-        return mbgl::harmony::annotation_napi::JsUndefined(env);                 \
+        return mln::harmony::annotation_napi::JsUndefined(env);                 \
     }
 
 /**
@@ -224,18 +224,18 @@ inline napi_value JsNull(napi_env env) {
         args.RequireMinArgs(2);                                                  \
         ANN_NAPI_THIS(Cls, self);                                                \
         if (!self) {                                                             \
-            return mbgl::harmony::annotation_napi::JsUndefined(env);             \
+            return mln::harmony::annotation_napi::JsUndefined(env);             \
         }                                                                        \
         const int32_t index = args.GetInt32(0);                                  \
         napi_value pointValue = args.GetObject(1, "point");                      \
         if (!args.HasError() && index >= 0 &&                                    \
             static_cast<size_t>(index) <= self->Member.size()) {                 \
-            mbgl::Point<double> point;                                           \
+            mln::Point<double> point;                                           \
             if (ParseLatLngToPoint(env, pointValue, point)) {                    \
                 self->Member.insert(self->Member.begin() + index, point);         \
             }                                                                    \
         }                                                                        \
-        return mbgl::harmony::annotation_napi::JsUndefined(env);                 \
+        return mln::harmony::annotation_napi::JsUndefined(env);                 \
     }
 
 /**
@@ -249,16 +249,16 @@ inline napi_value JsNull(napi_env env) {
         args.RequireMinArgs(1);                                                  \
         ANN_NAPI_THIS(Cls, self);                                                \
         if (!self) {                                                             \
-            return mbgl::harmony::annotation_napi::JsNull(env);                  \
+            return mln::harmony::annotation_napi::JsNull(env);                  \
         }                                                                        \
         const int32_t index = args.GetInt32(0);                                  \
         if (index >= 0 && static_cast<size_t>(index) < self->Member.size()) {     \
             const auto removedPoint = self->Member[index];                       \
             self->Member.erase(self->Member.begin() + index);                     \
             return LatLngHarmony::CreateLatLngObject(                            \
-                env, mbgl::LatLng(removedPoint.y, removedPoint.x));              \
+                env, mln::LatLng(removedPoint.y, removedPoint.x));              \
         }                                                                        \
-        return mbgl::harmony::annotation_napi::JsNull(env);                      \
+        return mln::harmony::annotation_napi::JsNull(env);                      \
     }
 
 /**

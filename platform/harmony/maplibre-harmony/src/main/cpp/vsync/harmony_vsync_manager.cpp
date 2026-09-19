@@ -1,12 +1,12 @@
 #include "harmony_vsync_manager.hpp"
 #include "utils/logger.h"
-#include <mbgl/util/run_loop.hpp>
+#include <mln/util/run_loop.hpp>
 #include <chrono>
 #include <thread>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 HarmonyVSyncManager::HarmonyVSyncManager() {
@@ -230,5 +230,5 @@ void HarmonyVSyncManager::executeCallback() {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

@@ -1,9 +1,9 @@
 #include "http_request_config.hpp"
 #include "utils/logger.h"
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 HTTPRequestConfig& HTTPRequestConfig::getInstance() {
@@ -67,5 +67,5 @@ bool HTTPRequestConfig::hasCustomHeader(const std::string& key) const {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

@@ -5,7 +5,7 @@
 #include <mutex>
 #include <utility>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 namespace {
@@ -38,7 +38,7 @@ void MapRegistry::registerMap(uintptr_t mapAddr,
         // different map now owns it. Invalidate the stale token so wrappers
         // holding the old numeric pointer fail cleanly instead of silently
         // binding to the new map.
-        mbgl::harmony::Logger::warn("MapRegistry",
+        mln::harmony::Logger::warn("MapRegistry",
             "registerMap: address %p already registered by another owner; invalidating stale token",
             reinterpret_cast<void*>(mapAddr));
         it->second.token->valid.store(false, std::memory_order_release);
@@ -70,4 +70,4 @@ MapRegistry::Dispatcher MapRegistry::resolveDispatcher(uintptr_t mapAddr) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

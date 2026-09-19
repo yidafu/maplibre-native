@@ -27,7 +27,7 @@
 
 #include <napi/native_api.h>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -56,7 +56,7 @@ bool AttachLayerInstance(napi_env env, napi_value thisVar, NapiCls* layerObj,
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 /**
  * The base-layer chunk every layer's Init() table ends with, in the canonical
@@ -114,7 +114,7 @@ bool AttachLayerInstance(napi_env env, napi_value thisVar, NapiCls* layerObj,
             return nullptr;                                                      \
         }                                                                        \
         NapiCls* layerObj = (CtorExpr);                                          \
-        if (!mbgl::harmony::AttachLayerInstance(env, thisVar, layerObj,          \
+        if (!mln::harmony::AttachLayerInstance(env, thisVar, layerObj,          \
                                                 TypeName, #NapiCls)) {           \
             /* Expanded inside a member function, so the wrapper's private */    \
             /* destructor is reachable; napi_wrap did not adopt the object.  */  \
@@ -132,7 +132,7 @@ bool AttachLayerInstance(napi_env env, napi_value thisVar, NapiCls* layerObj,
         napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);              \
         auto* layerObj = NapiArgs::Unwrap<NapiCls>(env, thisVar);                 \
         if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;       \
-        mbgl::harmony::Helper<MbglLayer, __VA_ARGS__>(                            \
+        mln::harmony::Helper<MbglLayer, __VA_ARGS__>(                            \
             env, layerObj->getLayer(), argv[0], PropName,                         \
             &MbglLayer::SetFn);                                                   \
         return thisVar;                                                           \
@@ -148,7 +148,7 @@ bool AttachLayerInstance(napi_env env, napi_value thisVar, NapiCls* layerObj,
             napi_get_null(env, &null_value);                                      \
             return null_value;                                                    \
         }                                                                         \
-        return mbgl::harmony::getProperty<MbglLayer, __VA_ARGS__>(                \
+        return mln::harmony::getProperty<MbglLayer, __VA_ARGS__>(                \
             env, layerObj->getLayer(), &MbglLayer::GetFn);                        \
     }
 
@@ -164,17 +164,17 @@ bool AttachLayerInstance(napi_env env, napi_value thisVar, NapiCls* layerObj,
         if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;       \
         try {                                                                     \
             NapiValue napiValue(env, argv[0]);                                    \
-            mbgl::style::conversion::Error error;                                 \
-            auto converted = mbgl::style::conversion::convert<                    \
-                mbgl::style::ColorRampPropertyValue>(std::move(napiValue), error);\
+            mln::style::conversion::Error error;                                 \
+            auto converted = mln::style::conversion::convert<                    \
+                mln::style::ColorRampPropertyValue>(std::move(napiValue), error);\
             if (converted) {                                                     \
                 layerObj->getLayer()->SetFn(*converted);                          \
             } else {                                                              \
-                mbgl::harmony::Logger::error(#NapiCls,                            \
+                mln::harmony::Logger::error(#NapiCls,                            \
                     "Failed to convert " PropName ": %s", error.message.c_str()); \
             }                                                                     \
         } catch (const std::exception& e) {                                       \
-            mbgl::harmony::Logger::error(#NapiCls, #Fn ": Failed - %s", e.what());\
+            mln::harmony::Logger::error(#NapiCls, #Fn ": Failed - %s", e.what());\
         }                                                                         \
         return thisVar;                                                           \
     }
@@ -190,7 +190,7 @@ bool AttachLayerInstance(napi_env env, napi_value thisVar, NapiCls* layerObj,
             return null_value;                                                    \
         }                                                                         \
         const auto& colorRamp = layerObj->getLayer()->GetFn();                    \
-        auto result = mbgl::harmony::conversion::colorRampPropertyValueToNapi(env, colorRamp); \
+        auto result = mln::harmony::conversion::colorRampPropertyValueToNapi(env, colorRamp); \
         if (result) {                                                             \
             return *result;                                                       \
         }                                                                         \

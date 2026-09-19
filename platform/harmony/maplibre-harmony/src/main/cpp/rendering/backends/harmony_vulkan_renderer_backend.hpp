@@ -1,12 +1,12 @@
 #pragma once
 
-#include <mbgl/vulkan/renderable_resource.hpp>
-#include <mbgl/vulkan/renderer_backend.hpp>
+#include <mln/vulkan/renderable_resource.hpp>
+#include <mln/vulkan/renderer_backend.hpp>
 #include "harmony_renderer_backend.hpp"
 #include <native_window/external_window.h>
 #include <vector>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -58,7 +58,7 @@ public:
      * @brief Get the renderer backend implementation
      * @return Reference to the gfx::RendererBackend
      */
-    mbgl::gfx::RendererBackend& getImpl() override { return *this; }
+    mln::gfx::RendererBackend& getImpl() override { return *this; }
 
     /**
      * @brief Get the Vulkan instance extensions required for HarmonyOS
@@ -96,13 +96,13 @@ public:
      */
     std::string getRendererInfo() override;
 
-    // mbgl::gfx::RendererBackend implementation
+    // mln::gfx::RendererBackend implementation
 public:
     /**
      * @brief Get the default renderable surface
      * @return Reference to the default Renderable
      */
-    mbgl::gfx::Renderable& getDefaultRenderable() override { return *this; }
+    mln::gfx::Renderable& getDefaultRenderable() override { return *this; }
 
 protected:
     /**
@@ -124,4 +124,4 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

@@ -1,13 +1,13 @@
 #include "transition_options_harmony.hpp"
 #include "utils/logger.h"
-#include <mbgl/util/chrono.hpp>
+#include <mln/util/chrono.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using Logger = mbgl::harmony::Logger;
+using Logger = mln::harmony::Logger;
 
-napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env, const mbgl::style::TransitionOptions& options, double defaultDurationMs) {
+napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env, const mln::style::TransitionOptions& options, double defaultDurationMs) {
     napi_value obj;
     napi_status status = napi_create_object(env, &obj);
     if (status != napi_ok) {
@@ -20,7 +20,7 @@ napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env,
     // Create duration property (converted to milliseconds); unset durations
     // fall back to defaultDurationMs.
     const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-        options.duration.value_or(mbgl::Duration(std::chrono::milliseconds(static_cast<int64_t>(defaultDurationMs))))
+        options.duration.value_or(mln::Duration(std::chrono::milliseconds(static_cast<int64_t>(defaultDurationMs))))
     ).count();
     napi_value durationValue;
     napi_create_double(env, static_cast<double>(durationMs), &durationValue);
@@ -28,7 +28,7 @@ napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env,
     
     // Create delay property (converted to milliseconds)
     const auto delayMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-        options.delay.value_or(mbgl::Duration::zero())
+        options.delay.value_or(mln::Duration::zero())
     ).count();
     napi_value delayValue;
     napi_create_double(env, static_cast<double>(delayMs), &delayValue);
@@ -37,7 +37,7 @@ napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env,
     return obj;
 }
 
-bool TransitionOptionsHarmony::ParseTransitionOptions(napi_env env, napi_value value, mbgl::style::TransitionOptions& outOptions) {
+bool TransitionOptionsHarmony::ParseTransitionOptions(napi_env env, napi_value value, mln::style::TransitionOptions& outOptions) {
     // Ensure the value is an object
     napi_valuetype type;
     napi_status status = napi_typeof(env, value, &type);
@@ -52,7 +52,7 @@ bool TransitionOptionsHarmony::ParseTransitionOptions(napi_env env, napi_value v
     if (status == napi_ok) {
         double duration;
         if (napi_get_value_double(env, durationValue, &duration) == napi_ok) {
-            outOptions.duration = mbgl::Duration(mbgl::Milliseconds(static_cast<int64_t>(duration)));
+            outOptions.duration = mln::Duration(mln::Milliseconds(static_cast<int64_t>(duration)));
         }
     }
     
@@ -62,7 +62,7 @@ bool TransitionOptionsHarmony::ParseTransitionOptions(napi_env env, napi_value v
     if (status == napi_ok) {
         double delay;
         if (napi_get_value_double(env, delayValue, &delay) == napi_ok) {
-            outOptions.delay = mbgl::Duration(mbgl::Milliseconds(static_cast<int64_t>(delay)));
+            outOptions.delay = mln::Duration(mln::Milliseconds(static_cast<int64_t>(delay)));
         }
     }
     
@@ -80,5 +80,5 @@ bool TransitionOptionsHarmony::ParseTransitionOptions(napi_env env, napi_value v
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

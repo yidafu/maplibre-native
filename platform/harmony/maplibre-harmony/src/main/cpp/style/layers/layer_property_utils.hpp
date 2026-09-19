@@ -6,16 +6,16 @@
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 
-#include <mbgl/style/property_value.hpp>
-#include <mbgl/style/conversion/property_value.hpp>
+#include <mln/style/property_value.hpp>
+#include <mln/style/conversion/property_value.hpp>
 #include <napi/native_api.h>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
 /**
  * Layer Property Utilities
@@ -37,7 +37,7 @@ using mbgl::harmony::napi::NapiArgs;
  * @return PropertyValue<T> if conversion successful, nullopt otherwise
  */
 template <typename T>
-std::optional<mbgl::style::PropertyValue<T>> napiValueToPropertyValue(
+std::optional<mln::style::PropertyValue<T>> napiValueToPropertyValue(
     napi_env env,
     napi_value value,
     const char* propertyName
@@ -47,8 +47,8 @@ std::optional<mbgl::style::PropertyValue<T>> napiValueToPropertyValue(
         NapiValue napiValue(env, value);
         
         // Use MapLibre conversion system to convert to PropertyValue<T>
-        mbgl::style::conversion::Error error;
-        auto converted = mbgl::style::conversion::convert<mbgl::style::PropertyValue<T>>(
+        mln::style::conversion::Error error;
+        auto converted = mln::style::conversion::convert<mln::style::PropertyValue<T>>(
             std::move(napiValue),
             error,
             false,  // allowDataExpressions
@@ -79,7 +79,7 @@ std::optional<mbgl::style::PropertyValue<T>> napiValueToPropertyValue(
  * Same as above but allows data-driven expressions (expressions using feature data).
  */
 template <typename T>
-std::optional<mbgl::style::PropertyValue<T>> napiValueToPropertyValueWithData(
+std::optional<mln::style::PropertyValue<T>> napiValueToPropertyValueWithData(
     napi_env env,
     napi_value value,
     const char* propertyName
@@ -87,8 +87,8 @@ std::optional<mbgl::style::PropertyValue<T>> napiValueToPropertyValueWithData(
     try {
         NapiValue napiValue(env, value);
         
-        mbgl::style::conversion::Error error;
-        auto converted = mbgl::style::conversion::convert<mbgl::style::PropertyValue<T>>(
+        mln::style::conversion::Error error;
+        auto converted = mln::style::conversion::convert<mln::style::PropertyValue<T>>(
             std::move(napiValue),
             error,
             true,   // allowDataExpressions - allow feature data access
@@ -127,9 +127,9 @@ std::optional<mbgl::style::PropertyValue<T>> napiValueToPropertyValueWithData(
 template <typename T>
 napi_value propertyValueToNapiValue(
     napi_env env,
-    const mbgl::style::PropertyValue<T>& value
+    const mln::style::PropertyValue<T>& value
 ) {
-    using namespace mbgl::harmony::conversion;
+    using namespace mln::harmony::conversion;
     
     // Use propertyValueToNapi function to handle all cases
     auto result = propertyValueToNapi(env, value);
@@ -155,7 +155,7 @@ bool setLayoutProperty(
     LayerT* layer,
     napi_value value,
     const char* propertyName,
-    void (LayerT::*setter)(const mbgl::style::PropertyValue<T>&)
+    void (LayerT::*setter)(const mln::style::PropertyValue<T>&)
 ) {
     auto propertyValue = napiValueToPropertyValue<T>(env, value, propertyName);
     if (propertyValue) {
@@ -177,7 +177,7 @@ bool setDataDrivenLayoutProperty(
     LayerT* layer,
     napi_value value,
     const char* propertyName,
-    void (LayerT::*setter)(const mbgl::style::PropertyValue<T>&)
+    void (LayerT::*setter)(const mln::style::PropertyValue<T>&)
 ) {
     auto propertyValue = napiValueToPropertyValueWithData<T>(env, value, propertyName);
     if (propertyValue) {
@@ -199,7 +199,7 @@ bool setPaintProperty(
     LayerT* layer,
     napi_value value,
     const char* propertyName,
-    void (LayerT::*setter)(const mbgl::style::PropertyValue<T>&)
+    void (LayerT::*setter)(const mln::style::PropertyValue<T>&)
 ) {
     auto propertyValue = napiValueToPropertyValueWithData<T>(env, value, propertyName);
     if (propertyValue) {
@@ -218,12 +218,12 @@ template <typename LayerT, typename T>
 napi_value getProperty(
     napi_env env,
     const LayerT* layer,
-    const mbgl::style::PropertyValue<T>& (LayerT::*getter)() const
+    const mln::style::PropertyValue<T>& (LayerT::*getter)() const
 ) {
     const auto& value = (layer->*getter)();
     return propertyValueToNapiValue(env, value);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

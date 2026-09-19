@@ -11,11 +11,11 @@
 #include <thread>
 #include <unordered_map>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::URLTransformManager;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::Logger;
+using mln::harmony::URLTransformManager;
+using mln::harmony::napi::NapiArgs;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Static member initialization
@@ -225,7 +225,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
 
     // Install the C++ conversion callback
     URLTransformManager::getInstance().setTransformCallback(
-        [](mbgl::Resource::Kind kind, const std::string& url) -> std::string {
+        [](mln::Resource::Kind kind, const std::string& url) -> std::string {
             std::shared_ptr<CallbackContext> ctx;
             {
                 std::lock_guard<std::mutex> lock(contextMutex_);
@@ -359,4 +359,4 @@ napi_value URLTransformNAPI::HasResourceTransformCallback(napi_env env, napi_cal
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

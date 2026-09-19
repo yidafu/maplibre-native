@@ -1,12 +1,12 @@
 #pragma once
 
 #include "napi/native_api.h"
-#include <mbgl/storage/resource.hpp>
+#include <mln/storage/resource.hpp>
 #include <memory>
 #include <mutex>
 #include <thread>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -60,4 +60,4 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

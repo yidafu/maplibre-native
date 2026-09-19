@@ -3,10 +3,10 @@
 #include <cstring>
 #include <algorithm>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 using namespace OHOS::Media;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // ============================================================================
@@ -321,4 +321,4 @@ bool BitmapHarmony::GetBitmapInfo(napi_env env, napi_value bitmap, uint32_t& wid
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

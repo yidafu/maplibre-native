@@ -3,20 +3,20 @@
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/layers/custom_layer_harmony.hpp"
-#include <mbgl/style/layers/custom_layer.hpp>
+#include <mln/style/layers/custom_layer.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
 // Static member initialization
 napi_ref CustomLayerNAPI::constructor = nullptr;
 napi_env CustomLayerNAPI::constructorEnv = nullptr;
 
 CustomLayerNAPI::CustomLayerNAPI(const std::string& layerId, 
-                                 std::unique_ptr<mbgl::style::CustomLayer> layer,
+                                 std::unique_ptr<mln::style::CustomLayer> layer,
                                  ExampleCustomLayerHost* host)
     : layerId(layerId)
     , layer(std::move(layer))
@@ -83,7 +83,7 @@ napi_value CustomLayerNAPI::New(napi_env env, napi_callback_info info) {
     ExampleCustomLayerHost* hostRawPtr = hostPtr.get();
     
     // Create the CustomLayer instance (takes ownership of the host)
-    auto layer = std::make_unique<mbgl::style::CustomLayer>(layerId, std::move(hostPtr));
+    auto layer = std::make_unique<mln::style::CustomLayer>(layerId, std::move(hostPtr));
     
     // Create the NAPI wrapper object
     CustomLayerNAPI* layerObj = new CustomLayerNAPI(layerId, std::move(layer), hostRawPtr);
@@ -141,9 +141,9 @@ napi_value CustomLayerNAPI::SetVisibility(napi_env env, napi_callback_info info)
     
     std::string visibility = args.GetString(0, "visibility");
     if (visibility == "visible") {
-        layerObj->layer->setVisibility(mbgl::style::VisibilityType::Visible);
+        layerObj->layer->setVisibility(mln::style::VisibilityType::Visible);
     } else if (visibility == "none") {
-        layerObj->layer->setVisibility(mbgl::style::VisibilityType::None);
+        layerObj->layer->setVisibility(mln::style::VisibilityType::None);
     }
     
     return thisVar;
@@ -163,7 +163,7 @@ napi_value CustomLayerNAPI::GetVisibility(napi_env env, napi_callback_info info)
     }
     
     auto visibility = layerObj->layer->getVisibility();
-    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
+    const char* visStr = (visibility == mln::style::VisibilityType::Visible) ? "visible" : "none";
     
     napi_value result;
     napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
@@ -306,5 +306,5 @@ napi_value CustomLayerNAPI::GetColor(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

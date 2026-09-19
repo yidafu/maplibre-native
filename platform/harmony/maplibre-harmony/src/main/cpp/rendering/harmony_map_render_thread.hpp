@@ -1,15 +1,15 @@
 #pragma once
 
-#include <mbgl/map/map.hpp>
-#include <mbgl/renderer/renderer.hpp>
-#include <mbgl/renderer/renderer_frontend.hpp>
-#include <mbgl/util/run_loop.hpp>
-#include <mbgl/util/action_journal_options.hpp>
-#include <mbgl/map/map_observer.hpp>
-#include <mbgl/gfx/backend.hpp>
-#include <mbgl/actor/scheduler.hpp>
-#include <mbgl/util/image.hpp>
-#include <mbgl/util/geojson.hpp>
+#include <mln/map/map.hpp>
+#include <mln/renderer/renderer.hpp>
+#include <mln/renderer/renderer_frontend.hpp>
+#include <mln/util/run_loop.hpp>
+#include <mln/util/action_journal_options.hpp>
+#include <mln/map/map_observer.hpp>
+#include <mln/gfx/backend.hpp>
+#include <mln/actor/scheduler.hpp>
+#include <mln/util/image.hpp>
+#include <mln/util/geojson.hpp>
 
 #include "backends/harmony_renderer_backend.hpp"
 
@@ -23,7 +23,7 @@
 // VSync management
 #include "../vsync/harmony_vsync_manager.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -260,7 +260,7 @@ public:
      */
     int getRenderingRefreshMode() const { return refreshMode_.load(std::memory_order_relaxed); }
     
-    using SnapshotSuccessCallback = std::function<void(mbgl::PremultipliedImage&&, float)>;
+    using SnapshotSuccessCallback = std::function<void(mln::PremultipliedImage&&, float)>;
     using SnapshotErrorCallback = std::function<void(const std::string&)>;
     void requestSnapshot(SnapshotSuccessCallback success, SnapshotErrorCallback error);
 
@@ -381,5 +381,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

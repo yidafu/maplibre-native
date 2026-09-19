@@ -1,6 +1,6 @@
 #include <libnu/strcoll.h>
 #include <libnu/unaccent.h>
-#include <mbgl/i18n/collator.hpp>
+#include <mln/i18n/collator.hpp>
 
 #include <cstring>
 #include <sstream>
@@ -45,7 +45,7 @@ std::string unaccent(const std::string& str) {
 }
 } // namespace
 
-namespace mbgl {
+namespace mln {
 namespace platform {
 
 class Collator::Impl {
@@ -93,5 +93,5 @@ Collator::Collator(bool caseSensitive, bool diacriticSensitive, const std::optio
     : impl(std::make_shared<Impl>(caseSensitive, diacriticSensitive, locale)) {}
 
 } // namespace platform
-} // namespace mbgl
+} // namespace mln
 

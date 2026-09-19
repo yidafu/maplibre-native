@@ -2,15 +2,15 @@
 #include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
-#include <mbgl/style/style.hpp>
-#include <mbgl/style/types.hpp>
-#include <mbgl/util/color.hpp>
-#include <mbgl/style/transition_options.hpp>
+#include <mln/style/style.hpp>
+#include <mln/style/types.hpp>
+#include <mln/util/color.hpp>
+#include <mln/style/transition_options.hpp>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Static member initialization
@@ -19,15 +19,15 @@ napi_env LightHarmony::constructorEnv = nullptr;
 
 // Constructor data structure for passing to napi_new_instance
 struct LightConstructorData {
-    mbgl::Map* map;
+    mln::Map* map;
 };
 
-LightHarmony::LightHarmony(mbgl::Map& coreMap)
+LightHarmony::LightHarmony(mln::Map& coreMap)
     : map(&coreMap) {
     Logger::info("LightHarmony", "Light wrapper created");
 }
 
-mbgl::style::Light* LightHarmony::currentLight() const {
+mln::style::Light* LightHarmony::currentLight() const {
     // Re-fetch on every access: the Light object is replaced when the style is
     // reloaded and destroyed with the style/map.
     return map ? map->getStyle().getLight() : nullptr;
@@ -97,7 +97,7 @@ napi_value LightHarmony::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-napi_value LightHarmony::CreateLightPeer(napi_env env, mbgl::Map& map) {
+napi_value LightHarmony::CreateLightPeer(napi_env env, mln::Map& map) {
     if (constructor == nullptr) {
         Logger::error("LightHarmony", "Light constructor not initialized");
         napi_value undefined;
@@ -155,7 +155,7 @@ static napi_value MakeTransitionObject(napi_env env, const style::TransitionOpti
     return result;
 }
 
-mbgl::style::Light* LightHarmony::ResolveLight(napi_env env, napi_value jsThis) {
+mln::style::Light* LightHarmony::ResolveLight(napi_env env, napi_value jsThis) {
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     if (!lightHarmony) {
@@ -175,7 +175,7 @@ napi_value LightHarmony::WithLight(napi_env env, napi_callback_info info, bool r
         return nullptr;
     }
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
+    mln::style::Light* light = ResolveLight(env, args.This());
     if (!light) {
         return args.Undefined();
     }
@@ -190,7 +190,7 @@ napi_value LightHarmony::GetTransitionImpl(napi_env env, napi_callback_info info
         return nullptr;
     }
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
+    mln::style::Light* light = ResolveLight(env, args.This());
     if (!light) {
         return args.Undefined();
     }
@@ -206,7 +206,7 @@ napi_value LightHarmony::SetTransitionImpl(napi_env env, napi_callback_info info
         return nullptr;
     }
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
+    mln::style::Light* light = ResolveLight(env, args.This());
     if (!light) {
         return args.Undefined();
     }
@@ -218,15 +218,15 @@ napi_value LightHarmony::SetTransitionImpl(napi_env env, napi_callback_info info
     }
 
     style::TransitionOptions options;
-    options.duration.emplace(mbgl::Milliseconds(duration));
-    options.delay.emplace(mbgl::Milliseconds(delay));
+    options.duration.emplace(mln::Milliseconds(duration));
+    options.delay.emplace(mln::Milliseconds(delay));
     (light->*setter)(options);
 
     return args.Undefined();
 }
 
 napi_value LightHarmony::GetAnchor(napi_env env, napi_callback_info info) {
-    return WithLight(env, info, false, [env](NapiArgs&, mbgl::style::Light* light) -> napi_value {
+    return WithLight(env, info, false, [env](NapiArgs&, mln::style::Light* light) -> napi_value {
         auto anchorType = light->getAnchor();
         const char* anchorStr = (anchorType == style::LightAnchorType::Map) ? "map" : "viewport";
 
@@ -237,7 +237,7 @@ napi_value LightHarmony::GetAnchor(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::SetAnchor(napi_env env, napi_callback_info info) {
-    return WithLight(env, info, true, [](NapiArgs& args, mbgl::style::Light* light) -> napi_value {
+    return WithLight(env, info, true, [](NapiArgs& args, mln::style::Light* light) -> napi_value {
         std::string anchorStr = args.GetString(0, "anchor");
         if (args.HasError()) {
             return nullptr;
@@ -254,7 +254,7 @@ napi_value LightHarmony::SetAnchor(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::GetPosition(napi_env env, napi_callback_info info) {
-    return WithLight(env, info, false, [env](NapiArgs&, mbgl::style::Light* light) -> napi_value {
+    return WithLight(env, info, false, [env](NapiArgs&, mln::style::Light* light) -> napi_value {
         auto position = light->getPosition().asConstant();
         auto spherical = position.getSpherical();
 
@@ -275,7 +275,7 @@ napi_value LightHarmony::GetPosition(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::SetPosition(napi_env env, napi_callback_info info) {
-    return WithLight(env, info, true, [env](NapiArgs& args, mbgl::style::Light* light) -> napi_value {
+    return WithLight(env, info, true, [env](NapiArgs& args, mln::style::Light* light) -> napi_value {
         napi_value positionObj = args.GetObject(0, "position");
         if (args.HasError()) {
             return nullptr;
@@ -306,15 +306,15 @@ napi_value LightHarmony::SetPosition(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::GetPositionTransition(napi_env env, napi_callback_info info) {
-    return GetTransitionImpl(env, info, &mbgl::style::Light::getPositionTransition);
+    return GetTransitionImpl(env, info, &mln::style::Light::getPositionTransition);
 }
 
 napi_value LightHarmony::SetPositionTransition(napi_env env, napi_callback_info info) {
-    return SetTransitionImpl(env, info, &mbgl::style::Light::setPositionTransition);
+    return SetTransitionImpl(env, info, &mln::style::Light::setPositionTransition);
 }
 
 napi_value LightHarmony::GetColor(napi_env env, napi_callback_info info) {
-    return WithLight(env, info, false, [env](NapiArgs&, mbgl::style::Light* light) -> napi_value {
+    return WithLight(env, info, false, [env](NapiArgs&, mln::style::Light* light) -> napi_value {
         auto color = light->getColor().asConstant();
         std::string colorStr = color.stringify();
 
@@ -325,7 +325,7 @@ napi_value LightHarmony::GetColor(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::SetColor(napi_env env, napi_callback_info info) {
-    return WithLight(env, info, true, [](NapiArgs& args, mbgl::style::Light* light) -> napi_value {
+    return WithLight(env, info, true, [](NapiArgs& args, mln::style::Light* light) -> napi_value {
         std::string colorStr = args.GetString(0, "color");
         if (args.HasError()) {
             return nullptr;
@@ -341,15 +341,15 @@ napi_value LightHarmony::SetColor(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::GetColorTransition(napi_env env, napi_callback_info info) {
-    return GetTransitionImpl(env, info, &mbgl::style::Light::getColorTransition);
+    return GetTransitionImpl(env, info, &mln::style::Light::getColorTransition);
 }
 
 napi_value LightHarmony::SetColorTransition(napi_env env, napi_callback_info info) {
-    return SetTransitionImpl(env, info, &mbgl::style::Light::setColorTransition);
+    return SetTransitionImpl(env, info, &mln::style::Light::setColorTransition);
 }
 
 napi_value LightHarmony::GetIntensity(napi_env env, napi_callback_info info) {
-    return WithLight(env, info, false, [env](NapiArgs&, mbgl::style::Light* light) -> napi_value {
+    return WithLight(env, info, false, [env](NapiArgs&, mln::style::Light* light) -> napi_value {
         float intensity = light->getIntensity().asConstant();
 
         napi_value result;
@@ -359,7 +359,7 @@ napi_value LightHarmony::GetIntensity(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::SetIntensity(napi_env env, napi_callback_info info) {
-    return WithLight(env, info, true, [](NapiArgs& args, mbgl::style::Light* light) -> napi_value {
+    return WithLight(env, info, true, [](NapiArgs& args, mln::style::Light* light) -> napi_value {
         double intensity = args.GetDouble(0, "intensity");
         if (args.HasError()) {
             return nullptr;
@@ -372,12 +372,12 @@ napi_value LightHarmony::SetIntensity(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::GetIntensityTransition(napi_env env, napi_callback_info info) {
-    return GetTransitionImpl(env, info, &mbgl::style::Light::getIntensityTransition);
+    return GetTransitionImpl(env, info, &mln::style::Light::getIntensityTransition);
 }
 
 napi_value LightHarmony::SetIntensityTransition(napi_env env, napi_callback_info info) {
-    return SetTransitionImpl(env, info, &mbgl::style::Light::setIntensityTransition);
+    return SetTransitionImpl(env, info, &mln::style::Light::setIntensityTransition);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

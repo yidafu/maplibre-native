@@ -1,8 +1,8 @@
-#include <mbgl/util/logging.hpp>
-#include <mbgl/util/string.hpp>
+#include <mln/util/logging.hpp>
+#include <mln/util/string.hpp>
 #include "attach_env.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace platform {
 
 std::string uppercase(const std::string& str) {
@@ -44,4 +44,4 @@ std::string lowercase(const std::string& str) {
 }
 
 } // namespace platform
-} // namespace mbgl
+} // namespace mln

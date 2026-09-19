@@ -8,23 +8,23 @@
 #include "../geometry/point_harmony.hpp"
 #include "../napi/core/napi_args.hpp"
 
-#include <mbgl/util/geo.hpp>
+#include <mln/util/geo.hpp>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // ==================== MapSnapshotInstance implementation ====================
 
 MapSnapshotInstance::MapSnapshotInstance(
     napi_env env,
-    mbgl::PremultipliedImage&& image,
+    mln::PremultipliedImage&& image,
     const std::vector<std::string>& attributions,
     float pixelRatio,
-    mbgl::MapSnapshotter::PointForFn pointForFn,
-    mbgl::MapSnapshotter::LatLngForFn latLngForFn
+    mln::MapSnapshotter::PointForFn pointForFn,
+    mln::MapSnapshotter::LatLngForFn latLngForFn
 ) : env_(env),
     image_(std::move(image)),
     attributions_(attributions),
@@ -40,25 +40,25 @@ MapSnapshotInstance::~MapSnapshotInstance() {
     Logger::info("MapSnapshotInstance", "Destroyed");
 }
 
-mbgl::ScreenCoordinate MapSnapshotInstance::pixelForLatLng(const mbgl::LatLng& latLng) const {
+mln::ScreenCoordinate MapSnapshotInstance::pixelForLatLng(const mln::LatLng& latLng) const {
     if (!pointForFn_) {
         Logger::error("MapSnapshotInstance", "pointForFn is null");
-        return mbgl::ScreenCoordinate{0, 0};
+        return mln::ScreenCoordinate{0, 0};
     }
     
     // Call the conversion function and apply the pixel ratio
-    mbgl::ScreenCoordinate point = pointForFn_(latLng);
-    return mbgl::ScreenCoordinate{point.x * pixelRatio_, point.y * pixelRatio_};
+    mln::ScreenCoordinate point = pointForFn_(latLng);
+    return mln::ScreenCoordinate{point.x * pixelRatio_, point.y * pixelRatio_};
 }
 
-mbgl::LatLng MapSnapshotInstance::latLngForPixel(const mbgl::ScreenCoordinate& point) const {
+mln::LatLng MapSnapshotInstance::latLngForPixel(const mln::ScreenCoordinate& point) const {
     if (!latLngForFn_) {
         Logger::error("MapSnapshotInstance", "latLngForFn is null");
-        return mbgl::LatLng{0, 0};
+        return mln::LatLng{0, 0};
     }
     
     // Divide by the pixel ratio before converting back
-    mbgl::ScreenCoordinate adjustedPoint{point.x / pixelRatio_, point.y / pixelRatio_};
+    mln::ScreenCoordinate adjustedPoint{point.x / pixelRatio_, point.y / pixelRatio_};
     return latLngForFn_(adjustedPoint);
 }
 
@@ -66,11 +66,11 @@ mbgl::LatLng MapSnapshotInstance::latLngForPixel(const mbgl::ScreenCoordinate& p
 
 napi_value CreateMapSnapshotObject(
     napi_env env,
-    mbgl::PremultipliedImage&& image,
+    mln::PremultipliedImage&& image,
     const std::vector<std::string>& attributions,
     float pixelRatio,
-    mbgl::MapSnapshotter::PointForFn pointForFn,
-    mbgl::MapSnapshotter::LatLngForFn latLngForFn
+    mln::MapSnapshotter::PointForFn pointForFn,
+    mln::MapSnapshotter::LatLngForFn latLngForFn
 ) {
     // Allocate the MapSnapshotInstance
     auto* snapshotInstance = new MapSnapshotInstance(
@@ -185,8 +185,8 @@ napi_value MapSnapshot_pixelForLatLng(napi_env env, napi_callback_info info) {
 
     try {
         // Perform coordinate conversion
-        mbgl::LatLng latLng(latitude, longitude);
-        mbgl::ScreenCoordinate pixel = snapshotInstance->pixelForLatLng(latLng);
+        mln::LatLng latLng(latitude, longitude);
+        mln::ScreenCoordinate pixel = snapshotInstance->pixelForLatLng(latLng);
 
         // Create the return object {x, y}
         napi_value result = PointHarmony::CreatePointObject(env, pixel);
@@ -223,8 +223,8 @@ napi_value MapSnapshot_latLngForPixel(napi_env env, napi_callback_info info) {
 
     try {
         // Perform coordinate conversion
-        mbgl::ScreenCoordinate point(x, y);
-        mbgl::LatLng latLng = snapshotInstance->latLngForPixel(point);
+        mln::ScreenCoordinate point(x, y);
+        mln::LatLng latLng = snapshotInstance->latLngForPixel(point);
 
         // Create the return object {latitude, longitude}
         napi_value result = LatLngHarmony::CreateLatLngObject(env, latLng);
@@ -237,5 +237,5 @@ napi_value MapSnapshot_latLngForPixel(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

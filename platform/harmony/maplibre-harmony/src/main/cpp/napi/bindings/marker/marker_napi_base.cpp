@@ -5,12 +5,12 @@
 #include "napi/core/napi_args.hpp"
 #include "geometry/lat_lng_harmony.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-// Use Logger from mbgl::harmony namespace
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+// Use Logger from mln::harmony namespace
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
 // Static member initialization
 napi_ref MarkerNAPI::constructor = nullptr;
@@ -141,10 +141,10 @@ napi_value MarkerNAPI::New(napi_env env, napi_callback_info info) {
         // Parse position (required)
         napi_value posValue;
         if (napi_get_named_property(env, optionsObj, "position", &posValue) == napi_ok) {
-            mbgl::LatLng latLng;
-            if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, posValue, latLng)) {
+            mln::LatLng latLng;
+            if (mln::harmony::LatLngHarmony::ParseLatLng(env, posValue, latLng)) {
                 // LatLng parsed successfully; convert to Point (note: Point uses (x, y) = (lon, lat))
-                marker->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
+                marker->position = mln::Point<double>(latLng.longitude(), latLng.latitude());
             } else {
                 Logger::error("MarkerNAPI", "[MarkerDebug] Failed to parse position from options");
             }
@@ -200,7 +200,7 @@ napi_value MarkerNAPI::New(napi_env env, napi_callback_info info) {
 
 // Getter implementations
 DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetPosition,
-    LatLngHarmony::CreateLatLngObject(env, mbgl::LatLng(self->position.y, self->position.x)))
+    LatLngHarmony::CreateLatLngObject(env, mln::LatLng(self->position.y, self->position.x)))
 
 DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetIcon,
     self->iconId.empty() ? annotation_napi::JsNull(env)
@@ -228,9 +228,9 @@ DEFINE_NAPI_SETTER(MarkerNAPI, SetPosition, nullptr, annotation_napi::JsUndefine
     args.RequireMinArgs(1);
     napi_value posValue = args.GetObject(0, "position");
     if (!args.HasError()) {
-        mbgl::LatLng latLng;
+        mln::LatLng latLng;
         if (LatLngHarmony::ParseLatLng(env, posValue, latLng)) {
-            self->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
+            self->position = mln::Point<double>(latLng.longitude(), latLng.latitude());
         } else {
             Logger::error("MarkerNAPI", "SetPosition: Failed to parse LatLng");
         }
@@ -318,4 +318,4 @@ DEFINE_NAPI_SETTER(MarkerNAPI, SetVisible, nullptr, annotation_napi::JsUndefined
     self->visible = args.GetBool(0))
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

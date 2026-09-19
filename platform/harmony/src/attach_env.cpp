@@ -1,6 +1,6 @@
 #include "attach_env.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 UniqueEnv AttachEnv() {
@@ -10,4 +10,4 @@ UniqueEnv AttachEnv() {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

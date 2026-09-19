@@ -4,14 +4,14 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
-#include <mbgl/util/premultiply.hpp>
+#include <mln/util/premultiply.hpp>
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::napi::NapiArgs;
 namespace harmony {
 
 // Static member initialization
@@ -25,9 +25,9 @@ ImageNAPI::ImageNAPI(
     float pixelRatio,
     bool sdf,
     std::shared_ptr<std::vector<uint8_t>> data,
-    std::optional<std::vector<mbgl::style::ImageStretches::value_type>> stretchX,
-    std::optional<std::vector<mbgl::style::ImageStretches::value_type>> stretchY,
-    std::optional<mbgl::style::ImageContent> content
+    std::optional<std::vector<mln::style::ImageStretches::value_type>> stretchX,
+    std::optional<std::vector<mln::style::ImageStretches::value_type>> stretchY,
+    std::optional<mln::style::ImageContent> content
 ) : name(std::move(name)),
     width(width),
     height(height),
@@ -183,7 +183,7 @@ napi_value ImageNAPI::New(napi_env env, napi_callback_info info) {
         }
         
         // Parse stretchX (optional)
-        std::optional<std::vector<mbgl::style::ImageStretches::value_type>> stretchX;
+        std::optional<std::vector<mln::style::ImageStretches::value_type>> stretchX;
         napi_value stretchXValue;
         status = napi_get_named_property(env, options, "stretchX", &stretchXValue);
         if (status == napi_ok) {
@@ -194,7 +194,7 @@ napi_value ImageNAPI::New(napi_env env, napi_callback_info info) {
                 napi_get_array_length(env, stretchXValue, &arrayLength);
                 
                 if (arrayLength > 0 && arrayLength % 2 == 0) {
-                    std::vector<mbgl::style::ImageStretches::value_type> stretches;
+                    std::vector<mln::style::ImageStretches::value_type> stretches;
                     for (uint32_t i = 0; i < arrayLength; i += 2) {
                         napi_value startVal, endVal;
                         napi_get_element(env, stretchXValue, i, &startVal);
@@ -212,7 +212,7 @@ napi_value ImageNAPI::New(napi_env env, napi_callback_info info) {
         }
         
         // Parse stretchY (optional)
-        std::optional<std::vector<mbgl::style::ImageStretches::value_type>> stretchY;
+        std::optional<std::vector<mln::style::ImageStretches::value_type>> stretchY;
         napi_value stretchYValue;
         status = napi_get_named_property(env, options, "stretchY", &stretchYValue);
         if (status == napi_ok) {
@@ -223,7 +223,7 @@ napi_value ImageNAPI::New(napi_env env, napi_callback_info info) {
                 napi_get_array_length(env, stretchYValue, &arrayLength);
                 
                 if (arrayLength > 0 && arrayLength % 2 == 0) {
-                    std::vector<mbgl::style::ImageStretches::value_type> stretches;
+                    std::vector<mln::style::ImageStretches::value_type> stretches;
                     for (uint32_t i = 0; i < arrayLength; i += 2) {
                         napi_value startVal, endVal;
                         napi_get_element(env, stretchYValue, i, &startVal);
@@ -241,7 +241,7 @@ napi_value ImageNAPI::New(napi_env env, napi_callback_info info) {
         }
         
         // Parse content (optional) - [left, top, right, bottom]
-        std::optional<mbgl::style::ImageContent> content;
+        std::optional<mln::style::ImageContent> content;
         napi_value contentValue;
         status = napi_get_named_property(env, options, "content", &contentValue);
         if (status == napi_ok) {
@@ -264,7 +264,7 @@ napi_value ImageNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_value_double(env, rightVal, &right);
                     napi_get_value_double(env, bottomVal, &bottom);
                     
-                    content = mbgl::style::ImageContent{
+                    content = mln::style::ImageContent{
                         static_cast<float>(left),
                         static_cast<float>(top),
                         static_cast<float>(right),
@@ -336,7 +336,7 @@ napi_value ImageNAPI::GetData(napi_env env, napi_callback_info info) {
 namespace {
 
 // 把 stretch 对列表拼成 JS 数组 [start1, end1, start2, end2, ...]
-napi_value CreateStretchArray(napi_env env, const mbgl::style::ImageStretches& stretches) {
+napi_value CreateStretchArray(napi_env env, const mln::style::ImageStretches& stretches) {
     napi_value result;
     napi_create_array_with_length(env, stretches.size() * 2, &result);
 
@@ -352,7 +352,7 @@ napi_value CreateStretchArray(napi_env env, const mbgl::style::ImageStretches& s
 }
 
 // 把 content 拼成 JS 数组 [left, top, right, bottom]
-napi_value CreateContentArray(napi_env env, const mbgl::style::ImageContent& content) {
+napi_value CreateContentArray(napi_env env, const mln::style::ImageContent& content) {
     napi_value result;
     napi_create_array_with_length(env, 4, &result);
 
@@ -384,25 +384,25 @@ DEFINE_NAPI_GETTER(ImageNAPI, GetContent,
     annotation_napi::JsNull(env),
     !self->content ? annotation_napi::JsNull(env) : CreateContentArray(env, *self->content))
 
-std::unique_ptr<mbgl::style::Image> ImageNAPI::toStyleImage() const {
+std::unique_ptr<mln::style::Image> ImageNAPI::toStyleImage() const {
     // Create PremultipliedImage from data
-    mbgl::PremultipliedImage premultipliedImage({width, height});
+    mln::PremultipliedImage premultipliedImage({width, height});
     std::memcpy(premultipliedImage.data.get(), data->data(), data->size());
     
     // Convert stretchX and stretchY to ImageStretches
-    mbgl::style::ImageStretches imageStretchesX;
+    mln::style::ImageStretches imageStretchesX;
     if (stretchX) {
         imageStretchesX = stretchX.value();
     }
     
-    mbgl::style::ImageStretches imageStretchesY;
+    mln::style::ImageStretches imageStretchesY;
     if (stretchY) {
         imageStretchesY = stretchY.value();
     }
     
     // Create style::Image with all parameters
     if (content) {
-        return std::make_unique<mbgl::style::Image>(
+        return std::make_unique<mln::style::Image>(
             name,
             std::move(premultipliedImage),
             pixelRatio,
@@ -412,7 +412,7 @@ std::unique_ptr<mbgl::style::Image> ImageNAPI::toStyleImage() const {
             content.value()
         );
     } else {
-        return std::make_unique<mbgl::style::Image>(
+        return std::make_unique<mln::style::Image>(
             name,
             std::move(premultipliedImage),
             pixelRatio,
@@ -444,5 +444,5 @@ ImageNAPI* ImageNAPI::Unwrap(napi_env env, napi_value value) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

@@ -1,13 +1,13 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/annotation/annotation.hpp>
-#include <mbgl/util/geometry.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/annotation/annotation.hpp>
+#include <mln/util/geometry.hpp>
+#include <mln/util/color.hpp>
 #include <string>
 #include <vector>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -58,22 +58,22 @@ public:
     static napi_value SetId(napi_env env, napi_callback_info info);
     static napi_value SetMapLibreMap(napi_env env, napi_callback_info info);
     
-    // Convert to mbgl::FillAnnotation
-    mbgl::FillAnnotation toAnnotation() const;
+    // Convert to mln::FillAnnotation
+    mln::FillAnnotation toAnnotation() const;
     
     // Data access methods (for C++ internal use)
-    const std::vector<mbgl::Point<double>>& getPointsInternal() const { return points; }
-    const std::vector<std::vector<mbgl::Point<double>>>& getHolesInternal() const { return holes; }
-    mbgl::Color getFillColorValue() const { return fillColor; }
-    mbgl::Color getStrokeColorValue() const { return strokeColor; }
+    const std::vector<mln::Point<double>>& getPointsInternal() const { return points; }
+    const std::vector<std::vector<mln::Point<double>>>& getHolesInternal() const { return holes; }
+    mln::Color getFillColorValue() const { return fillColor; }
+    mln::Color getStrokeColorValue() const { return strokeColor; }
     float getStrokeWidthValue() const { return strokeWidth; }
     float getFillAlphaValue() const { return fillAlpha; }
     float getStrokeAlphaValue() const { return strokeAlpha; }
     bool isVisible() const { return visible; }
     int getZIndex() const { return zIndex; }
-    mbgl::AnnotationID getAnnotationId() const { return annotationId; }
+    mln::AnnotationID getAnnotationId() const { return annotationId; }
     
-    void setAnnotationId(mbgl::AnnotationID id) { annotationId = id; }
+    void setAnnotationId(mln::AnnotationID id) { annotationId = id; }
     
 private:
     static napi_ref constructor;
@@ -84,11 +84,11 @@ private:
     ~PolygonNAPI();
     
     // Polygon state
-    mbgl::AnnotationID annotationId;
-    std::vector<mbgl::Point<double>> points;                        // Outer ring
-    std::vector<std::vector<mbgl::Point<double>>> holes;           // Inner rings (holes)
-    mbgl::Color fillColor;
-    mbgl::Color strokeColor;
+    mln::AnnotationID annotationId;
+    std::vector<mln::Point<double>> points;                        // Outer ring
+    std::vector<std::vector<mln::Point<double>>> holes;           // Inner rings (holes)
+    mln::Color fillColor;
+    mln::Color strokeColor;
     float strokeWidth;
     float fillAlpha;
     float strokeAlpha;
@@ -100,4 +100,4 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

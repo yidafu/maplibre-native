@@ -1,10 +1,10 @@
 #pragma once
 
-#include <mbgl/style/layers/symbol_layer_properties.hpp>
+#include <mln/style/layers/symbol_layer_properties.hpp>
 #include <vector>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace style {
 namespace harmony {
 
@@ -63,5 +63,5 @@ inline std::vector<std::string> getDefaultTextFont() {
 
 } // namespace harmony
 } // namespace style
-} // namespace mbgl
+} // namespace mln
 

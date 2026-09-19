@@ -4,15 +4,15 @@
 #include <mapbox/geometry/geometry.hpp>
 #include <stdexcept>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace geojson {
 
 // ==================== JS Object -> C++ ====================
 
-mbgl::Geometry<double> GeoJsonConverter::JsObjectToGeometry(napi_env env, napi_value jsObj) {
+mln::Geometry<double> GeoJsonConverter::JsObjectToGeometry(napi_env env, napi_value jsObj) {
     if (!IsObject(env, jsObj)) {
         throw std::runtime_error("Geometry must be an object");
     }
@@ -30,12 +30,12 @@ mbgl::Geometry<double> GeoJsonConverter::JsObjectToGeometry(napi_env env, napi_v
     return ParseGeometryByType(env, jsObj, type);
 }
 
-mbgl::Feature GeoJsonConverter::JsObjectToFeature(napi_env env, napi_value jsObj) {
+mln::Feature GeoJsonConverter::JsObjectToFeature(napi_env env, napi_value jsObj) {
     if (!IsObject(env, jsObj)) {
         throw std::runtime_error("Feature must be an object");
     }
 
-    mbgl::Feature feature;
+    mln::Feature feature;
 
     // Parse geometry
     if (HasProperty(env, jsObj, "geometry")) {
@@ -73,12 +73,12 @@ mbgl::Feature GeoJsonConverter::JsObjectToFeature(napi_env env, napi_value jsObj
     return feature;
 }
 
-mbgl::FeatureCollection GeoJsonConverter::JsObjectToFeatureCollection(napi_env env, napi_value jsObj) {
+mln::FeatureCollection GeoJsonConverter::JsObjectToFeatureCollection(napi_env env, napi_value jsObj) {
     if (!IsObject(env, jsObj)) {
         throw std::runtime_error("FeatureCollection must be an object");
     }
 
-    mbgl::FeatureCollection collection;
+    mln::FeatureCollection collection;
 
     // Verify that a features array exists
     if (!HasProperty(env, jsObj, "features")) {
@@ -99,7 +99,7 @@ mbgl::FeatureCollection GeoJsonConverter::JsObjectToFeatureCollection(napi_env e
         napi_get_element(env, featuresValue, i, &element);
 
         try {
-            mbgl::Feature feature = JsObjectToFeature(env, element);
+            mln::Feature feature = JsObjectToFeature(env, element);
             collection.push_back(std::move(feature));
         } catch (const std::exception &e) {
             Logger::warn("GeoJsonConverter", "Failed to parse feature at index %u: %s", i, e.what());
@@ -109,7 +109,7 @@ mbgl::FeatureCollection GeoJsonConverter::JsObjectToFeatureCollection(napi_env e
     return collection;
 }
 
-mbgl::GeoJSON GeoJsonConverter::JsObjectToGeoJSON(napi_env env, napi_value jsObj) {
+mln::GeoJSON GeoJsonConverter::JsObjectToGeoJSON(napi_env env, napi_value jsObj) {
     if (!IsObject(env, jsObj)) {
         throw std::runtime_error("GeoJSON must be an object");
     }
@@ -126,35 +126,35 @@ mbgl::GeoJSON GeoJsonConverter::JsObjectToGeoJSON(napi_env env, napi_value jsObj
     }
 
     if (type == "FeatureCollection") {
-        mbgl::FeatureCollection collection = JsObjectToFeatureCollection(env, jsObj);
-        return mbgl::GeoJSON(std::move(collection));
+        mln::FeatureCollection collection = JsObjectToFeatureCollection(env, jsObj);
+        return mln::GeoJSON(std::move(collection));
     } else if (type == "Feature") {
-        mbgl::Feature feature = JsObjectToFeature(env, jsObj);
+        mln::Feature feature = JsObjectToFeature(env, jsObj);
         // Needs to convert into GeoJSONFeature (mapbox::feature::feature<double>)
-        mbgl::GeoJSONFeature geoJsonFeature;
+        mln::GeoJSONFeature geoJsonFeature;
         geoJsonFeature.geometry = feature.geometry;
         geoJsonFeature.properties = feature.properties;
         geoJsonFeature.id = feature.id;
-        return mbgl::GeoJSON(std::move(geoJsonFeature));
+        return mln::GeoJSON(std::move(geoJsonFeature));
     } else {
         // Geometry type payload
-        mbgl::Geometry<double> geometry = JsObjectToGeometry(env, jsObj);
-        return mbgl::GeoJSON(std::move(geometry));
+        mln::Geometry<double> geometry = JsObjectToGeometry(env, jsObj);
+        return mln::GeoJSON(std::move(geometry));
     }
 }
 
 // ==================== C++ -> JS Object ====================
 
-napi_value GeoJsonConverter::GeometryToJsObject(napi_env env, const mbgl::Geometry<double> &geometry) {
+napi_value GeoJsonConverter::GeometryToJsObject(napi_env env, const mln::Geometry<double> &geometry) {
     return geometry.match(
-        [&](const mbgl::Point<double> &point) { return PointToJsObject(env, point); },
-        [&](const mbgl::LineString<double> &lineString) { return LineStringToJsObject(env, lineString); },
-        [&](const mbgl::Polygon<double> &polygon) { return PolygonToJsObject(env, polygon); },
-        [&](const mbgl::MultiPoint<double> &multiPoint) { return MultiPointToJsObject(env, multiPoint); },
-        [&](const mbgl::MultiLineString<double> &multiLineString) {
+        [&](const mln::Point<double> &point) { return PointToJsObject(env, point); },
+        [&](const mln::LineString<double> &lineString) { return LineStringToJsObject(env, lineString); },
+        [&](const mln::Polygon<double> &polygon) { return PolygonToJsObject(env, polygon); },
+        [&](const mln::MultiPoint<double> &multiPoint) { return MultiPointToJsObject(env, multiPoint); },
+        [&](const mln::MultiLineString<double> &multiLineString) {
             return MultiLineStringToJsObject(env, multiLineString);
         },
-        [&](const mbgl::MultiPolygon<double> &multiPolygon) { return MultiPolygonToJsObject(env, multiPolygon); },
+        [&](const mln::MultiPolygon<double> &multiPolygon) { return MultiPolygonToJsObject(env, multiPolygon); },
         [&](const mapbox::geometry::geometry_collection<double> &collection) {
             return GeometryCollectionToJsObject(env, collection);
         },
@@ -165,7 +165,7 @@ napi_value GeoJsonConverter::GeometryToJsObject(napi_env env, const mbgl::Geomet
         });
 }
 
-napi_value GeoJsonConverter::FeatureToJsObject(napi_env env, const mbgl::Feature &feature) {
+napi_value GeoJsonConverter::FeatureToJsObject(napi_env env, const mln::Feature &feature) {
     napi_value result;
     napi_create_object(env, &result);
 
@@ -175,7 +175,7 @@ napi_value GeoJsonConverter::FeatureToJsObject(napi_env env, const mbgl::Feature
     napi_set_named_property(env, result, "type", type);
 
     // id (optional)
-    if (!feature.id.is<mbgl::NullValue>()) {
+    if (!feature.id.is<mln::NullValue>()) {
         napi_value id;
         if (feature.id.is<std::string>()) {
             const auto &idStr = feature.id.get<std::string>();
@@ -227,7 +227,7 @@ napi_value GeoJsonConverter::FeatureToJsObject(napi_env env, const mbgl::Feature
 }
 
 napi_value GeoJsonConverter::FeatureCollectionToJsObject(napi_env env,
-                                                         const mbgl::FeatureCollection &featureCollection) {
+                                                         const mln::FeatureCollection &featureCollection) {
     napi_value result;
     napi_create_object(env, &result);
 
@@ -237,11 +237,11 @@ napi_value GeoJsonConverter::FeatureCollectionToJsObject(napi_env env,
     napi_set_named_property(env, result, "type", type);
 
     // features array - FeatureCollection inherits from vector<feature<double>>
-    // Needs to be converted to vector<mbgl::Feature>
-    std::vector<mbgl::Feature> features;
+    // Needs to be converted to vector<mln::Feature>
+    std::vector<mln::Feature> features;
     features.reserve(featureCollection.size());
     for (const auto &f : featureCollection) {
-        mbgl::Feature feature;
+        mln::Feature feature;
         feature.geometry = f.geometry;
         feature.properties = f.properties;
         feature.id = f.id;
@@ -253,7 +253,7 @@ napi_value GeoJsonConverter::FeatureCollectionToJsObject(napi_env env,
     return result;
 }
 
-napi_value GeoJsonConverter::FeatureArrayToJsArray(napi_env env, const std::vector<mbgl::Feature> &features) {
+napi_value GeoJsonConverter::FeatureArrayToJsArray(napi_env env, const std::vector<mln::Feature> &features) {
     napi_value array;
     napi_create_array_with_length(env, features.size(), &array);
 
@@ -267,7 +267,7 @@ napi_value GeoJsonConverter::FeatureArrayToJsArray(napi_env env, const std::vect
 
 // ==================== Private helper methods ====================
 
-mbgl::Geometry<double> GeoJsonConverter::ParseGeometryByType(napi_env env, napi_value jsObj, const std::string &type) {
+mln::Geometry<double> GeoJsonConverter::ParseGeometryByType(napi_env env, napi_value jsObj, const std::string &type) {
     // Retrieve coordinates or geometries field
     napi_value coordinatesOrGeometries;
 
@@ -303,31 +303,31 @@ mbgl::Geometry<double> GeoJsonConverter::ParseGeometryByType(napi_env env, napi_
 
 // Geometry parsing implementation
 
-mbgl::Point<double> GeoJsonConverter::ParsePoint(napi_env env, napi_value coordinates) {
+mln::Point<double> GeoJsonConverter::ParsePoint(napi_env env, napi_value coordinates) {
     auto coords = NapiArrayToDoubleVector(env, coordinates);
     if (coords.size() < 2) {
         throw std::runtime_error("Point coordinates must have at least 2 elements");
     }
-    return mbgl::Point<double>{coords[0], coords[1]};
+    return mln::Point<double>{coords[0], coords[1]};
 }
 
-mbgl::LineString<double> GeoJsonConverter::ParseLineString(napi_env env, napi_value coordinates) {
+mln::LineString<double> GeoJsonConverter::ParseLineString(napi_env env, napi_value coordinates) {
     return NapiArrayToPointVector(env, coordinates);
 }
 
-mbgl::Polygon<double> GeoJsonConverter::ParsePolygon(napi_env env, napi_value coordinates) {
+mln::Polygon<double> GeoJsonConverter::ParsePolygon(napi_env env, napi_value coordinates) {
     return NapiArrayToLinearRingVector(env, coordinates);
 }
 
-mbgl::MultiPoint<double> GeoJsonConverter::ParseMultiPoint(napi_env env, napi_value coordinates) {
+mln::MultiPoint<double> GeoJsonConverter::ParseMultiPoint(napi_env env, napi_value coordinates) {
     return NapiArrayToPointVector(env, coordinates);
 }
 
-mbgl::MultiLineString<double> GeoJsonConverter::ParseMultiLineString(napi_env env, napi_value coordinates) {
+mln::MultiLineString<double> GeoJsonConverter::ParseMultiLineString(napi_env env, napi_value coordinates) {
     return NapiArrayToLineStringVector(env, coordinates);
 }
 
-mbgl::MultiPolygon<double> GeoJsonConverter::ParseMultiPolygon(napi_env env, napi_value coordinates) {
+mln::MultiPolygon<double> GeoJsonConverter::ParseMultiPolygon(napi_env env, napi_value coordinates) {
     return NapiArrayToPolygonVector(env, coordinates);
 }
 
@@ -347,7 +347,7 @@ mapbox::geometry::geometry_collection<double> GeoJsonConverter::ParseGeometryCol
         napi_value element;
         napi_get_element(env, geometries, i, &element);
 
-        mbgl::Geometry<double> geom = JsObjectToGeometry(env, element);
+        mln::Geometry<double> geom = JsObjectToGeometry(env, element);
         collection.push_back(std::move(geom));
     }
 
@@ -356,7 +356,7 @@ mapbox::geometry::geometry_collection<double> GeoJsonConverter::ParseGeometryCol
 
 // Geometry-to-JS conversion implementation
 
-napi_value GeoJsonConverter::PointToJsObject(napi_env env, const mbgl::Point<double> &point) {
+napi_value GeoJsonConverter::PointToJsObject(napi_env env, const mln::Point<double> &point) {
     napi_value coordinates;
     napi_create_array_with_length(env, 2, &coordinates);
 
@@ -369,28 +369,28 @@ napi_value GeoJsonConverter::PointToJsObject(napi_env env, const mbgl::Point<dou
     return CreateGeometryJsObject(env, "Point", coordinates);
 }
 
-napi_value GeoJsonConverter::LineStringToJsObject(napi_env env, const mbgl::LineString<double> &lineString) {
+napi_value GeoJsonConverter::LineStringToJsObject(napi_env env, const mln::LineString<double> &lineString) {
     napi_value coordinates = PointVectorToNapiArray(env, lineString);
     return CreateGeometryJsObject(env, "LineString", coordinates);
 }
 
-napi_value GeoJsonConverter::PolygonToJsObject(napi_env env, const mbgl::Polygon<double> &polygon) {
+napi_value GeoJsonConverter::PolygonToJsObject(napi_env env, const mln::Polygon<double> &polygon) {
     napi_value coordinates = LinearRingVectorToNapiArray(env, polygon);
     return CreateGeometryJsObject(env, "Polygon", coordinates);
 }
 
-napi_value GeoJsonConverter::MultiPointToJsObject(napi_env env, const mbgl::MultiPoint<double> &multiPoint) {
+napi_value GeoJsonConverter::MultiPointToJsObject(napi_env env, const mln::MultiPoint<double> &multiPoint) {
     napi_value coordinates = PointVectorToNapiArray(env, multiPoint);
     return CreateGeometryJsObject(env, "MultiPoint", coordinates);
 }
 
 napi_value GeoJsonConverter::MultiLineStringToJsObject(napi_env env,
-                                                       const mbgl::MultiLineString<double> &multiLineString) {
+                                                       const mln::MultiLineString<double> &multiLineString) {
     napi_value coordinates = LineStringVectorToNapiArray(env, multiLineString);
     return CreateGeometryJsObject(env, "MultiLineString", coordinates);
 }
 
-napi_value GeoJsonConverter::MultiPolygonToJsObject(napi_env env, const mbgl::MultiPolygon<double> &multiPolygon) {
+napi_value GeoJsonConverter::MultiPolygonToJsObject(napi_env env, const mln::MultiPolygon<double> &multiPolygon) {
     napi_value coordinates = PolygonVectorToNapiArray(env, multiPolygon);
     return CreateGeometryJsObject(env, "MultiPolygon", coordinates);
 }
@@ -437,4 +437,4 @@ napi_value GeoJsonConverter::CreateGeometryJsObject(napi_env env, const std::str
 
 } // namespace geojson
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

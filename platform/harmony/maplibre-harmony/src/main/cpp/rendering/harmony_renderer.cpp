@@ -12,24 +12,24 @@
 #include "core/native_map_view/native_map_view_harmony.hpp"  // ✅ Used to forward MapObserver events
 #include "config/maplibre_settings.hpp"  // ✅ Global configuration management
 
-#include <mbgl/map/map.hpp>
-#include <mbgl/util/logging.hpp>
-#include <mbgl/util/thread_local.hpp>
-#include <mbgl/actor/scheduler.hpp>
-#include <mbgl/util/run_loop.hpp>
-#include <mbgl/storage/file_source_manager.hpp>
-#include <mbgl/storage/file_source.hpp>
-#include <mbgl/storage/resource_options.hpp>
-#include <mbgl/storage/sqlite3.hpp>
+#include <mln/map/map.hpp>
+#include <mln/util/logging.hpp>
+#include <mln/util/thread_local.hpp>
+#include <mln/actor/scheduler.hpp>
+#include <mln/util/run_loop.hpp>
+#include <mln/storage/file_source_manager.hpp>
+#include <mln/storage/file_source.hpp>
+#include <mln/storage/resource_options.hpp>
+#include <mln/storage/sqlite3.hpp>
 
 #include <sstream>
 #include <iomanip>
 #include <atomic>
 #include <thread>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 namespace {
@@ -257,28 +257,28 @@ void HarmonyRenderer::pauseFileSources(const std::string& label) {
         // This prevents new requests from starting and pauses active ones.
         // Static on purpose: file sources are process-wide singletons, so this
         // touches no renderer state and is safe from any thread.
-        auto* fileSourceManager = mbgl::FileSourceManager::get();
+        auto* fileSourceManager = mln::FileSourceManager::get();
         if (fileSourceManager) {
             // Create empty ResourceOptions to get file sources
-            mbgl::ResourceOptions resourceOptions;
-            mbgl::ClientOptions clientOptions;
+            mln::ResourceOptions resourceOptions;
+            mln::ClientOptions clientOptions;
 
             // Pause ResourceLoader (manages all other file sources)
             if (auto resourceLoader = fileSourceManager->getFileSource(
-                    mbgl::FileSourceType::ResourceLoader, resourceOptions, clientOptions)) {
+                    mln::FileSourceType::ResourceLoader, resourceOptions, clientOptions)) {
                 Logger::info("HarmonyRenderer", "[%s] Pausing ResourceLoader...", label.c_str());
                 resourceLoader->pause();
             }
 
             // Also pause Online and Database file sources directly for safety
             if (auto onlineSource = fileSourceManager->getFileSource(
-                    mbgl::FileSourceType::Network, resourceOptions, clientOptions)) {
+                    mln::FileSourceType::Network, resourceOptions, clientOptions)) {
                 Logger::info("HarmonyRenderer", "[%s] Pausing Online file source...", label.c_str());
                 onlineSource->pause();
             }
 
             if (auto databaseSource = fileSourceManager->getFileSource(
-                    mbgl::FileSourceType::Database, resourceOptions, clientOptions)) {
+                    mln::FileSourceType::Database, resourceOptions, clientOptions)) {
                 Logger::info("HarmonyRenderer", "[%s] Pausing Database file source...", label.c_str());
                 databaseSource->pause();
             }
@@ -601,7 +601,7 @@ void HarmonyRenderer::requestSnapshot(SnapshotSuccessCallback success, SnapshotE
     }
     
     mapRenderThread_->requestSnapshot(
-        [success = std::move(success)](mbgl::PremultipliedImage&& image, float pixelRatio) mutable {
+        [success = std::move(success)](mln::PremultipliedImage&& image, float pixelRatio) mutable {
             if (success) {
                 success(std::move(image), pixelRatio);
             }
@@ -671,6 +671,6 @@ bool HarmonyRenderer::isOnRenderThread() const {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 

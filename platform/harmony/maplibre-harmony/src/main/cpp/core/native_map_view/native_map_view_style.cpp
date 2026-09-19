@@ -7,13 +7,13 @@
 #include "utils/logger.h"
 #include "style/transition_options_harmony.hpp"
 #include "style/layer_source_factory_harmony.hpp"
-#include <mbgl/map/bound_options.hpp>
-#include <mbgl/style/style.hpp>
-#include <mbgl/style/image.hpp>
-#include <mbgl/style/layer.hpp>
-#include <mbgl/style/source.hpp>
-#include <mbgl/style/light.hpp>
-#include <mbgl/util/action_journal.hpp>
+#include <mln/map/bound_options.hpp>
+#include <mln/style/style.hpp>
+#include <mln/style/image.hpp>
+#include <mln/style/layer.hpp>
+#include <mln/style/source.hpp>
+#include <mln/style/light.hpp>
+#include <mln/util/action_journal.hpp>
 #include "style/light_harmony.hpp"
 // Support waiting for resource readiness gating
 #include <chrono>
@@ -23,11 +23,11 @@
 #include <multimedia/image_framework/image_pixel_map_napi.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
-using mbgl::harmony::ImageNAPI;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
+using mln::harmony::ImageNAPI;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 bool CallStyleMethod(napi_env env,
@@ -202,7 +202,7 @@ napi_value NativeMapView::getStyleJson(napi_env env, napi_callback_info info) {
     }
     
     try {
-        std::string json = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getJSON(); }, std::string{});
+        std::string json = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->getStyle().getJSON(); }, std::string{});
         napi_value result;
         napi_create_string_utf8(env, json.c_str(), json.length(), &result);
         return result;
@@ -251,7 +251,7 @@ napi_value NativeMapView::setStyleJson(napi_env env, napi_callback_info info) {
         instance->styleLoadedOnce.store(false, std::memory_order_release);
         // The style is no longer URL-backed; getStyleUrl() reflects that.
         instance->styleUrl.clear();
-        instance->invokeOnMapThread([json](mbgl::Map* m){ m->getStyle().loadJSON(json); m->triggerRepaint(); });
+        instance->invokeOnMapThread([json](mln::Map* m){ m->getStyle().loadJSON(json); m->triggerRepaint(); });
         Logger::info("NativeMapView", "setStyleJson: Style JSON loaded successfully");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setStyleJson: Failed - %s", e.what());
@@ -273,8 +273,8 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
     // Check whether the argument is null or undefined (allows clearing the bound constraint)
     if (!args.Has(0) || args.IsNullOrUndefined(0)) {
         // Clear the boundary constraint
-        instance->invokeOnMapThread([](mbgl::Map* m){
-            m->setBounds(mbgl::BoundOptions().withLatLngBounds(mbgl::LatLngBounds()));
+        instance->invokeOnMapThread([](mln::Map* m){
+            m->setBounds(mln::BoundOptions().withLatLngBounds(mln::LatLngBounds()));
         });
         Logger::info("NativeMapView", "setLatLngBounds: Bounds cleared");
         return args.Undefined();
@@ -286,15 +286,15 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
         return args.Undefined();
     }
     
-    mbgl::LatLngBounds bounds;
+    mln::LatLngBounds bounds;
     if (!LatLngBoundsHarmony::ParseLatLngBounds(env, boundsValue, bounds)) {
         Logger::error("NativeMapView", "setLatLngBounds: Invalid LatLngBounds argument");
         return args.Undefined();
     }
     
     try {
-        instance->invokeOnMapThread([bounds](mbgl::Map* m){
-            m->setBounds(mbgl::BoundOptions().withLatLngBounds(bounds));
+        instance->invokeOnMapThread([bounds](mln::Map* m){
+            m->setBounds(mln::BoundOptions().withLatLngBounds(bounds));
         });
         Logger::info("NativeMapView", "setLatLngBounds: Applied bounds "
                                       "(north=%.6f, east=%.6f, south=%.6f, west=%.6f)",
@@ -321,7 +321,7 @@ napi_value NativeMapView::getActionJournalLogFiles(napi_env env, napi_callback_i
 
     try {
         std::vector<std::string> files = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) -> std::vector<std::string> {
+            [&](mln::Map* m) -> std::vector<std::string> {
                 const auto& journal = m->getActionJournal();
                 if (!journal) {
                     return {};
@@ -359,7 +359,7 @@ napi_value NativeMapView::getActionJournalLog(napi_env env, napi_callback_info i
 
     try {
         std::vector<std::string> logEntries = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) -> std::vector<std::string> {
+            [&](mln::Map* m) -> std::vector<std::string> {
                 const auto& journal = m->getActionJournal();
                 if (!journal) {
                     return {};
@@ -396,7 +396,7 @@ napi_value NativeMapView::clearActionJournalLog(napi_env env, napi_callback_info
     }
 
     try {
-        instance->invokeOnMapThread([](mbgl::Map* m) {
+        instance->invokeOnMapThread([](mln::Map* m) {
             const auto& journal = m->getActionJournal();
             if (journal) {
                 journal->clearLog();
@@ -422,7 +422,7 @@ napi_value NativeMapView::isFullyLoaded(napi_env env, napi_callback_info info) {
     }
     
     try {
-        bool loaded = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->isFullyLoaded(); }, false);
+        bool loaded = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->isFullyLoaded(); }, false);
         napi_get_boolean(env, loaded, &result);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "isFullyLoaded: Failed - %s", e.what());
@@ -454,14 +454,14 @@ napi_value NativeMapView::ensureStyleWrapper(napi_env env, NativeMapView* instan
         instance->styleRef_ = nullptr;
     }
 
-    if (mbgl::harmony::StyleNAPI::constructor == nullptr) {
+    if (mln::harmony::StyleNAPI::constructor == nullptr) {
         Logger::error("NativeMapView", "ensureStyleWrapper: StyleNAPI::constructor is nullptr");
         return nullptr;
     }
 
     napi_value constructor;
     napi_status status =
-        napi_get_reference_value(env, mbgl::harmony::StyleNAPI::constructor, &constructor);
+        napi_get_reference_value(env, mln::harmony::StyleNAPI::constructor, &constructor);
     if (status != napi_ok) {
         Logger::error("NativeMapView", "ensureStyleWrapper: Failed to get Style constructor reference, status=%d",
                       status);
@@ -539,7 +539,7 @@ napi_value NativeMapView::getTransitionOptions(napi_env env, napi_callback_info 
     }
     
     try {
-        const auto transitionOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getTransitionOptions(); }, mbgl::style::TransitionOptions{});
+        const auto transitionOptions = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->getStyle().getTransitionOptions(); }, mln::style::TransitionOptions{});
         napi_value result = TransitionOptionsHarmony::CreateTransitionOptionsObject(env, transitionOptions);
         return result;
     } catch (const std::exception& e) {
@@ -575,7 +575,7 @@ napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info 
         return undefined;
     }
     
-    mbgl::style::TransitionOptions transitionOptions;
+    mln::style::TransitionOptions transitionOptions;
     if (!TransitionOptionsHarmony::ParseTransitionOptions(env, optionsObj, transitionOptions)) {
         Logger::error("NativeMapView", "setTransitionOptions: Failed to parse options");
         napi_value undefined;
@@ -584,7 +584,7 @@ napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info 
     }
     
     try {
-        instance->invokeOnMapThread([transitionOptions](mbgl::Map* m){ m->getStyle().setTransitionOptions(transitionOptions); });
+        instance->invokeOnMapThread([transitionOptions](mln::Map* m){ m->getStyle().setTransitionOptions(transitionOptions); });
         Logger::info("NativeMapView", "setTransitionOptions: Set transition options");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setTransitionOptions: Failed - %s", e.what());
@@ -606,15 +606,15 @@ napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
     }
     
     try {
-        mbgl::style::Light* light = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) { return m->getStyle().getLight(); },
-            (mbgl::style::Light*)nullptr);
+        mln::style::Light* light = instance->invokeOnMapThreadSync(
+            [&](mln::Map* m) { return m->getStyle().getLight(); },
+            (mln::style::Light*)nullptr);
         if (!light) {
             Logger::warn("NativeMapView", "getLight: No light in style");
             return args.Undefined();
         }
         
-        return mbgl::harmony::LightHarmony::CreateLightPeer(env, *instance->map);
+        return mln::harmony::LightHarmony::CreateLightPeer(env, *instance->map);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getLight: Exception - %s", e.what());
         return args.Undefined();
@@ -633,9 +633,9 @@ napi_value NativeMapView::getLayers(napi_env env, napi_callback_info info) {
     
     try {
         // Snapshot the layer list on the render thread
-        std::vector<mbgl::style::Layer*> layers = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) { return m->getStyle().getLayers(); },
-            std::vector<mbgl::style::Layer*>{});
+        std::vector<mln::style::Layer*> layers = instance->invokeOnMapThreadSync(
+            [&](mln::Map* m) { return m->getStyle().getLayers(); },
+            std::vector<mln::style::Layer*>{});
         
         // Create array
         napi_value layersArray;
@@ -672,9 +672,9 @@ napi_value NativeMapView::getLayer(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     
     try {
-        mbgl::style::Layer* layer = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) { return m->getStyle().getLayer(layerId); },
-            (mbgl::style::Layer*)nullptr);
+        mln::style::Layer* layer = instance->invokeOnMapThreadSync(
+            [&](mln::Map* m) { return m->getStyle().getLayer(layerId); },
+            (mln::style::Layer*)nullptr);
         if (!layer) {
             Logger::warn("NativeMapView", "getLayer: Layer '%s' not found", layerId.c_str());
             return args.Undefined();
@@ -798,7 +798,7 @@ napi_value NativeMapView::removeLayerAt(napi_env env, napi_callback_info info) {
 
     try {
         bool removed = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) {
+            [&](mln::Map* m) {
                 const auto& layers = m->getStyle().getLayers();
                 if (index < layers.size()) {
                     const std::string layerId = layers[index]->getID();
@@ -846,7 +846,7 @@ napi_value NativeMapView::removeLayer(napi_env env, napi_callback_info info) {
     
     try {
         // Remove layer from style (serialized with the render thread)
-        instance->invokeOnMapThread([&](mbgl::Map* m) {
+        instance->invokeOnMapThread([&](mln::Map* m) {
             m->getStyle().removeLayer(layerId);
             m->triggerRepaint();
         });
@@ -872,9 +872,9 @@ napi_value NativeMapView::getSources(napi_env env, napi_callback_info info) {
     
     try {
         // Snapshot the source list on the render thread
-        std::vector<mbgl::style::Source*> sources = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) { return m->getStyle().getSources(); },
-            std::vector<mbgl::style::Source*>{});
+        std::vector<mln::style::Source*> sources = instance->invokeOnMapThreadSync(
+            [&](mln::Map* m) { return m->getStyle().getSources(); },
+            std::vector<mln::style::Source*>{});
         
         // Create array
         napi_value sourcesArray;
@@ -911,9 +911,9 @@ napi_value NativeMapView::getSource(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     
     try {
-        mbgl::style::Source* source = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) { return m->getStyle().getSource(sourceId); },
-            (mbgl::style::Source*)nullptr);
+        mln::style::Source* source = instance->invokeOnMapThreadSync(
+            [&](mln::Map* m) { return m->getStyle().getSource(sourceId); },
+            (mln::style::Source*)nullptr);
         if (!source) {
             Logger::warn("NativeMapView", "getSource: Source '%s' not found", sourceId.c_str());
             return args.Undefined();
@@ -980,7 +980,7 @@ napi_value NativeMapView::removeSource(napi_env env, napi_callback_info info) {
     
     try {
         // Remove source from style (serialized with the render thread)
-        instance->invokeOnMapThread([&](mbgl::Map* m) {
+        instance->invokeOnMapThread([&](mln::Map* m) {
             m->getStyle().removeSource(sourceId);
             m->triggerRepaint();
         });
@@ -1052,7 +1052,7 @@ napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
     }
 
     const size_t byteSize = static_cast<size_t>(width) * static_cast<size_t>(height) * 4;
-    mbgl::PremultipliedImage premultiplied({width, height});
+    mln::PremultipliedImage premultiplied({width, height});
     std::memcpy(premultiplied.data.get(), pixelData, byteSize);
 
     OH_PixelMap_UnAccessPixels(nativePixelMap);
@@ -1060,7 +1060,7 @@ napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
     try {
         // Hold the image via shared_ptr: if the map-thread task is dropped during
         // teardown, the capture is released instead of leaking a raw new'd image.
-        auto image = std::make_shared<mbgl::style::Image>(
+        auto image = std::make_shared<mln::style::Image>(
             imageName,
             std::move(premultiplied),
             static_cast<float>(pixelRatioDouble),
@@ -1068,8 +1068,8 @@ napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
         );
 
         std::string imageId = imageName;
-        instance->invokeOnMapThread([image, imageId, width, height](mbgl::Map* map) {
-            map->getStyle().addImage(std::make_unique<mbgl::style::Image>(*image));
+        instance->invokeOnMapThread([image, imageId, width, height](mln::Map* map) {
+            map->getStyle().addImage(std::make_unique<mln::style::Image>(*image));
             map->triggerRepaint();
             Logger::info("NativeMapView", "addImage: Added image '%s' (%ux%u)", imageId.c_str(), width, height);
         });
@@ -1130,7 +1130,7 @@ napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {
                 continue;
             }
             
-            // Convert to mbgl::style::Image
+            // Convert to mln::style::Image
             auto styleImage = imageNapi->toStyleImage();
             if (!styleImage) {
                 Logger::error("NativeMapView", "addImages: Failed to convert Image to style::Image at index %u", i);
@@ -1139,8 +1139,8 @@ napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {
             
             // Add to style
             std::string imageName = imageNapi->getName();
-            instance->invokeOnMapThread([styleImage = std::shared_ptr<mbgl::style::Image>(std::move(styleImage))](mbgl::Map* m) {
-                m->getStyle().addImage(std::make_unique<mbgl::style::Image>(*styleImage));
+            instance->invokeOnMapThread([styleImage = std::shared_ptr<mln::style::Image>(std::move(styleImage))](mln::Map* m) {
+                m->getStyle().addImage(std::make_unique<mln::style::Image>(*styleImage));
             });
             
             Logger::info("NativeMapView", "addImages: Added image '%s'", imageName.c_str());
@@ -1182,7 +1182,7 @@ napi_value NativeMapView::removeImage(napi_env env, napi_callback_info info) {
     name.resize(nameLength);
     
     try {
-        instance->invokeOnMapThread([name](mbgl::Map* m){ m->getStyle().removeImage(name); });
+        instance->invokeOnMapThread([name](mln::Map* m){ m->getStyle().removeImage(name); });
         Logger::info("NativeMapView", "removeImage: Removed image '%s'", name.c_str());
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "removeImage: Failed - %s", e.what());
@@ -1192,4 +1192,4 @@ napi_value NativeMapView::removeImage(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

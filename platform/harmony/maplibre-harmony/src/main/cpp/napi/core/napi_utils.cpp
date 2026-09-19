@@ -8,9 +8,9 @@
 #include "napi_args.hpp"
 #include "utils/logger.h"
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace napi {
     // Legacy version kept for compatibility

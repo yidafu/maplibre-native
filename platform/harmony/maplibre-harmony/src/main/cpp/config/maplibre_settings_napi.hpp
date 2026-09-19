@@ -3,7 +3,7 @@
 
 #include <napi/native_api.h>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -44,7 +44,7 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBRE_HARMONY_MAPLIBRE_SETTINGS_NAPI_HPP
 

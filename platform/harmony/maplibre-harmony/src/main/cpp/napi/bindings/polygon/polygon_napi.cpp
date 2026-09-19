@@ -5,18 +5,18 @@
 #include "geometry/lat_lng_harmony.hpp"
 #include "napi/bindings/annotation_napi_common.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-// Use Logger from mbgl::harmony namespace
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
-using mbgl::harmony::annotation_napi::JsBool;
-using mbgl::harmony::annotation_napi::JsHexColor;
-using mbgl::harmony::annotation_napi::JsInt32;
-using mbgl::harmony::annotation_napi::JsInt64;
-using mbgl::harmony::annotation_napi::JsNumber;
-using mbgl::harmony::annotation_napi::JsString;
+// Use Logger from mln::harmony namespace
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
+using mln::harmony::annotation_napi::JsBool;
+using mln::harmony::annotation_napi::JsHexColor;
+using mln::harmony::annotation_napi::JsInt32;
+using mln::harmony::annotation_napi::JsInt64;
+using mln::harmony::annotation_napi::JsNumber;
+using mln::harmony::annotation_napi::JsString;
 
 // Static member initialization
 napi_ref PolygonNAPI::constructor = nullptr;
@@ -24,8 +24,8 @@ napi_env PolygonNAPI::constructorEnv = nullptr;
 
 PolygonNAPI::PolygonNAPI()
     : annotationId(-1),
-      fillColor(mbgl::Color::black()),
-      strokeColor(mbgl::Color::black()),
+      fillColor(mln::Color::black()),
+      strokeColor(mln::Color::black()),
       strokeWidth(1.0f),
       fillAlpha(0.5f),
       strokeAlpha(1.0f),
@@ -126,7 +126,7 @@ napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
                     napi_value holeValue;
                     napi_get_element(env, holesValue, i, &holeValue);
                     
-                    std::vector<mbgl::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
+                    std::vector<mln::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
                     if (!hole.empty()) {
                         polygon->holes.push_back(std::move(hole));
                     }
@@ -177,28 +177,28 @@ napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
     return thisVar;
 }
 
-// Convert to mbgl::FillAnnotation
-mbgl::FillAnnotation PolygonNAPI::toAnnotation() const {
+// Convert to mln::FillAnnotation
+mln::FillAnnotation PolygonNAPI::toAnnotation() const {
     // Create the outer ring (LinearRing)
-    mbgl::LinearRing<double> outerRing;
+    mln::LinearRing<double> outerRing;
     for (const auto& point : points) {
         outerRing.push_back(point);
     }
     
     // Create the polygon with outer ring
-    mbgl::Polygon<double> geometry;
+    mln::Polygon<double> geometry;
     geometry.push_back(outerRing);
     
     // Add holes (inner rings)
     for (const auto& hole : holes) {
-        mbgl::LinearRing<double> innerRing;
+        mln::LinearRing<double> innerRing;
         for (const auto& point : hole) {
             innerRing.push_back(point);
         }
         geometry.push_back(innerRing);
     }
     
-    mbgl::FillAnnotation annotation(geometry);
+    mln::FillAnnotation annotation(geometry);
     annotation.opacity = fillAlpha;
     annotation.color = fillColor;
     annotation.outlineColor = strokeColor;
@@ -271,7 +271,7 @@ DEFINE_ANNOTATION_SETTER(PolygonNAPI, SetZIndex,
 
 DEFINE_ANNOTATION_SETTER(PolygonNAPI, SetId,
     args.RequireMinArgs(1);
-    self->annotationId = static_cast<mbgl::AnnotationID>(args.GetInt64(0)))
+    self->annotationId = static_cast<mln::AnnotationID>(args.GetInt64(0)))
 
 DEFINE_ANNOTATION_MAP_REF_SETTER(PolygonNAPI, SetMapLibreMap)
 
@@ -289,7 +289,7 @@ DEFINE_ANNOTATION_SETTER(PolygonNAPI, SetHoles,
             if (napi_get_element(env, holesValue, i, &holeValue) != napi_ok) {
                 continue;
             }
-            std::vector<mbgl::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
+            std::vector<mln::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
             if (!hole.empty()) {
                 self->holes.push_back(std::move(hole));
             }
@@ -310,7 +310,7 @@ napi_value PolygonNAPI::AddHole(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     ANN_NAPI_THIS(PolygonNAPI, self);
     if (!self) {
-        return mbgl::harmony::annotation_napi::JsUndefined(env);
+        return mln::harmony::annotation_napi::JsUndefined(env);
     }
 
     napi_value holeValue = args.Get(0);
@@ -318,13 +318,13 @@ napi_value PolygonNAPI::AddHole(napi_env env, napi_callback_info info) {
     napi_is_array(env, holeValue, &isArray);
 
     if (isArray) {
-        std::vector<mbgl::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
+        std::vector<mln::Point<double>> hole = ParseLatLngArrayToPoints(env, holeValue);
         if (!hole.empty()) {
             self->holes.push_back(std::move(hole));
         }
     }
 
-    return mbgl::harmony::annotation_napi::JsUndefined(env);
+    return mln::harmony::annotation_napi::JsUndefined(env);
 }
 
 napi_value PolygonNAPI::RemoveHole(napi_env env, napi_callback_info info) {
@@ -332,7 +332,7 @@ napi_value PolygonNAPI::RemoveHole(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     ANN_NAPI_THIS(PolygonNAPI, self);
     if (!self) {
-        return mbgl::harmony::annotation_napi::JsNull(env);
+        return mln::harmony::annotation_napi::JsNull(env);
     }
 
     const int32_t index = args.GetInt32(0);
@@ -344,8 +344,8 @@ napi_value PolygonNAPI::RemoveHole(napi_env env, napi_callback_info info) {
         return PointArrayToJs(env, removedHole);
     }
 
-    return mbgl::harmony::annotation_napi::JsNull(env);
+    return mln::harmony::annotation_napi::JsNull(env);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

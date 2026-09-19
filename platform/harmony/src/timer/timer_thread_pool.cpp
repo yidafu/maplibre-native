@@ -3,10 +3,10 @@
 #include <cassert>
 
 #ifdef __OHOS__
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 #endif
 
-namespace mbgl {
+namespace mln {
 namespace util {
 
 TimerThreadPool::TimerThreadPool(size_t numThreads)
@@ -97,5 +97,5 @@ size_t TimerThreadPool::pendingTaskCount() const {
 }
 
 } // namespace util
-} // namespace mbgl
+} // namespace mln
 

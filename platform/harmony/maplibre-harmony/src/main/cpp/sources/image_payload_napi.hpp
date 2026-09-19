@@ -8,20 +8,20 @@
 #include "napi/bindings/image/image_napi.hpp"
 #include "bitmap/bitmap_napi.hpp"
 
-#include <mbgl/util/image.hpp>
+#include <mln/util/image.hpp>
 
 #include <optional>
 #include <string>
 #include <utility>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /** Cloned pixels plus the kind of NAPI object that produced them
  *  (callers use this for their success logs). `imageObjectName` is the
  *  ImageNAPI name, empty for a Bitmap. */
 struct DecodedImagePayload {
-    mbgl::PremultipliedImage image;
+    mln::PremultipliedImage image;
     bool fromImageObject = false;
     std::string imageObjectName;
 };
@@ -51,9 +51,9 @@ inline std::optional<DecodedImagePayload> DecodeImageOrBitmap(napi_env env, napi
         return payload;
     }
 
-    if (mbgl::harmony::BitmapNAPI::IsBitmapObject(env, value)) {
+    if (mln::harmony::BitmapNAPI::IsBitmapObject(env, value)) {
         // Get Bitmap data
-        mbgl::harmony::BitmapNAPI* bitmapNapi = mbgl::harmony::BitmapNAPI::Unwrap(env, value);
+        mln::harmony::BitmapNAPI* bitmapNapi = mln::harmony::BitmapNAPI::Unwrap(env, value);
         if (!bitmapNapi) {
             napi_throw_error(env, nullptr, "Failed to unwrap Bitmap object");
             return std::nullopt;
@@ -75,6 +75,6 @@ inline std::optional<DecodedImagePayload> DecodeImageOrBitmap(napi_env env, napi
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBRE_HARMONY_IMAGE_PAYLOAD_NAPI_HPP

@@ -1,5 +1,5 @@
 #include "icon_factory.hpp"
-#include <mbgl/util/logging.hpp>
+#include <mln/util/logging.hpp>
 
 // HarmonyOS Image Kit NDK APIs (no napi_env required, @since 12)
 #include <multimedia/image_framework/image/image_source_native.h>
@@ -14,7 +14,7 @@
 #include <sstream>
 #include <vector>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 namespace {
@@ -170,7 +170,7 @@ void premultiplyRow(uint8_t* row, uint32_t width) {
 }
 
 // Convert a decoded OH_PixelmapNative into a PremultipliedImage.
-std::shared_ptr<mbgl::PremultipliedImage> decodePixelmap(OH_PixelmapNative* pixelmap) {
+std::shared_ptr<mln::PremultipliedImage> decodePixelmap(OH_PixelmapNative* pixelmap) {
     if (!pixelmap) {
         throw std::runtime_error("[IconFactory] Decoding produced no PixelMap");
     }
@@ -209,7 +209,7 @@ std::shared_ptr<mbgl::PremultipliedImage> decodePixelmap(OH_PixelmapNative* pixe
         throwImageError("[IconFactory] Failed to read PixelMap pixels", err);
     }
 
-    auto image = std::make_shared<mbgl::PremultipliedImage>(mbgl::Size{width, height});
+    auto image = std::make_shared<mln::PremultipliedImage>(mln::Size{width, height});
     for (uint32_t y = 0; y < height; y++) {
         const uint8_t* srcRow = pixels.data() + y * srcRowBytes;
         uint8_t* dstRow = image->data.get() + y * dstRowBytes;
@@ -226,7 +226,7 @@ std::shared_ptr<mbgl::PremultipliedImage> decodePixelmap(OH_PixelmapNative* pixe
 
 } // anonymous namespace
 
-std::shared_ptr<mbgl::PremultipliedImage> IconFactory::decodeImage(
+std::shared_ptr<mln::PremultipliedImage> IconFactory::decodeImage(
     const uint8_t* data, size_t size) {
 
     if (!data || size == 0) {
@@ -261,12 +261,12 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::decodeImage(
     return decodePixelmap(pixelmapGuard.pixelmap);
 }
 
-std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createFromRawData(
+std::shared_ptr<mln::PremultipliedImage> IconFactory::createFromRawData(
     const uint8_t* data, size_t size) {
     return decodeImage(data, size);
 }
 
-std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createFromRawfile(
+std::shared_ptr<mln::PremultipliedImage> IconFactory::createFromRawfile(
     NativeResourceManager* resourceMgr, const std::string& fileName) {
 
     if (!resourceMgr) {
@@ -295,7 +295,7 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createFromRawfile(
     return decodeImage(fileData.data(), fileData.size());
 }
 
-std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createFromFilePath(
+std::shared_ptr<mln::PremultipliedImage> IconFactory::createFromFilePath(
     const std::string& path) {
 
     std::ifstream file(path, std::ios::binary | std::ios::ate);
@@ -317,16 +317,16 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createFromFilePath(
     return decodeImage(fileData.data(), fileData.size());
 }
 
-std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createDefaultMarker(
+std::shared_ptr<mln::PremultipliedImage> IconFactory::createDefaultMarker(
     uint32_t size) {
 
     std::ostringstream oss;
     oss << "[IconFactory] Creating programmatic default marker (RED pin shape): " << size << "x" << size;
-    mbgl::Log::Info(mbgl::Event::General, oss.str());
+    mln::Log::Info(mln::Event::General, oss.str());
 
     // Create empty image
-    auto image = std::make_shared<mbgl::PremultipliedImage>(
-        mbgl::Size{size, size}
+    auto image = std::make_shared<mln::PremultipliedImage>(
+        mln::Size{size, size}
     );
 
     uint8_t* data = image->data.get();
@@ -384,10 +384,10 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createDefaultMarker(
         }
     }
 
-    mbgl::Log::Info(mbgl::Event::General, "[IconFactory] Default RED pin-shaped marker created successfully");
+    mln::Log::Info(mln::Event::General, "[IconFactory] Default RED pin-shaped marker created successfully");
 
     return image;
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

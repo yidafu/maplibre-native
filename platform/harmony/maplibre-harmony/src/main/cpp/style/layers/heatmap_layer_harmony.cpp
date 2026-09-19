@@ -7,29 +7,29 @@
 #include "style/layers/layer_property_utils.hpp"
 #include "style/conversion/property_value.hpp"
 #include "style/conversion/harmony_conversion.hpp"
-#include <mbgl/style/layers/heatmap_layer.hpp>
-#include <mbgl/style/property_value.hpp>
-#include <mbgl/style/color_ramp_property_value.hpp>
-#include <mbgl/style/conversion/color_ramp_property_value.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/style/layers/heatmap_layer.hpp>
+#include <mln/style/property_value.hpp>
+#include <mln/style/color_ramp_property_value.hpp>
+#include <mln/style/conversion/color_ramp_property_value.hpp>
+#include <mln/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "layer_property_macros.hpp"
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
 // Static member initialization
 napi_ref HeatmapLayerNAPI::constructor = nullptr;
 napi_env HeatmapLayerNAPI::constructorEnv = nullptr;
 
 HeatmapLayerNAPI::HeatmapLayerNAPI(const std::string& layerId, const std::string& sourceId)
-    : layer(std::make_unique<mbgl::style::HeatmapLayer>(layerId, sourceId)) {
+    : layer(std::make_unique<mln::style::HeatmapLayer>(layerId, sourceId)) {
 }
 
-HeatmapLayerNAPI::HeatmapLayerNAPI(mbgl::style::HeatmapLayer* layerPtr) {
+HeatmapLayerNAPI::HeatmapLayerNAPI(mln::style::HeatmapLayer* layerPtr) {
     if (layerPtr) {
         weakLayer = layerPtr->makeWeakPtr();
         Logger::info("HeatmapLayerNAPI", "HeatmapLayer created from existing layer (WeakPtr)");
@@ -81,7 +81,7 @@ DEFINE_LAYER_NEW(HeatmapLayerNAPI, "HeatmapLayer", 2, new HeatmapLayerNAPI(layer
         std::string layerId = args.GetString(0, "layerId");
         std::string sourceId = args.GetString(1, "sourceId");)
 
-napi_value HeatmapLayerNAPI::CreateInstance(napi_env env, mbgl::style::HeatmapLayer* layerPtr) {
+napi_value HeatmapLayerNAPI::CreateInstance(napi_env env, mln::style::HeatmapLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "HeatmapLayer",
                                 layerPtr ? new HeatmapLayerNAPI(layerPtr) : nullptr);
 }
@@ -91,29 +91,29 @@ napi_value HeatmapLayerNAPI::CreateInstance(napi_env env, mbgl::style::HeatmapLa
 // Paint Property Setters (with Expression support)
 // ============================================================================
 
-DEFINE_LAYER_SETTER(HeatmapLayerNAPI, mbgl::style::HeatmapLayer, SetHeatmapRadius, setPaintProperty, "heatmap-radius", setHeatmapRadius, float)
+DEFINE_LAYER_SETTER(HeatmapLayerNAPI, mln::style::HeatmapLayer, SetHeatmapRadius, setPaintProperty, "heatmap-radius", setHeatmapRadius, float)
 
-DEFINE_LAYER_SETTER(HeatmapLayerNAPI, mbgl::style::HeatmapLayer, SetHeatmapWeight, setPaintProperty, "heatmap-weight", setHeatmapWeight, float)
+DEFINE_LAYER_SETTER(HeatmapLayerNAPI, mln::style::HeatmapLayer, SetHeatmapWeight, setPaintProperty, "heatmap-weight", setHeatmapWeight, float)
 
-DEFINE_LAYER_SETTER(HeatmapLayerNAPI, mbgl::style::HeatmapLayer, SetHeatmapIntensity, setPaintProperty, "heatmap-intensity", setHeatmapIntensity, float)
+DEFINE_LAYER_SETTER(HeatmapLayerNAPI, mln::style::HeatmapLayer, SetHeatmapIntensity, setPaintProperty, "heatmap-intensity", setHeatmapIntensity, float)
 
-DEFINE_LAYER_COLORRAMP_SETTER(HeatmapLayerNAPI, mbgl::style::HeatmapLayer, SetHeatmapColor, "heatmap-color", setHeatmapColor)
+DEFINE_LAYER_COLORRAMP_SETTER(HeatmapLayerNAPI, mln::style::HeatmapLayer, SetHeatmapColor, "heatmap-color", setHeatmapColor)
 
-DEFINE_LAYER_SETTER(HeatmapLayerNAPI, mbgl::style::HeatmapLayer, SetHeatmapOpacity, setPaintProperty, "heatmap-opacity", setHeatmapOpacity, float)
+DEFINE_LAYER_SETTER(HeatmapLayerNAPI, mln::style::HeatmapLayer, SetHeatmapOpacity, setPaintProperty, "heatmap-opacity", setHeatmapOpacity, float)
 
 // ============================================================================
 // Property Getters
 // ============================================================================
 
-DEFINE_LAYER_GETTER(HeatmapLayerNAPI, mbgl::style::HeatmapLayer, GetHeatmapRadius, getHeatmapRadius, float)
+DEFINE_LAYER_GETTER(HeatmapLayerNAPI, mln::style::HeatmapLayer, GetHeatmapRadius, getHeatmapRadius, float)
 
-DEFINE_LAYER_GETTER(HeatmapLayerNAPI, mbgl::style::HeatmapLayer, GetHeatmapWeight, getHeatmapWeight, float)
+DEFINE_LAYER_GETTER(HeatmapLayerNAPI, mln::style::HeatmapLayer, GetHeatmapWeight, getHeatmapWeight, float)
 
-DEFINE_LAYER_GETTER(HeatmapLayerNAPI, mbgl::style::HeatmapLayer, GetHeatmapIntensity, getHeatmapIntensity, float)
+DEFINE_LAYER_GETTER(HeatmapLayerNAPI, mln::style::HeatmapLayer, GetHeatmapIntensity, getHeatmapIntensity, float)
 
-DEFINE_LAYER_COLORRAMP_GETTER(HeatmapLayerNAPI, mbgl::style::HeatmapLayer, GetHeatmapColor, getHeatmapColor)
+DEFINE_LAYER_COLORRAMP_GETTER(HeatmapLayerNAPI, mln::style::HeatmapLayer, GetHeatmapColor, getHeatmapColor)
 
-DEFINE_LAYER_GETTER(HeatmapLayerNAPI, mbgl::style::HeatmapLayer, GetHeatmapOpacity, getHeatmapOpacity, float)
+DEFINE_LAYER_GETTER(HeatmapLayerNAPI, mln::style::HeatmapLayer, GetHeatmapOpacity, getHeatmapOpacity, float)
 
 // ============================================================================
 // Base Layer Methods (common pattern)
@@ -174,12 +174,12 @@ napi_value HeatmapLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
 // ==================== Generic Property Methods ====================
 
 napi_value HeatmapLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
-    return SetPropertyImpl<HeatmapLayerNAPI, mbgl::style::HeatmapLayer>(env, info);
+    return SetPropertyImpl<HeatmapLayerNAPI, mln::style::HeatmapLayer>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
-    return SetPropertiesImpl<HeatmapLayerNAPI, mbgl::style::HeatmapLayer>(env, info);
+    return SetPropertiesImpl<HeatmapLayerNAPI, mln::style::HeatmapLayer>(env, info);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

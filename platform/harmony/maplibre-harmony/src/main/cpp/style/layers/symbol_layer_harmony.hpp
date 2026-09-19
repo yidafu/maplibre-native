@@ -1,18 +1,18 @@
 #ifndef MAPLIBREHARMONY_SYMBOL_LAYER_HARMONY_HPP
 #define MAPLIBREHARMONY_SYMBOL_LAYER_HARMONY_HPP
 
-#include <mbgl/style/layers/symbol_layer.hpp>
+#include <mln/style/layers/symbol_layer.hpp>
 #include <string>
 #include <memory>
 #include <js_native_api.h>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
  * SymbolLayerNAPI - Symbol Layer NAPI binding
  * 
- * Wraps mbgl::style::SymbolLayer for use in HarmonyOS
+ * Wraps mln::style::SymbolLayer for use in HarmonyOS
  */
 class SymbolLayerNAPI {
 public:
@@ -22,20 +22,20 @@ public:
     static napi_value Init(napi_env env, napi_value exports);
 static napi_value New(napi_env env, napi_callback_info info);
     // Create a NAPI instance from an existing native object
-    static napi_value CreateInstance(napi_env env, mbgl::style::SymbolLayer* layerPtr);
+    static napi_value CreateInstance(napi_env env, mln::style::SymbolLayer* layerPtr);
     
     
     SymbolLayerNAPI(const std::string& layerId, const std::string& sourceId);
     // Construct from an existing layer (uses WeakPtr, does not take ownership)
-    SymbolLayerNAPI(mbgl::style::SymbolLayer* layerPtr);
+    SymbolLayerNAPI(mln::style::SymbolLayer* layerPtr);
     
-    SymbolLayerNAPI(std::unique_ptr<mbgl::style::SymbolLayer> layer);
+    SymbolLayerNAPI(std::unique_ptr<mln::style::SymbolLayer> layer);
     ~SymbolLayerNAPI();
     
     // Get native layer
-    mbgl::style::SymbolLayer* getLayer() { 
+    mln::style::SymbolLayer* getLayer() { 
         if (!layer && weakLayer) {
-            return static_cast<mbgl::style::SymbolLayer*>(weakLayer.get());
+            return static_cast<mln::style::SymbolLayer*>(weakLayer.get());
         }
         return layer.get(); 
     }
@@ -44,7 +44,7 @@ static napi_value New(napi_env env, napi_callback_info info);
     std::string getId() const { return layer ? layer->getID() : ""; }
     
     // Release layer ownership (for Style.addLayer)
-    std::unique_ptr<mbgl::style::Layer> releaseLayer() {
+    std::unique_ptr<mln::style::Layer> releaseLayer() {
         if (!layer) {
             throw std::runtime_error("Layer already added to style");
         }
@@ -53,7 +53,7 @@ static napi_value New(napi_env env, napi_callback_info info);
     }
     
     // Attach to style after adding (creates WeakPtr)
-    void attachToStyle(mbgl::style::SymbolLayer* layerPtr) {
+    void attachToStyle(mln::style::SymbolLayer* layerPtr) {
         if (layerPtr) {
             weakLayer = layerPtr->makeWeakPtr();
         }
@@ -210,16 +210,16 @@ private:
     static napi_value SetProperties(napi_env env, napi_callback_info info);
     
 private:
-    std::unique_ptr<mbgl::style::SymbolLayer> layer;
+    std::unique_ptr<mln::style::SymbolLayer> layer;
     bool ownsLayer;
-    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
+    mapbox::base::WeakPtr<mln::style::Layer> weakLayer;
     
     static napi_ref constructor;
     static napi_env constructorEnv;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBREHARMONY_SYMBOL_LAYER_HARMONY_HPP
 

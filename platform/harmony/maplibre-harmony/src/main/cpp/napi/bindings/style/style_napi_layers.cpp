@@ -3,19 +3,19 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
-#include <mbgl/style/style.hpp>
-#include <mbgl/style/source.hpp>
-#include <mbgl/style/layer.hpp>
-#include <mbgl/style/layers/fill_layer.hpp>
-#include <mbgl/style/layers/line_layer.hpp>
-#include <mbgl/style/layers/circle_layer.hpp>
-#include <mbgl/style/layers/symbol_layer.hpp>
-#include <mbgl/style/layers/raster_layer.hpp>
-#include <mbgl/style/layers/background_layer.hpp>
-#include <mbgl/style/layers/heatmap_layer.hpp>
-#include <mbgl/style/layers/hillshade_layer.hpp>
-#include <mbgl/style/layers/fill_extrusion_layer.hpp>
-#include <mbgl/style/layers/location_indicator_layer.hpp>
+#include <mln/style/style.hpp>
+#include <mln/style/source.hpp>
+#include <mln/style/layer.hpp>
+#include <mln/style/layers/fill_layer.hpp>
+#include <mln/style/layers/line_layer.hpp>
+#include <mln/style/layers/circle_layer.hpp>
+#include <mln/style/layers/symbol_layer.hpp>
+#include <mln/style/layers/raster_layer.hpp>
+#include <mln/style/layers/background_layer.hpp>
+#include <mln/style/layers/heatmap_layer.hpp>
+#include <mln/style/layers/hillshade_layer.hpp>
+#include <mln/style/layers/fill_extrusion_layer.hpp>
+#include <mln/style/layers/location_indicator_layer.hpp>
 #include <vector>
 
 // Source-type-to-string rendering is shared: see
@@ -59,12 +59,12 @@ static std::string ReadLayerType(napi_env env, napi_value layerValue) {
 #include "style/layers/location_indicator_layer_harmony.hpp"
 #include "custom_layer_napi.hpp"
 #include "custom_drawable_layer_napi.hpp"
-#include <mbgl/style/layers/custom_drawable_layer.hpp>
+#include <mln/style/layers/custom_drawable_layer.hpp>
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Note: Constructor, Destructor, and static member are defined in style_napi_base.cpp
@@ -78,7 +78,7 @@ namespace harmony {
 // ⚠️ THREAD SAFETY NOTE — AddLayer & the onStyleLoaded crash
 //
 // This function is called from the main (UI/JS) thread but directly mutates the
-// core mbgl::style::Style object via style->map->getStyle().addLayer().
+// core mln::style::Style object via style->map->getStyle().addLayer().
 // The render thread concurrently reads the same Style internal data (layers,
 // sources collections) during frame rendering — this is a DATA RACE.
 //
@@ -127,8 +127,8 @@ enum class LayerExtract {
 // been committed on the render thread.
 template <typename NapiT, typename StyleLayerT>
 LayerExtract TryExtractLayer(napi_env env, napi_value layerValue,
-                             std::unique_ptr<mbgl::style::Layer> &pendingLayer,
-                             std::function<void(mbgl::style::Layer *)> &pendingAttach,
+                             std::unique_ptr<mln::style::Layer> &pendingLayer,
+                             std::function<void(mln::style::Layer *)> &pendingAttach,
                              std::string &layerId) {
     NapiT *napiLayer = nullptr;
     if (napi_unwrap(env, layerValue, reinterpret_cast<void **>(&napiLayer)) != napi_ok || !napiLayer) {
@@ -146,7 +146,7 @@ LayerExtract TryExtractLayer(napi_env env, napi_value layerValue,
             return LayerExtract::Failed;
         }
         pendingLayer = std::move(released);
-        pendingAttach = [napiLayer](mbgl::style::Layer *styleLayer) {
+        pendingAttach = [napiLayer](mln::style::Layer *styleLayer) {
             if (auto *typed = dynamic_cast<StyleLayerT *>(styleLayer)) {
                 napiLayer->attachToStyle(typed);
             }
@@ -161,8 +161,8 @@ LayerExtract TryExtractLayer(napi_env env, napi_value layerValue,
 
 template <typename NapiT, typename StyleLayerT>
 LayerExtract ExtractThunk(napi_env env, napi_value layerValue,
-                          std::unique_ptr<mbgl::style::Layer> &pendingLayer,
-                          std::function<void(mbgl::style::Layer *)> &pendingAttach,
+                          std::unique_ptr<mln::style::Layer> &pendingLayer,
+                          std::function<void(mln::style::Layer *)> &pendingAttach,
                           std::string &layerId) {
     return TryExtractLayer<NapiT, StyleLayerT>(env, layerValue, pendingLayer, pendingAttach, layerId);
 }
@@ -170,30 +170,30 @@ LayerExtract ExtractThunk(napi_env env, napi_value layerValue,
 struct LayerExtractEntry {
     const char *jsType; // _TYPE_ marker set by the ETS wrapper
     LayerExtract (*extract)(napi_env, napi_value,
-                            std::unique_ptr<mbgl::style::Layer> &,
-                            std::function<void(mbgl::style::Layer *)> &,
+                            std::unique_ptr<mln::style::Layer> &,
+                            std::function<void(mln::style::Layer *)> &,
                             std::string &);
 };
 
 const LayerExtractEntry kLayerExtractors[] = {
-    {"FillLayer", &ExtractThunk<mbgl::harmony::FillLayerNAPI, mbgl::style::FillLayer>},
-    {"LineLayer", &ExtractThunk<mbgl::harmony::LineLayerNAPI, mbgl::style::LineLayer>},
-    {"CircleLayer", &ExtractThunk<mbgl::harmony::CircleLayerNAPI, mbgl::style::CircleLayer>},
-    {"SymbolLayer", &ExtractThunk<mbgl::harmony::SymbolLayerNAPI, mbgl::style::SymbolLayer>},
-    {"RasterLayer", &ExtractThunk<mbgl::harmony::RasterLayerNAPI, mbgl::style::RasterLayer>},
-    {"BackgroundLayer", &ExtractThunk<mbgl::harmony::BackgroundLayerNAPI, mbgl::style::BackgroundLayer>},
-    {"HeatmapLayer", &ExtractThunk<mbgl::harmony::HeatmapLayerNAPI, mbgl::style::HeatmapLayer>},
-    {"HillshadeLayer", &ExtractThunk<mbgl::harmony::HillshadeLayerNAPI, mbgl::style::HillshadeLayer>},
-    {"FillExtrusionLayer", &ExtractThunk<mbgl::harmony::FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer>},
-    {"LocationIndicatorLayer", &ExtractThunk<mbgl::harmony::LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer>},
-    {"ColorReliefLayer", &ExtractThunk<mbgl::harmony::ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer>},
-    {"CustomLayer", &ExtractThunk<mbgl::harmony::CustomLayerNAPI, mbgl::style::CustomLayer>},
-    {"CustomDrawableLayer", &ExtractThunk<mbgl::harmony::CustomDrawableLayerNAPI, mbgl::style::CustomDrawableLayer>},
+    {"FillLayer", &ExtractThunk<mln::harmony::FillLayerNAPI, mln::style::FillLayer>},
+    {"LineLayer", &ExtractThunk<mln::harmony::LineLayerNAPI, mln::style::LineLayer>},
+    {"CircleLayer", &ExtractThunk<mln::harmony::CircleLayerNAPI, mln::style::CircleLayer>},
+    {"SymbolLayer", &ExtractThunk<mln::harmony::SymbolLayerNAPI, mln::style::SymbolLayer>},
+    {"RasterLayer", &ExtractThunk<mln::harmony::RasterLayerNAPI, mln::style::RasterLayer>},
+    {"BackgroundLayer", &ExtractThunk<mln::harmony::BackgroundLayerNAPI, mln::style::BackgroundLayer>},
+    {"HeatmapLayer", &ExtractThunk<mln::harmony::HeatmapLayerNAPI, mln::style::HeatmapLayer>},
+    {"HillshadeLayer", &ExtractThunk<mln::harmony::HillshadeLayerNAPI, mln::style::HillshadeLayer>},
+    {"FillExtrusionLayer", &ExtractThunk<mln::harmony::FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer>},
+    {"LocationIndicatorLayer", &ExtractThunk<mln::harmony::LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer>},
+    {"ColorReliefLayer", &ExtractThunk<mln::harmony::ColorReliefLayerNAPI, mln::style::ColorReliefLayer>},
+    {"CustomLayer", &ExtractThunk<mln::harmony::CustomLayerNAPI, mln::style::CustomLayer>},
+    {"CustomDrawableLayer", &ExtractThunk<mln::harmony::CustomDrawableLayerNAPI, mln::style::CustomDrawableLayer>},
 };
 
 LayerExtract DispatchLayerExtract(napi_env env, napi_value layerValue, const std::string &layerType,
-                                  std::unique_ptr<mbgl::style::Layer> &pendingLayer,
-                                  std::function<void(mbgl::style::Layer *)> &pendingAttach,
+                                  std::unique_ptr<mln::style::Layer> &pendingLayer,
+                                  std::function<void(mln::style::Layer *)> &pendingAttach,
                                   std::string &layerId) {
     for (const auto &entry : kLayerExtractors) {
         if (layerType == entry.jsType) {
@@ -211,11 +211,11 @@ LayerExtract DispatchLayerExtract(napi_env env, napi_value layerValue, const std
 // layer collection every frame; mutating it from the JS thread is a data race,
 // documented SIGSEGV@0x8) and reconnect the JS wrapper to the committed layer.
 bool CommitLayerAdd(napi_env env, StyleNAPI *style, const std::string &layerId,
-                    std::unique_ptr<mbgl::style::Layer> pendingLayer,
-                    std::function<void(mbgl::style::Layer *)> pendingAttach,
+                    std::unique_ptr<mln::style::Layer> pendingLayer,
+                    std::function<void(mln::style::Layer *)> pendingAttach,
                     std::optional<std::string> beforeLayerId, const char *opName) {
     try {
-        style->runOnMap([&](mbgl::Map &m) {
+        style->runOnMap([&](mln::Map &m) {
             m.getStyle().addLayer(std::move(pendingLayer), beforeLayerId);
             if (pendingAttach) {
                 pendingAttach(m.getStyle().getLayer(layerId));
@@ -231,30 +231,30 @@ bool CommitLayerAdd(napi_env env, StyleNAPI *style, const std::string &layerId,
 }
 
 template <typename NapiT, typename StyleLayerT>
-napi_value CreateLayerPeerThunk(napi_env env, mbgl::style::Layer *layer) {
+napi_value CreateLayerPeerThunk(napi_env env, mln::style::Layer *layer) {
     return NapiT::CreateInstance(env, static_cast<StyleLayerT *>(layer));
 }
 
 // Build the NAPI peer for a live style layer, dispatching on the core
 // type-info string (shared by GetLayer and GetLayers).
-napi_value CreateLayerInstanceByType(napi_env env, const std::string &layerType, mbgl::style::Layer *layer) {
+napi_value CreateLayerInstanceByType(napi_env env, const std::string &layerType, mln::style::Layer *layer) {
     struct LayerCreatorEntry {
         const char *typeInfo;
-        napi_value (*create)(napi_env, mbgl::style::Layer *);
+        napi_value (*create)(napi_env, mln::style::Layer *);
     };
     static const LayerCreatorEntry kCreators[] = {
-        {"symbol", &CreateLayerPeerThunk<mbgl::harmony::SymbolLayerNAPI, mbgl::style::SymbolLayer>},
-        {"fill", &CreateLayerPeerThunk<mbgl::harmony::FillLayerNAPI, mbgl::style::FillLayer>},
-        {"line", &CreateLayerPeerThunk<mbgl::harmony::LineLayerNAPI, mbgl::style::LineLayer>},
-        {"circle", &CreateLayerPeerThunk<mbgl::harmony::CircleLayerNAPI, mbgl::style::CircleLayer>},
-        {"raster", &CreateLayerPeerThunk<mbgl::harmony::RasterLayerNAPI, mbgl::style::RasterLayer>},
-        {"heatmap", &CreateLayerPeerThunk<mbgl::harmony::HeatmapLayerNAPI, mbgl::style::HeatmapLayer>},
-        {"hillshade", &CreateLayerPeerThunk<mbgl::harmony::HillshadeLayerNAPI, mbgl::style::HillshadeLayer>},
-        {"fill-extrusion", &CreateLayerPeerThunk<mbgl::harmony::FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer>},
-        {"background", &CreateLayerPeerThunk<mbgl::harmony::BackgroundLayerNAPI, mbgl::style::BackgroundLayer>},
-        {"color-relief", &CreateLayerPeerThunk<mbgl::harmony::ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer>},
-        {"location-indicator", &CreateLayerPeerThunk<mbgl::harmony::LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer>},
-        {"custom-drawable", &CreateLayerPeerThunk<mbgl::harmony::CustomDrawableLayerNAPI, mbgl::style::CustomDrawableLayer>},
+        {"symbol", &CreateLayerPeerThunk<mln::harmony::SymbolLayerNAPI, mln::style::SymbolLayer>},
+        {"fill", &CreateLayerPeerThunk<mln::harmony::FillLayerNAPI, mln::style::FillLayer>},
+        {"line", &CreateLayerPeerThunk<mln::harmony::LineLayerNAPI, mln::style::LineLayer>},
+        {"circle", &CreateLayerPeerThunk<mln::harmony::CircleLayerNAPI, mln::style::CircleLayer>},
+        {"raster", &CreateLayerPeerThunk<mln::harmony::RasterLayerNAPI, mln::style::RasterLayer>},
+        {"heatmap", &CreateLayerPeerThunk<mln::harmony::HeatmapLayerNAPI, mln::style::HeatmapLayer>},
+        {"hillshade", &CreateLayerPeerThunk<mln::harmony::HillshadeLayerNAPI, mln::style::HillshadeLayer>},
+        {"fill-extrusion", &CreateLayerPeerThunk<mln::harmony::FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer>},
+        {"background", &CreateLayerPeerThunk<mln::harmony::BackgroundLayerNAPI, mln::style::BackgroundLayer>},
+        {"color-relief", &CreateLayerPeerThunk<mln::harmony::ColorReliefLayerNAPI, mln::style::ColorReliefLayer>},
+        {"location-indicator", &CreateLayerPeerThunk<mln::harmony::LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer>},
+        {"custom-drawable", &CreateLayerPeerThunk<mln::harmony::CustomDrawableLayerNAPI, mln::style::CustomDrawableLayer>},
     };
     for (const auto &entry : kCreators) {
         if (layerType == entry.typeInfo) {
@@ -327,8 +327,8 @@ bool ExtractAndCommitLayer(napi_env env, StyleNAPI *style, napi_value layerValue
     }
 
     std::string layerId;
-    std::unique_ptr<mbgl::style::Layer> pendingLayer;
-    std::function<void(mbgl::style::Layer *)> pendingAttach;
+    std::unique_ptr<mln::style::Layer> pendingLayer;
+    std::function<void(mln::style::Layer *)> pendingAttach;
     LayerExtract result = DispatchLayerExtract(env, layerValue, layerType, pendingLayer, pendingAttach, layerId);
     if (result != LayerExtract::Ok) {
         if (result == LayerExtract::NotThisType) {
@@ -417,7 +417,7 @@ napi_value StyleNAPI::RemoveLayer(napi_env env, napi_callback_info info) {
     std::string layerId = GetStringFromValue(env, argsVec[0]);
 
     try {
-        style->runOnMap([&](mbgl::Map &m) {
+        style->runOnMap([&](mln::Map &m) {
             m.getStyle().removeLayer(layerId);
         });
         style->layers.erase(layerId);
@@ -458,10 +458,10 @@ napi_value StyleNAPI::GetLayer(napi_env env, napi_callback_info info) {
 
     // Resolve the layer on the render thread (collection reads race the
     // renderer otherwise); the NAPI peer is then built on this thread.
-    mbgl::style::Layer *layer = nullptr;
+    mln::style::Layer *layer = nullptr;
     std::string layerType;
     try {
-        style->runOnMap([&](mbgl::Map &m) {
+        style->runOnMap([&](mln::Map &m) {
             layer = m.getStyle().getLayer(layerId);
             if (layer) {
                 layerType = layer->getTypeInfo()->type;
@@ -508,8 +508,8 @@ napi_value StyleNAPI::GetLayers(napi_env env, napi_callback_info info) {
         // Snapshot the layer list on the render thread; peers are built below
         // on this thread while the raw pointers are still guaranteed valid
         // (all style mutations are serialized through the same dispatch).
-        std::vector<mbgl::style::Layer *> layerList;
-        style->runOnMap([&](mbgl::Map &m) {
+        std::vector<mln::style::Layer *> layerList;
+        style->runOnMap([&](mln::Map &m) {
             const auto &layers = m.getStyle().getLayers();
             layerList.reserve(layers.size());
             for (const auto &layer : layers) {
@@ -566,7 +566,7 @@ napi_value StyleNAPI::RemoveLayerAt(napi_env env, napi_callback_info info) {
     try {
         std::string layerId;
         bool removed = false;
-        style->runOnMap([&](mbgl::Map &m) {
+        style->runOnMap([&](mln::Map &m) {
             const auto &layers = m.getStyle().getLayers();
             if (index < layers.size()) {
                 layerId = layers[index]->getID();
@@ -612,7 +612,7 @@ napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
     bool foundAboveLayer = false;
     std::optional<std::string> beforeLayerId;
     try {
-        style->runOnMap([&](mbgl::Map &m) {
+        style->runOnMap([&](mln::Map &m) {
             const auto &layers = m.getStyle().getLayers();
             for (size_t i = 0; i < layers.size(); ++i) {
                 if (foundAboveLayer) {
@@ -666,7 +666,7 @@ napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
     // layer currently at that position (out of range -> insert at the top).
     std::optional<std::string> beforeLayerId;
     try {
-        style->runOnMap([&](mbgl::Map &m) {
+        style->runOnMap([&](mln::Map &m) {
             const auto &layers = m.getStyle().getLayers();
             if (index < layers.size()) {
                 beforeLayerId = layers[index]->getID();
@@ -686,4 +686,4 @@ napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

@@ -14,9 +14,9 @@
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
 
-#include <mbgl/map/mode.hpp>
+#include <mln/map/mode.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -28,7 +28,7 @@ namespace harmony {
  *   mapView.setDebug(MapDebugOptions.TileBoundaries | MapDebugOptions.CollisionBoxes)
  */
 napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {
-    using namespace mbgl::harmony::napi;
+    using namespace mln::harmony::napi;
     NapiArgs args(env, info);
     
     // Unwrap instance
@@ -51,13 +51,13 @@ napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {
     }
     
     // Convert int to MapDebugOptions
-    mbgl::MapDebugOptions options = static_cast<mbgl::MapDebugOptions>(debugOptions);
+    mln::MapDebugOptions options = static_cast<mln::MapDebugOptions>(debugOptions);
     
     Logger::info("NativeMapView", "setDebug: Setting debug options to %d", debugOptions);
 
     // Map must only be touched on the render thread — a direct call here races
     // the in-flight frame (the "SIGSEGV@0x8" crash pattern).
-    instance->invokeOnMapThread([options](mbgl::Map* m) {
+    instance->invokeOnMapThread([options](mln::Map* m) {
         m->setDebug(options);
     });
 
@@ -70,7 +70,7 @@ napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {
  * @return Number representing the bitmask of enabled debug options
  */
 napi_value NativeMapView::getDebug(napi_env env, napi_callback_info info) {
-    using namespace mbgl::harmony::napi;
+    using namespace mln::harmony::napi;
     NapiArgs args(env, info);
     
     // Unwrap instance
@@ -90,9 +90,9 @@ napi_value NativeMapView::getDebug(napi_env env, napi_callback_info info) {
     }
     
     // Get debug options from the map (render thread only)
-    mbgl::MapDebugOptions options = instance->invokeOnMapThreadSync(
-        [](mbgl::Map* m) { return m->getDebug(); },
-        mbgl::MapDebugOptions::NoDebug);
+    mln::MapDebugOptions options = instance->invokeOnMapThreadSync(
+        [](mln::Map* m) { return m->getDebug(); },
+        mln::MapDebugOptions::NoDebug);
     
     // Convert to int32
     int32_t debugOptions = static_cast<int32_t>(options);
@@ -114,7 +114,7 @@ napi_value NativeMapView::getDebug(napi_env env, napi_callback_info info) {
  * @return String with backend and device info
  */
 napi_value NativeMapView::getRendererInfo(napi_env env, napi_callback_info info) {
-    using namespace mbgl::harmony::napi;
+    using namespace mln::harmony::napi;
     NapiArgs args(env, info);
 
     std::string rendererInfo = HarmonyRendererBackend::backendTypeName();
@@ -144,7 +144,7 @@ napi_value NativeMapView::getRendererInfo(napi_env env, napi_callback_info info)
  * @param active Boolean indicating whether to enable or disable debug mode
  */
 napi_value NativeMapView::setDebugActive(napi_env env, napi_callback_info info) {
-    using namespace mbgl::harmony::napi;
+    using namespace mln::harmony::napi;
     NapiArgs args(env, info);
     
     // Unwrap instance
@@ -167,17 +167,17 @@ napi_value NativeMapView::setDebugActive(napi_env env, napi_callback_info info) 
     }
     
     // Set default debug options based on active flag
-    mbgl::MapDebugOptions options = active 
-        ? (mbgl::MapDebugOptions::TileBorders | 
-           mbgl::MapDebugOptions::ParseStatus | 
-           mbgl::MapDebugOptions::Collision)
-        : mbgl::MapDebugOptions::NoDebug;
+    mln::MapDebugOptions options = active 
+        ? (mln::MapDebugOptions::TileBorders | 
+           mln::MapDebugOptions::ParseStatus | 
+           mln::MapDebugOptions::Collision)
+        : mln::MapDebugOptions::NoDebug;
     
     Logger::info("NativeMapView", "setDebugActive: %s debug mode", active ? "Enabling" : "Disabling");
 
     // Map must only be touched on the render thread — a direct call here races
     // the in-flight frame (the "SIGSEGV@0x8" crash pattern).
-    instance->invokeOnMapThread([options](mbgl::Map* m) {
+    instance->invokeOnMapThread([options](mln::Map* m) {
         m->setDebug(options);
     });
 
@@ -190,7 +190,7 @@ napi_value NativeMapView::setDebugActive(napi_env env, napi_callback_info info) 
  * @return Boolean indicating whether any debug options are enabled
  */
 napi_value NativeMapView::isDebugActive(napi_env env, napi_callback_info info) {
-    using namespace mbgl::harmony::napi;
+    using namespace mln::harmony::napi;
     NapiArgs args(env, info);
     
     // Unwrap instance
@@ -210,12 +210,12 @@ napi_value NativeMapView::isDebugActive(napi_env env, napi_callback_info info) {
     }
     
     // Get debug options from the map (render thread only)
-    mbgl::MapDebugOptions options = instance->invokeOnMapThreadSync(
-        [](mbgl::Map* m) { return m->getDebug(); },
-        mbgl::MapDebugOptions::NoDebug);
+    mln::MapDebugOptions options = instance->invokeOnMapThreadSync(
+        [](mln::Map* m) { return m->getDebug(); },
+        mln::MapDebugOptions::NoDebug);
     
     // Check if any debug options are enabled
-    bool active = options != mbgl::MapDebugOptions::NoDebug;
+    bool active = options != mln::MapDebugOptions::NoDebug;
     
     Logger::debug("NativeMapView", "isDebugActive: %s", active ? "true" : "false");
     
@@ -225,5 +225,5 @@ napi_value NativeMapView::isDebugActive(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

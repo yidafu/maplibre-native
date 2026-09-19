@@ -6,22 +6,22 @@
 #include "napi/core/napi_utils.h"
 #include "napi/bindings/image/image_napi.hpp"
 #include "utils/logger.h"
-#include <mbgl/style/style.hpp>
-#include <mbgl/style/image.hpp>
-#include <mbgl/style/light.hpp>
-#include <mbgl/style/transition_options.hpp>
-#include <mbgl/util/image.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/style/style.hpp>
+#include <mln/style/image.hpp>
+#include <mln/style/light.hpp>
+#include <mln/style/transition_options.hpp>
+#include <mln/util/image.hpp>
+#include <mln/util/color.hpp>
 #include <vector>
 #include "style/light_harmony.hpp"
 #include "style/transition_options_harmony.hpp"
 #include <functional>
 #include <array>
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // ==================== Shared image-argument helpers ====================
@@ -113,7 +113,7 @@ napi_value StyleNAPI::AddImage(napi_env env, napi_callback_info info) {
             auto styleImage = imageNapi->toStyleImage();
             std::string imageName = styleImage->getID();
 
-            style->runOnMap([&](mbgl::Map& m) {
+            style->runOnMap([&](mln::Map& m) {
                 m.getStyle().addImage(std::move(styleImage));
             });
             style->images[imageName] = true;
@@ -176,17 +176,17 @@ napi_value StyleNAPI::AddImage(napi_env env, napi_callback_info info) {
     }
 
     try {
-        mbgl::PremultipliedImage premultipliedImage({width, height});
+        mln::PremultipliedImage premultipliedImage({width, height});
         std::memcpy(premultipliedImage.data.get(), data, byteLength);
 
-        auto image = std::make_unique<mbgl::style::Image>(
+        auto image = std::make_unique<mln::style::Image>(
             imageName,
             std::move(premultipliedImage),
             static_cast<float>(pixelRatio),
             sdf
         );
 
-        style->runOnMap([&](mbgl::Map& m) {
+        style->runOnMap([&](mln::Map& m) {
             m.getStyle().addImage(std::move(image));
         });
         style->images[imageName] = true;
@@ -223,7 +223,7 @@ napi_value StyleNAPI::RemoveImage(napi_env env, napi_callback_info info) {
     }
 
     try {
-        style->runOnMap([&](mbgl::Map& m) {
+        style->runOnMap([&](mln::Map& m) {
             m.getStyle().removeImage(imageName);
         });
         style->images.erase(imageName);
@@ -258,16 +258,16 @@ napi_value StyleNAPI::GetImage(napi_env env, napi_callback_info info) {
     try {
         // Fetch a value copy on the render thread; the copy keeps the image
         // data alive no matter what the style does afterwards.
-        std::optional<mbgl::style::Image> imageOpt;
-        style->runOnMap([&](mbgl::Map& m) {
+        std::optional<mln::style::Image> imageOpt;
+        style->runOnMap([&](mln::Map& m) {
             imageOpt = m.getStyle().getImage(imageName);
         });
         if (!imageOpt) {
             return napiArgs.Null();
         }
 
-        const mbgl::style::Image& image = *imageOpt;
-        const mbgl::PremultipliedImage& premultipliedImage = image.getImage();
+        const mln::style::Image& image = *imageOpt;
+        const mln::PremultipliedImage& premultipliedImage = image.getImage();
         uint32_t width = premultipliedImage.size.width;
         uint32_t height = premultipliedImage.size.height;
         size_t dataSize = width * height * 4;
@@ -415,9 +415,9 @@ struct AsyncImageData : AsyncImageWorkBase {
     float pixelRatio;
     bool sdf;
     std::shared_ptr<std::vector<uint8_t>> imageData;
-    std::optional<std::vector<mbgl::style::ImageStretches::value_type>> stretchX;
-    std::optional<std::vector<mbgl::style::ImageStretches::value_type>> stretchY;
-    std::optional<mbgl::style::ImageContent> content;
+    std::optional<std::vector<mln::style::ImageStretches::value_type>> stretchX;
+    std::optional<std::vector<mln::style::ImageStretches::value_type>> stretchY;
+    std::optional<mln::style::ImageContent> content;
 };
 
 // Async execute callback - runs in worker thread
@@ -437,24 +437,24 @@ void AddImageAsyncComplete(napi_env env, napi_status status, void* data) {
         "AddImageAsync", "Failed to add image asynchronously",
         [](StyleNAPI* style, AsyncImageData& asyncData) {
             // Create PremultipliedImage
-            mbgl::PremultipliedImage premultipliedImage({asyncData.width, asyncData.height});
+            mln::PremultipliedImage premultipliedImage({asyncData.width, asyncData.height});
             std::memcpy(premultipliedImage.data.get(), asyncData.imageData->data(), asyncData.imageData->size());
 
             // Convert stretchX and stretchY
-            mbgl::style::ImageStretches imageStretchesX;
+            mln::style::ImageStretches imageStretchesX;
             if (asyncData.stretchX) {
                 imageStretchesX = asyncData.stretchX.value();
             }
 
-            mbgl::style::ImageStretches imageStretchesY;
+            mln::style::ImageStretches imageStretchesY;
             if (asyncData.stretchY) {
                 imageStretchesY = asyncData.stretchY.value();
             }
 
             // Create style::Image
-            std::unique_ptr<mbgl::style::Image> image;
+            std::unique_ptr<mln::style::Image> image;
             if (asyncData.content) {
-                image = std::make_unique<mbgl::style::Image>(
+                image = std::make_unique<mln::style::Image>(
                     asyncData.imageName,
                     std::move(premultipliedImage),
                     asyncData.pixelRatio,
@@ -464,7 +464,7 @@ void AddImageAsyncComplete(napi_env env, napi_status status, void* data) {
                     asyncData.content.value()
                 );
             } else {
-                image = std::make_unique<mbgl::style::Image>(
+                image = std::make_unique<mln::style::Image>(
                     asyncData.imageName,
                     std::move(premultipliedImage),
                     asyncData.pixelRatio,
@@ -475,7 +475,7 @@ void AddImageAsyncComplete(napi_env env, napi_status status, void* data) {
             }
 
             // Add to style (serialized with the render thread)
-            style->runOnMap([&](mbgl::Map& m) {
+            style->runOnMap([&](mln::Map& m) {
                 m.getStyle().addImage(std::move(image));
             });
             style->images[asyncData.imageName] = true;
@@ -625,7 +625,7 @@ napi_value StyleNAPI::AddImageAsync(napi_env env, napi_callback_info info) {
 // Struct for batch async images
 struct AsyncImagesData : AsyncImageWorkBase {
     // Multiple images
-    std::vector<std::unique_ptr<mbgl::style::Image>> images;
+    std::vector<std::unique_ptr<mln::style::Image>> images;
     std::vector<std::string> imageNames;
 };
 
@@ -641,7 +641,7 @@ void AddImagesAsyncComplete(napi_env env, napi_status status, void* data) {
         "AddImagesAsync", "Failed to add images asynchronously",
         [](StyleNAPI* style, AsyncImagesData& asyncData) {
             // Add all images to style in a single render-thread dispatch
-            style->runOnMap([&](mbgl::Map& m) {
+            style->runOnMap([&](mln::Map& m) {
                 for (size_t i = 0; i < asyncData.images.size(); ++i) {
                     m.getStyle().addImage(std::move(asyncData.images[i]));
                 }
@@ -766,8 +766,8 @@ napi_value StyleNAPI::GetLight(napi_env env, napi_callback_info info) {
     }
     
     try {
-        mbgl::style::Light* light = nullptr;
-        style->runOnMap([&](mbgl::Map& m) {
+        mln::style::Light* light = nullptr;
+        style->runOnMap([&](mln::Map& m) {
             light = m.getStyle().getLight();
         });
         if (!light) {
@@ -775,11 +775,11 @@ napi_value StyleNAPI::GetLight(napi_env env, napi_callback_info info) {
             return napiArgs.Null();
         }
 
-        mbgl::Map* map = style->acquireMap();
+        mln::Map* map = style->acquireMap();
         if (!map) {
             return napiArgs.Null();
         }
-        return mbgl::harmony::LightHarmony::CreateLightPeer(env, *map);
+        return mln::harmony::LightHarmony::CreateLightPeer(env, *map);
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "GetLight failed: %s", e.what());
         return napiArgs.Null();
@@ -800,9 +800,9 @@ napi_value StyleNAPI::GetTransition(napi_env env, napi_callback_info info) {
         return napiArgs.Null();
     }
 
-    mbgl::style::TransitionOptions options;
+    mln::style::TransitionOptions options;
     try {
-        style->runOnMap([&](mbgl::Map& m) {
+        style->runOnMap([&](mln::Map& m) {
             options = m.getStyle().getTransitionOptions();
         });
     } catch (const std::exception& e) {
@@ -835,11 +835,11 @@ napi_value StyleNAPI::SetTransition(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    mbgl::style::TransitionOptions options;
+    mln::style::TransitionOptions options;
     TransitionOptionsHarmony::ParseTransitionOptions(env, transitionOptions, options);
 
     try {
-        style->runOnMap([&](mbgl::Map& m) {
+        style->runOnMap([&](mln::Map& m) {
             m.getStyle().setTransitionOptions(options);
         });
         Logger::info("StyleNAPI", "SetTransition applied");
@@ -853,5 +853,5 @@ napi_value StyleNAPI::SetTransition(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

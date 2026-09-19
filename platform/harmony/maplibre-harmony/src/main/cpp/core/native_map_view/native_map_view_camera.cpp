@@ -8,21 +8,21 @@
 #include "camera/camera_position_harmony.hpp"
 #include "geojson/geojson_converter.hpp"
 #include "rendering/harmony_renderer.hpp"
-#include <mbgl/style/style.hpp>
-#include <mbgl/style/conversion/json.hpp>
-#include <mbgl/style/conversion/geojson.hpp>
-#include <mbgl/map/camera.hpp>
-#include <mbgl/util/geo.hpp>
-#include <mbgl/util/geojson.hpp>
-#include <mbgl/util/geometry.hpp>
+#include <mln/style/style.hpp>
+#include <mln/style/conversion/json.hpp>
+#include <mln/style/conversion/geojson.hpp>
+#include <mln/map/camera.hpp>
+#include <mln/util/geo.hpp>
+#include <mln/util/geojson.hpp>
+#include <mln/util/geometry.hpp>
 #include <vector>
 #include <cstring>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
-using mbgl::harmony::geojson::GeoJsonConverter;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
+using mln::harmony::geojson::GeoJsonConverter;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Camera move reason constants (matching CameraChangeTracker behavior)
@@ -42,7 +42,7 @@ namespace {
 // is not a 4-element array or its elements cannot be read; `out` is only
 // written on success.
 bool ParsePaddingArray(napi_env env, napi_value value, double pixelRatio,
-                       mbgl::EdgeInsets& out, double* paddingRaw = nullptr) {
+                       mln::EdgeInsets& out, double* paddingRaw = nullptr) {
     bool isArray = false;
     napi_is_array(env, value, &isArray);
     if (!isArray) {
@@ -70,7 +70,7 @@ bool ParsePaddingArray(napi_env env, napi_value value, double pixelRatio,
     napi_get_value_double(env, bottomVal, &bottom);
 
     // Apply pixelRatio scaling
-    out = mbgl::EdgeInsets{
+    out = mln::EdgeInsets{
         top * pixelRatio,
         left * pixelRatio,
         bottom * pixelRatio,
@@ -91,7 +91,7 @@ bool ParsePaddingArray(napi_env env, napi_value value, double pixelRatio,
 // `options`. Missing or malformed properties leave the corresponding field
 // untouched.
 void ParseCameraOptionsObject(napi_env env, napi_value cameraObj,
-                              mbgl::CameraOptions& options) {
+                              mln::CameraOptions& options) {
     // Retrieve the center (LatLng)
     napi_value centerValue;
     if (napi_get_named_property(env, cameraObj, "center", &centerValue) == napi_ok) {
@@ -152,7 +152,7 @@ napi_value NativeMapView::GetBoundsScalar(napi_env env, napi_callback_info info,
     }
 
     try {
-        auto bounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getBounds(); }, mbgl::BoundOptions{});
+        auto bounds = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->getBounds(); }, mln::BoundOptions{});
         if (auto value = get(bounds)) {
             napi_value result;
             napi_create_double(env, *value, &result);
@@ -198,7 +198,7 @@ napi_value NativeMapView::SetBoundsScalar(napi_env env, napi_callback_info info,
     }
 
     try {
-        instance->invokeOnMapThread([value, apply](mbgl::Map* m){ m->setBounds(apply(value)); });
+        instance->invokeOnMapThread([value, apply](mln::Map* m){ m->setBounds(apply(value)); });
         Logger::info("NativeMapView", okLogFormat, value);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "%s: Failed - %s", label, e.what());
@@ -263,7 +263,7 @@ napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info inf
     }
     
     // Execute the map operation on the render thread
-    instance->invokeOnMapThread([&](mbgl::Map* m) {
+    instance->invokeOnMapThread([&](mln::Map* m) {
         Logger::info("NativeMapView", "🔵 map->cancelTransitions() on render thread");
         m->cancelTransitions();
         m->triggerRepaint();
@@ -300,7 +300,7 @@ napi_value NativeMapView::setGestureInProgress(napi_env env, napi_callback_info 
         return args.Undefined();
     }
     
-    instance->invokeOnMapThread([inProgress](mbgl::Map* m) {
+    instance->invokeOnMapThread([inProgress](mln::Map* m) {
         m->setGestureInProgress(inProgress);
     });
     
@@ -346,11 +346,11 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
     }
 
     // Perform the actual move on the render thread
-    instance->invokeOnMapThread([dx, dy, duration, instance](mbgl::Map* m) {
+    instance->invokeOnMapThread([dx, dy, duration, instance](mln::Map* m) {
         if (duration > 0) {
-            m->moveBy(mbgl::ScreenCoordinate{dx, dy}, mbgl::AnimationOptions(std::chrono::milliseconds(duration)));
+            m->moveBy(mln::ScreenCoordinate{dx, dy}, mln::AnimationOptions(std::chrono::milliseconds(duration)));
         } else {
-            m->moveBy(mbgl::ScreenCoordinate{dx, dy});
+            m->moveBy(mln::ScreenCoordinate{dx, dy});
         }
         m->triggerRepaint();
     });
@@ -403,7 +403,7 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     // padding format: [left, top, right, bottom]
     if (args.Count() >= 6) {
         napi_value paddingValue = args.GetValue(5);
-        mbgl::EdgeInsets padding;
+        mln::EdgeInsets padding;
         double rawPadding[4];
         if (ParsePaddingArray(env, paddingValue, instance->pixelRatio, padding, rawPadding)) {
             cameraOptions.padding = padding;
@@ -437,7 +437,7 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     }
 
     // Execute on the render thread
-    instance->invokeOnMapThread([cameraOptions](mbgl::Map* m) {
+    instance->invokeOnMapThread([cameraOptions](mln::Map* m) {
         m->jumpTo(cameraOptions);
         m->triggerRepaint();
     });
@@ -479,7 +479,7 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
     // padding format: [left, top, right, bottom] or {left, top, right, bottom}
     napi_value paddingValue;
     if (napi_get_named_property(env, cameraObj, "padding", &paddingValue) == napi_ok) {
-        mbgl::EdgeInsets padding;
+        mln::EdgeInsets padding;
         double rawPadding[4];
         if (ParsePaddingArray(env, paddingValue, instance->pixelRatio, padding, rawPadding)) {
             cameraOptions.padding = padding;
@@ -497,7 +497,7 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
             double x, y;
             if (napi_get_value_double(env, anchorX, &x) == napi_ok &&
                 napi_get_value_double(env, anchorY, &y) == napi_ok) {
-                cameraOptions.anchor = mbgl::ScreenCoordinate{x, y};
+                cameraOptions.anchor = mln::ScreenCoordinate{x, y};
             }
         }
     }
@@ -511,8 +511,8 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
             [](napi_env env) -> napi_value { napi_value v; napi_create_int32(env, CameraMoveReason::REASON_DEVELOPER_ANIMATION, &v); return v; });
     }
     // Execute on the render thread
-    instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m) {
-        m->easeTo(cameraOptions, mbgl::AnimationOptions(std::chrono::milliseconds(duration)));
+    instance->invokeOnMapThread([cameraOptions, duration](mln::Map* m) {
+        m->easeTo(cameraOptions, mln::AnimationOptions(std::chrono::milliseconds(duration)));
         m->triggerRepaint();
     });
     
@@ -545,9 +545,9 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
     
     // Run the flyTo camera animation
     // Execute on the render thread
-    instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m) {
-        mbgl::AnimationOptions anim;
-        if (duration > 0) anim.duration.emplace(mbgl::Milliseconds(duration));
+    instance->invokeOnMapThread([cameraOptions, duration](mln::Map* m) {
+        mln::AnimationOptions anim;
+        if (duration > 0) anim.duration.emplace(mln::Milliseconds(duration));
         m->flyTo(cameraOptions, anim);
         m->triggerRepaint();
     });
@@ -566,7 +566,7 @@ napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
     }
     
     {
-        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->getCameraOptions(); }, mln::CameraOptions{});
         if (cameraOptions.center) {
             // Create the return object { latitude, longitude }
             return LatLngHarmony::CreateLatLngObject(env, *cameraOptions.center);
@@ -600,14 +600,14 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
     }
     
     try {
-        mbgl::CameraOptions cameraOptions;
-        cameraOptions.center = mbgl::LatLng(latitude, longitude);
+        mln::CameraOptions cameraOptions;
+        cameraOptions.center = mln::LatLng(latitude, longitude);
         
         // Handle padding argument (args[2])
         // padding format: [left, top, right, bottom]
         if (args.Count() >= 3) {
             napi_value paddingValue = args.GetValue(2);
-            mbgl::EdgeInsets padding;
+            mln::EdgeInsets padding;
             double rawPadding[4];
             if (ParsePaddingArray(env, paddingValue, instance->pixelRatio, padding, rawPadding)) {
                 cameraOptions.padding = padding;
@@ -616,8 +616,8 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
             }
         }
         
-        instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m){
-            m->easeTo(cameraOptions, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))});
+        instance->invokeOnMapThread([cameraOptions, duration](mln::Map* m){
+            m->easeTo(cameraOptions, mln::AnimationOptions{mln::Milliseconds(static_cast<int64_t>(duration))});
             m->triggerRepaint();
         });
         Logger::info("NativeMapView", "setLatLng: lat=%.6f, lng=%.6f, duration=%.0fms", latitude, longitude, duration);
@@ -648,7 +648,7 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
         return args.Undefined();
     }
     
-    mbgl::LatLngBounds bounds;
+    mln::LatLngBounds bounds;
     if (!LatLngBoundsHarmony::ParseLatLngBounds(env, boundsObj, bounds)) {
         Logger::error("NativeMapView", "getCameraForLatLngBounds: Failed to parse bounds");
         return args.Undefined();
@@ -659,14 +659,14 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
     double left = args.GetDoubleOr(2, 0.0);
     double bottom = args.GetDoubleOr(3, 0.0);
     double right = args.GetDoubleOr(4, 0.0);
-    mbgl::EdgeInsets padding{top, left, bottom, right};
+    mln::EdgeInsets padding{top, left, bottom, right};
     
     // Parse optional bearing and tilt
     double bearing = args.GetDoubleOr(5, 0.0);
     double tilt = args.GetDoubleOr(6, 0.0);
     
     try {
-        mbgl::CameraOptions cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->cameraForLatLngBounds(bounds, padding, bearing, tilt); }, mbgl::CameraOptions{});
+        mln::CameraOptions cameraOptions = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->cameraForLatLngBounds(bounds, padding, bearing, tilt); }, mln::CameraOptions{});
         
         napi_value result = CameraPositionHarmony::CreateCameraPositionObject(env, cameraOptions, instance->pixelRatio);
         return result;
@@ -690,7 +690,7 @@ napi_value NativeMapView::getCameraForGeometry(napi_env env, napi_callback_info 
 
     // Parse the geometry, given as a GeoJSON geometry string or object
     napi_value geometryValue = args.GetValue(0);
-    mbgl::Geometry<double> geometry;
+    mln::Geometry<double> geometry;
     try {
         napi_valuetype valueType = napi_undefined;
         napi_typeof(env, geometryValue, &valueType);
@@ -698,14 +698,14 @@ napi_value NativeMapView::getCameraForGeometry(napi_env env, napi_callback_info 
             std::string geoJsonString = args.GetString(0, "geometry");
             if (args.HasError()) return args.Undefined();
 
-            mbgl::style::conversion::Error error;
-            auto parsed = mbgl::style::conversion::convertJSON<mbgl::GeoJSON>(geoJsonString, error);
+            mln::style::conversion::Error error;
+            auto parsed = mln::style::conversion::convertJSON<mln::GeoJSON>(geoJsonString, error);
             if (!parsed) {
                 Logger::error("NativeMapView", "getCameraForGeometry: %s", error.message.c_str());
                 return args.Undefined();
             }
             // Extract the geometry from the GeoJSON variant
-            geometry = parsed->get<mbgl::Geometry<double>>();
+            geometry = parsed->get<mln::Geometry<double>>();
         } else if (valueType == napi_object) {
             geometry = GeoJsonConverter::JsObjectToGeometry(env, geometryValue);
         } else {
@@ -722,18 +722,18 @@ napi_value NativeMapView::getCameraForGeometry(napi_env env, napi_callback_info 
     double left = args.GetDoubleOr(2, 0.0);
     double bottom = args.GetDoubleOr(3, 0.0);
     double right = args.GetDoubleOr(4, 0.0);
-    mbgl::EdgeInsets padding{top, left, bottom, right};
+    mln::EdgeInsets padding{top, left, bottom, right};
 
     // Parse optional bearing and tilt
     double bearing = args.GetDoubleOr(5, 0.0);
     double tilt = args.GetDoubleOr(6, 0.0);
 
     try {
-        mbgl::CameraOptions cameraOptions = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map* m) {
+        mln::CameraOptions cameraOptions = instance->invokeOnMapThreadSync(
+            [&](mln::Map* m) {
                 return m->cameraForGeometry(geometry, padding, bearing, tilt);
             },
-            mbgl::CameraOptions{});
+            mln::CameraOptions{});
 
         napi_value result = CameraPositionHarmony::CreateCameraPositionObject(env, cameraOptions, instance->pixelRatio);
         return result;
@@ -761,9 +761,9 @@ napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
     }
     
     try {
-        instance->invokeOnMapThread([](mbgl::Map* m){
-            m->jumpTo(mbgl::CameraOptions()
-                .withCenter(mbgl::LatLng{0.0, 0.0})
+        instance->invokeOnMapThread([](mln::Map* m){
+            m->jumpTo(mln::CameraOptions()
+                .withCenter(mln::LatLng{0.0, 0.0})
                 .withZoom(0.0)
                 .withBearing(0.0)
                 .withPitch(0.0));
@@ -794,7 +794,7 @@ napi_value NativeMapView::getPitch(napi_env env, napi_callback_info info) {
     }
     
     try {
-        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->getCameraOptions(); }, mln::CameraOptions{});
         if (cameraOptions.pitch) {
             napi_value result;
             napi_create_double(env, *cameraOptions.pitch, &result);
@@ -831,15 +831,15 @@ napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
     }
     
     try {
-        mbgl::CameraOptions options;
+        mln::CameraOptions options;
         options.pitch = pitch;
         
         if (duration > 0) {
-            mbgl::AnimationOptions animationOptions;
+            mln::AnimationOptions animationOptions;
             animationOptions.duration = std::chrono::milliseconds(duration);
-            instance->invokeOnMapThread([options, animationOptions](mbgl::Map* m){ m->easeTo(options, animationOptions); m->triggerRepaint(); });
+            instance->invokeOnMapThread([options, animationOptions](mln::Map* m){ m->easeTo(options, animationOptions); m->triggerRepaint(); });
         } else {
-            instance->invokeOnMapThread([options](mbgl::Map* m){ m->jumpTo(options); m->triggerRepaint(); });
+            instance->invokeOnMapThread([options](mln::Map* m){ m->jumpTo(options); m->triggerRepaint(); });
         }
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setPitch: Failed - %s", e.what());
@@ -874,18 +874,18 @@ napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
     bool hasAnchor = args.Count() >= 3;
     
     try {
-        mbgl::CameraOptions cameraOptions;
+        mln::CameraOptions cameraOptions;
         cameraOptions.zoom = zoom;
         
         if (hasAnchor) {
-            cameraOptions.anchor = mbgl::ScreenCoordinate{cx, cy};
+            cameraOptions.anchor = mln::ScreenCoordinate{cx, cy};
             Logger::info("NativeMapView", "setZoom: zoom=%.2f, anchor=(%.2f, %.2f), duration=%.0fms", 
                         zoom, cx, cy, duration);
         } else {
             Logger::info("NativeMapView", "setZoom: zoom=%.2f, duration=%.0fms", zoom, duration);
         }
         
-        instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m){ m->easeTo(cameraOptions, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))}); m->triggerRepaint(); });
+        instance->invokeOnMapThread([cameraOptions, duration](mln::Map* m){ m->easeTo(cameraOptions, mln::AnimationOptions{mln::Milliseconds(static_cast<int64_t>(duration))}); m->triggerRepaint(); });
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setZoom: Failed - %s", e.what());
     }
@@ -910,7 +910,7 @@ napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
     }
     
     {
-        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->getCameraOptions(); }, mln::CameraOptions{});
         if (cameraOptions.zoom) {
             napi_value result;
             napi_create_double(env, *cameraOptions.zoom, &result);
@@ -932,7 +932,7 @@ napi_value NativeMapView::resetZoom(napi_env env, napi_callback_info info) {
     }
     
     try {
-        instance->invokeOnMapThread([](mbgl::Map* m){ m->jumpTo(mbgl::CameraOptions().withZoom(0.0)); m->triggerRepaint(); });
+        instance->invokeOnMapThread([](mln::Map* m){ m->jumpTo(mln::CameraOptions().withZoom(0.0)); m->triggerRepaint(); });
         Logger::info("NativeMapView", "resetZoom: Reset zoom to 0");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "resetZoom: Failed - %s", e.what());
@@ -945,7 +945,7 @@ napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
     return SetBoundsScalar(env, info, "setMinZoom", "zoom",
                            "setMinZoom: Set min zoom to %.2f", true,
                            [](double value) {
-                               mbgl::BoundOptions options;
+                               mln::BoundOptions options;
                                options.withMinZoom(value);
                                return options;
                            });
@@ -953,14 +953,14 @@ napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
 
 napi_value NativeMapView::getMinZoom(napi_env env, napi_callback_info info) {
     return GetBoundsScalar(env, info, "getMinZoom",
-                           [](const mbgl::BoundOptions& bounds) { return bounds.minZoom; });
+                           [](const mln::BoundOptions& bounds) { return bounds.minZoom; });
 }
 
 napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
     return SetBoundsScalar(env, info, "setMaxZoom", "zoom",
                            "setMaxZoom: Set max zoom to %.2f", true,
                            [](double value) {
-                               mbgl::BoundOptions options;
+                               mln::BoundOptions options;
                                options.withMaxZoom(value);
                                return options;
                            });
@@ -968,14 +968,14 @@ napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
 
 napi_value NativeMapView::getMaxZoom(napi_env env, napi_callback_info info) {
     return GetBoundsScalar(env, info, "getMaxZoom",
-                           [](const mbgl::BoundOptions& bounds) { return bounds.maxZoom; });
+                           [](const mln::BoundOptions& bounds) { return bounds.maxZoom; });
 }
 
 napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
     return SetBoundsScalar(env, info, "setMinPitch", "pitch",
                            "setMinPitch: Set min pitch to %.2f", false,
                            [](double value) {
-                               mbgl::BoundOptions options;
+                               mln::BoundOptions options;
                                options.withMinPitch(value);
                                return options;
                            });
@@ -983,14 +983,14 @@ napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
 
 napi_value NativeMapView::getMinPitch(napi_env env, napi_callback_info info) {
     return GetBoundsScalar(env, info, "getMinPitch",
-                           [](const mbgl::BoundOptions& bounds) { return bounds.minPitch; });
+                           [](const mln::BoundOptions& bounds) { return bounds.minPitch; });
 }
 
 napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
     return SetBoundsScalar(env, info, "setMaxPitch", "pitch",
                            "setMaxPitch: Set max pitch to %.2f", false,
                            [](double value) {
-                               mbgl::BoundOptions options;
+                               mln::BoundOptions options;
                                options.withMaxPitch(value);
                                return options;
                            });
@@ -998,7 +998,7 @@ napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
 
 napi_value NativeMapView::getMaxPitch(napi_env env, napi_callback_info info) {
     return GetBoundsScalar(env, info, "getMaxPitch",
-                           [](const mbgl::BoundOptions& bounds) { return bounds.maxPitch; });
+                           [](const mln::BoundOptions& bounds) { return bounds.maxPitch; });
 }
 
 napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
@@ -1027,9 +1027,9 @@ napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
     }
     
     try {
-        mbgl::ScreenCoordinate first(sx, sy);
-        mbgl::ScreenCoordinate second(ex, ey);
-        instance->invokeOnMapThread([first, second, duration](mbgl::Map* m){ m->rotateBy(first, second, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))}); m->triggerRepaint(); });
+        mln::ScreenCoordinate first(sx, sy);
+        mln::ScreenCoordinate second(ex, ey);
+        instance->invokeOnMapThread([first, second, duration](mln::Map* m){ m->rotateBy(first, second, mln::AnimationOptions{mln::Milliseconds(static_cast<int64_t>(duration))}); m->triggerRepaint(); });
         Logger::info("NativeMapView", "rotateBy: (%.2f, %.2f) -> (%.2f, %.2f), duration=%.0fms", sx, sy, ex, ey, duration);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "rotateBy: Failed - %s", e.what());
@@ -1063,11 +1063,11 @@ napi_value NativeMapView::setBearing(napi_env env, napi_callback_info info) {
     
     try {
         if (duration > 0) {
-            instance->invokeOnMapThread([bearing, duration](mbgl::Map* m){ m->easeTo(mbgl::CameraOptions().withBearing(bearing), mbgl::AnimationOptions(std::chrono::milliseconds(duration))); m->triggerRepaint(); });
+            instance->invokeOnMapThread([bearing, duration](mln::Map* m){ m->easeTo(mln::CameraOptions().withBearing(bearing), mln::AnimationOptions(std::chrono::milliseconds(duration))); m->triggerRepaint(); });
         } else {
-            instance->invokeOnMapThread([bearing](mbgl::Map* m){ m->jumpTo(mbgl::CameraOptions().withBearing(bearing)); m->triggerRepaint(); });
+            instance->invokeOnMapThread([bearing](mln::Map* m){ m->jumpTo(mln::CameraOptions().withBearing(bearing)); m->triggerRepaint(); });
         }
-        instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
+        instance->invokeOnMapThread([](mln::Map* m){ m->triggerRepaint(); });
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setBearing: Failed - %s", e.what());
     }
@@ -1100,8 +1100,8 @@ napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
     }
     
     try {
-        mbgl::ScreenCoordinate anchor(cx, cy);
-        instance->invokeOnMapThread([degrees, anchor, duration](mbgl::Map* m){ m->easeTo(mbgl::CameraOptions().withBearing(degrees).withAnchor(anchor), mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))}); m->triggerRepaint(); });
+        mln::ScreenCoordinate anchor(cx, cy);
+        instance->invokeOnMapThread([degrees, anchor, duration](mln::Map* m){ m->easeTo(mln::CameraOptions().withBearing(degrees).withAnchor(anchor), mln::AnimationOptions{mln::Milliseconds(static_cast<int64_t>(duration))}); m->triggerRepaint(); });
         Logger::info("NativeMapView", "setBearingXY: bearing=%.2f, anchor=(%.2f, %.2f), duration=%.0fms", 
                     degrees, cx, cy, duration);
     } catch (const std::exception& e) {
@@ -1122,7 +1122,7 @@ napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
     }
     
     try {
-        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->getCameraOptions(); }, mln::CameraOptions{});
         if (cameraOptions.bearing) {
             napi_value result;
             napi_create_double(env, *cameraOptions.bearing, &result);
@@ -1147,7 +1147,7 @@ napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
     
     try {
         // Use easeTo to set bearing to 0 with a 500 ms animation
-        instance->invokeOnMapThread([](mbgl::Map* m){ m->easeTo(mbgl::CameraOptions().withBearing(0.0), mbgl::AnimationOptions{mbgl::Milliseconds(500)}); m->triggerRepaint(); });
+        instance->invokeOnMapThread([](mln::Map* m){ m->easeTo(mln::CameraOptions().withBearing(0.0), mln::AnimationOptions{mln::Milliseconds(500)}); m->triggerRepaint(); });
         Logger::info("NativeMapView", "resetNorth: Reset bearing to 0 with 500ms animation");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "resetNorth: Failed - %s", e.what());
@@ -1191,14 +1191,14 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
             return args.Undefined();
         }
         
-        std::vector<mbgl::LatLng> latLngs;
+        std::vector<mln::LatLng> latLngs;
         latLngs.reserve(count);
         
         for (uint32_t i = 0; i < count; i++) {
             napi_value item;
             status = napi_get_element(env, coordsArray, i, &item);
             if (status == napi_ok) {
-                mbgl::LatLng latLng;
+                mln::LatLng latLng;
                 if (LatLngHarmony::ParseLatLng(env, item, latLng)) {
                     latLngs.push_back(latLng);
                 } else {
@@ -1214,7 +1214,7 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
         
         // 2. Parse padding (argument 1: Rect object)
         napi_value paddingObj = args.Get(1);
-        mbgl::EdgeInsets padding;
+        mln::EdgeInsets padding;
         if (!RectHarmony::ParseAsEdgeInsets(env, paddingObj, padding)) {
             Logger::error("NativeMapView", "setVisibleCoordinateBounds: Failed to parse padding");
             return args.Undefined();
@@ -1227,9 +1227,9 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
         int64_t duration = args.GetInt64Or(3, 0);
         
         // 5. Execute camera calculations and animation on the map thread
-        instance->invokeOnMapThread([latLngs, padding, direction, duration](mbgl::Map* m) {
+        instance->invokeOnMapThread([latLngs, padding, direction, duration](mln::Map* m) {
             // Compute a camera that fits all coordinates
-            mbgl::CameraOptions cameraOptions = m->cameraForLatLngs(latLngs, padding);
+            mln::CameraOptions cameraOptions = m->cameraForLatLngs(latLngs, padding);
             
             // Apply bearing if direction was specified
             if (direction >= 0) {
@@ -1237,11 +1237,11 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
             }
             
             // Build animation options
-            mbgl::AnimationOptions animOptions;
+            mln::AnimationOptions animOptions;
             if (duration > 0) {
-                animOptions.duration.emplace(mbgl::Milliseconds(duration));
+                animOptions.duration.emplace(mln::Milliseconds(duration));
                 // Use the same easing curve as iOS
-                animOptions.easing.emplace(mbgl::util::UnitBezier{0.25, 0.1, 0.25, 0.1});
+                animOptions.easing.emplace(mln::util::UnitBezier{0.25, 0.1, 0.25, 0.1});
             }
             
             // Run the camera animation
@@ -1268,7 +1268,7 @@ napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback
     }
     
     try {
-        auto latLngBounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->latLngBoundsForCameraUnwrapped(m->getCameraOptions(std::nullopt)); }, mbgl::LatLngBounds{});
+        auto latLngBounds = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->latLngBoundsForCameraUnwrapped(m->getCameraOptions(std::nullopt)); }, mln::LatLngBounds{});
         
         napi_value result = LatLngBoundsHarmony::CreateLatLngBoundsObject(env, latLngBounds);
         return result;
@@ -1317,7 +1317,7 @@ napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info
     
     try {
         instance->harmonyRenderer->requestSnapshot(
-            [snapshotState, callbackManager](mbgl::PremultipliedImage&& image, float pixelRatioValue) {
+            [snapshotState, callbackManager](mln::PremultipliedImage&& image, float pixelRatioValue) {
                 auto dataPtr = std::make_shared<std::vector<uint8_t>>(image.bytes());
                 if (!dataPtr->empty()) {
                     std::memcpy(dataPtr->data(), image.data.get(), image.bytes());
@@ -1386,7 +1386,7 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
     }
     
     try {
-        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->getCameraOptions(); }, mln::CameraOptions{});
         
         // Create the return object
         napi_value result;
@@ -1437,9 +1437,9 @@ napi_value NativeMapView::getCameraState(napi_env env, napi_callback_info info) 
     }
 
     try {
-        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m) {
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mln::Map* m) {
             return m->getCameraOptions();
-        }, mbgl::CameraOptions{});
+        }, mln::CameraOptions{});
 
         napi_value result;
         napi_create_object(env, &result);
@@ -1493,4 +1493,4 @@ void NativeMapView::resetSnapshotStateOn(const std::shared_ptr<SnapshotRequestSt
 
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

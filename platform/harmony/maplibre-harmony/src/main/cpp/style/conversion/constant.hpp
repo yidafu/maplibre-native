@@ -1,20 +1,20 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/util/color.hpp>
-#include <mbgl/util/padding.hpp>
-#include <mbgl/util/enum.hpp>
-#include <mbgl/style/expression/formatted.hpp>
-#include <mbgl/style/expression/image.hpp>
-#include <mbgl/style/variable_anchor_offset_collection.hpp>
-#include <mbgl/style/rotation.hpp>
+#include <mln/util/color.hpp>
+#include <mln/util/padding.hpp>
+#include <mln/util/enum.hpp>
+#include <mln/style/expression/formatted.hpp>
+#include <mln/style/expression/image.hpp>
+#include <mln/style/variable_anchor_offset_collection.hpp>
+#include <mln/style/rotation.hpp>
 
 #include <string>
 #include <array>
 #include <vector>
 #include <optional>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace conversion {
 
@@ -60,5 +60,5 @@ Result<napi_value> convertToNapi(napi_env env, T value, typename std::enable_if<
 
 } // namespace conversion
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

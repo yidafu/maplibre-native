@@ -1,8 +1,8 @@
-#include <mbgl/text/local_glyph_rasterizer.hpp>
-#include <mbgl/util/i18n.hpp>
-#include <mbgl/util/platform.hpp>
-#include <mbgl/util/constants.hpp>
-#include <mbgl/util/logging.hpp>
+#include <mln/text/local_glyph_rasterizer.hpp>
+#include <mln/util/i18n.hpp>
+#include <mln/util/platform.hpp>
+#include <mln/util/constants.hpp>
+#include <mln/util/logging.hpp>
 
 #include <native_drawing/drawing_font_collection.h>
 #include <native_drawing/drawing_canvas.h>
@@ -18,7 +18,7 @@
 #include <cmath>
 #include <cstring>
 
-namespace mbgl {
+namespace mln {
 
 namespace {
 
@@ -261,4 +261,4 @@ Glyph LocalGlyphRasterizer::rasterizeGlyph(const FontStack& fontStack, GlyphID g
     return glyph;
 }
 
-} // namespace mbgl
+} // namespace mln

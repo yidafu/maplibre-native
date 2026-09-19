@@ -5,27 +5,27 @@
 #include "utils/logger.h"
 #include "style/layers/layer_property_utils.hpp"
 #include "style/filter_conversion.hpp"
-#include <mbgl/style/layers/hillshade_layer.hpp>
-#include <mbgl/style/property_value.hpp>
-#include <mbgl/style/types.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/style/layers/hillshade_layer.hpp>
+#include <mln/style/property_value.hpp>
+#include <mln/style/types.hpp>
+#include <mln/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "layer_property_macros.hpp"
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
 napi_ref HillshadeLayerNAPI::constructor = nullptr;
 napi_env HillshadeLayerNAPI::constructorEnv = nullptr;
 
 HillshadeLayerNAPI::HillshadeLayerNAPI(const std::string& layerId, const std::string& sourceId)
-    : layer(std::make_unique<mbgl::style::HillshadeLayer>(layerId, sourceId)) {
+    : layer(std::make_unique<mln::style::HillshadeLayer>(layerId, sourceId)) {
 }
 
-HillshadeLayerNAPI::HillshadeLayerNAPI(mbgl::style::HillshadeLayer* layerPtr) {
+HillshadeLayerNAPI::HillshadeLayerNAPI(mln::style::HillshadeLayer* layerPtr) {
     if (layerPtr) {
         weakLayer = layerPtr->makeWeakPtr();
         Logger::info("HillshadeLayerNAPI", "HillshadeLayer created from existing layer (WeakPtr)");
@@ -69,27 +69,27 @@ DEFINE_LAYER_NEW(HillshadeLayerNAPI, "HillshadeLayer", 2, new HillshadeLayerNAPI
         std::string layerId = args.GetString(0, "layerId");
         std::string sourceId = args.GetString(1, "sourceId");)
 
-napi_value HillshadeLayerNAPI::CreateInstance(napi_env env, mbgl::style::HillshadeLayer* layerPtr) {
+napi_value HillshadeLayerNAPI::CreateInstance(napi_env env, mln::style::HillshadeLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "HillshadeLayer",
                                 layerPtr ? new HillshadeLayerNAPI(layerPtr) : nullptr);
 }
 
 
-DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeIlluminationDirection, setPaintProperty, "hillshade-illumination-direction", setHillshadeIlluminationDirection, std::vector<float>)
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mln::style::HillshadeLayer, SetHillshadeIlluminationDirection, setPaintProperty, "hillshade-illumination-direction", setHillshadeIlluminationDirection, std::vector<float>)
 
-DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeIlluminationAnchor, setPaintProperty, "hillshade-illumination-anchor", setHillshadeIlluminationAnchor, mbgl::style::HillshadeIlluminationAnchorType)
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mln::style::HillshadeLayer, SetHillshadeIlluminationAnchor, setPaintProperty, "hillshade-illumination-anchor", setHillshadeIlluminationAnchor, mln::style::HillshadeIlluminationAnchorType)
 
-DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeExaggeration, setPaintProperty, "hillshade-exaggeration", setHillshadeExaggeration, float)
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mln::style::HillshadeLayer, SetHillshadeExaggeration, setPaintProperty, "hillshade-exaggeration", setHillshadeExaggeration, float)
 
-DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeShadowColor, setPaintProperty, "hillshade-shadow-color", setHillshadeShadowColor, std::vector<mbgl::Color>)
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mln::style::HillshadeLayer, SetHillshadeShadowColor, setPaintProperty, "hillshade-shadow-color", setHillshadeShadowColor, std::vector<mln::Color>)
 
-DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeHighlightColor, setPaintProperty, "hillshade-highlight-color", setHillshadeHighlightColor, std::vector<mbgl::Color>)
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mln::style::HillshadeLayer, SetHillshadeHighlightColor, setPaintProperty, "hillshade-highlight-color", setHillshadeHighlightColor, std::vector<mln::Color>)
 
-DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, SetHillshadeAccentColor, setPaintProperty, "hillshade-accent-color", setHillshadeAccentColor, mbgl::Color)
+DEFINE_LAYER_SETTER(HillshadeLayerNAPI, mln::style::HillshadeLayer, SetHillshadeAccentColor, setPaintProperty, "hillshade-accent-color", setHillshadeAccentColor, mln::Color)
 
-DEFINE_LAYER_GETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, GetHillshadeIlluminationDirection, getHillshadeIlluminationDirection, std::vector<float>)
+DEFINE_LAYER_GETTER(HillshadeLayerNAPI, mln::style::HillshadeLayer, GetHillshadeIlluminationDirection, getHillshadeIlluminationDirection, std::vector<float>)
 
-DEFINE_LAYER_GETTER(HillshadeLayerNAPI, mbgl::style::HillshadeLayer, GetHillshadeExaggeration, getHillshadeExaggeration, float)
+DEFINE_LAYER_GETTER(HillshadeLayerNAPI, mln::style::HillshadeLayer, GetHillshadeExaggeration, getHillshadeExaggeration, float)
 
 napi_value HillshadeLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     return LayerGetId<HillshadeLayerNAPI>(env, info);
@@ -154,12 +154,12 @@ napi_value HillshadeLayerNAPI::GetFilter(napi_env env, napi_callback_info info) 
 // ==================== Generic Property Methods ====================
 
 napi_value HillshadeLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
-    return SetPropertyImpl<HillshadeLayerNAPI, mbgl::style::HillshadeLayer>(env, info);
+    return SetPropertyImpl<HillshadeLayerNAPI, mln::style::HillshadeLayer>(env, info);
 }
 
 napi_value HillshadeLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
-    return SetPropertiesImpl<HillshadeLayerNAPI, mbgl::style::HillshadeLayer>(env, info);
+    return SetPropertiesImpl<HillshadeLayerNAPI, mln::style::HillshadeLayer>(env, info);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

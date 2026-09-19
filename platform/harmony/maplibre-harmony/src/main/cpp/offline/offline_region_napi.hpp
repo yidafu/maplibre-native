@@ -1,11 +1,11 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/storage/database_file_source.hpp>
-#include <mbgl/storage/offline.hpp>
+#include <mln/storage/database_file_source.hpp>
+#include <mln/storage/offline.hpp>
 #include <memory>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -19,8 +19,8 @@ public:
     
     // Create a NAPI object from a C++ OfflineRegion
     static napi_value New(napi_env env, 
-                         std::shared_ptr<mbgl::DatabaseFileSource> fileSource,
-                         mbgl::OfflineRegion&& region);
+                         std::shared_ptr<mln::DatabaseFileSource> fileSource,
+                         mln::OfflineRegion&& region);
     
     // NAPI constructor
     static napi_value Constructor(napi_env env, napi_callback_info info);
@@ -40,12 +40,12 @@ public:
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
     // Helper utilities for metadata conversion
-    static napi_value MetadataToArrayBuffer(napi_env env, const mbgl::OfflineRegionMetadata& metadata);
-    static mbgl::OfflineRegionMetadata ArrayBufferToMetadata(napi_env env, napi_value arrayBuffer);
+    static napi_value MetadataToArrayBuffer(napi_env env, const mln::OfflineRegionMetadata& metadata);
+    static mln::OfflineRegionMetadata ArrayBufferToMetadata(napi_env env, napi_value arrayBuffer);
     
 private:
-    explicit OfflineRegionNAPI(std::shared_ptr<mbgl::DatabaseFileSource> fileSource,
-                              std::unique_ptr<mbgl::OfflineRegion> region);
+    explicit OfflineRegionNAPI(std::shared_ptr<mln::DatabaseFileSource> fileSource,
+                              std::unique_ptr<mln::OfflineRegion> region);
     ~OfflineRegionNAPI();
 
     // Shared body of delete()/invalidate(); `invalidate` selects the
@@ -58,8 +58,8 @@ private:
     static OfflineRegionNAPI* UnwrapThis(napi_env env, napi_callback_info info,
                                          bool requireFileSource);
     
-    std::shared_ptr<mbgl::DatabaseFileSource> fileSource_;
-    std::unique_ptr<mbgl::OfflineRegion> region_;
+    std::shared_ptr<mln::DatabaseFileSource> fileSource_;
+    std::unique_ptr<mln::OfflineRegion> region_;
     napi_env env_;
     napi_ref wrapper_;
     napi_ref observerRef_; // Holds a reference to the observer
@@ -70,5 +70,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

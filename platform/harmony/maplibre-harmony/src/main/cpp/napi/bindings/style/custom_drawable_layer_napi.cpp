@@ -5,19 +5,19 @@
 #include "napi/core/napi_utils.h"
 #include "style/layers/layer_base_methods.hpp"
 #include "utils/logger.h"
-#include <mbgl/style/layers/custom_drawable_layer.hpp>
-#include <mbgl/gfx/fill_generator.hpp>
-#include <mbgl/util/color.hpp>
-#include <mbgl/util/constants.hpp>
-#include <mbgl/util/geometry.hpp>
-#include <mbgl/util/projection.hpp>
+#include <mln/style/layers/custom_drawable_layer.hpp>
+#include <mln/gfx/fill_generator.hpp>
+#include <mln/util/color.hpp>
+#include <mln/util/constants.hpp>
+#include <mln/util/geometry.hpp>
+#include <mln/util/projection.hpp>
 
 #include <unordered_map>
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 namespace {
@@ -27,7 +27,7 @@ namespace {
  * The host owns a strong reference to the state, so the scene stays valid
  * for the lifetime of the layer even if the JS wrapper is collected first.
  */
-class HarmonyDrawableLayerHost final : public mbgl::style::CustomDrawableLayerHost {
+class HarmonyDrawableLayerHost final : public mln::style::CustomDrawableLayerHost {
 public:
     explicit HarmonyDrawableLayerHost(std::shared_ptr<CustomDrawableState> state_)
         : state(std::move(state_)) {}
@@ -49,7 +49,7 @@ public:
 
         for (const auto& command : state->commands) {
             auto id = command(interface);
-            if (id != mbgl::util::SimpleIdentity::Empty) {
+            if (id != mln::util::SimpleIdentity::Empty) {
                 state->drawableIds.push_back(id);
             }
         }
@@ -81,8 +81,8 @@ std::shared_ptr<CustomDrawableState> takeStateFromRegistry(const std::string& la
     return state;
 }
 
-// Parse "[r, g, b, a]" (0-1 floats) into mbgl::Color
-bool parseColorArray(napi_env env, napi_value value, mbgl::Color& out) {
+// Parse "[r, g, b, a]" (0-1 floats) into mln::Color
+bool parseColorArray(napi_env env, napi_value value, mln::Color& out) {
     bool isArray = false;
     napi_is_array(env, value, &isArray);
     if (!isArray) return false;
@@ -97,13 +97,13 @@ bool parseColorArray(napi_env env, napi_value value, mbgl::Color& out) {
         napi_get_element(env, value, i, &element);
         napi_get_value_double(env, element, &c[i]);
     }
-    out = mbgl::Color(static_cast<float>(c[0]), static_cast<float>(c[1]), static_cast<float>(c[2]),
+    out = mln::Color(static_cast<float>(c[0]), static_cast<float>(c[1]), static_cast<float>(c[2]),
                       static_cast<float>(c[3]));
     return true;
 }
 
 // Parse a color given as a CSS string or an [r,g,b,(a)] array
-bool parseColor(napi_env env, napi_value value, mbgl::Color& out) {
+bool parseColor(napi_env env, napi_value value, mln::Color& out) {
     napi_valuetype type = napi_undefined;
     napi_typeof(env, value, &type);
     if (type == napi_string) {
@@ -111,7 +111,7 @@ bool parseColor(napi_env env, napi_value value, mbgl::Color& out) {
         napi_get_value_string_utf8(env, value, nullptr, 0, &len);
         std::string str(len, '\0');
         napi_get_value_string_utf8(env, value, str.data(), len + 1, nullptr);
-        auto parsed = mbgl::Color::parse(str);
+        auto parsed = mln::Color::parse(str);
         if (parsed) {
             out = *parsed;
             return true;
@@ -142,30 +142,30 @@ double getNumberProperty(napi_env env, napi_value obj, const char* name, double 
     return result;
 }
 
-mbgl::style::LineCapType parseLineCap(napi_env env, napi_value value, mbgl::style::LineCapType fallback) {
+mln::style::LineCapType parseLineCap(napi_env env, napi_value value, mln::style::LineCapType fallback) {
     size_t len = 0;
     napi_get_value_string_utf8(env, value, nullptr, 0, &len);
     std::string str(len, '\0');
     napi_get_value_string_utf8(env, value, str.data(), len + 1, nullptr);
-    if (str == "butt") return mbgl::style::LineCapType::Butt;
-    if (str == "round") return mbgl::style::LineCapType::Round;
-    if (str == "square") return mbgl::style::LineCapType::Square;
+    if (str == "butt") return mln::style::LineCapType::Butt;
+    if (str == "round") return mln::style::LineCapType::Round;
+    if (str == "square") return mln::style::LineCapType::Square;
     return fallback;
 }
 
-mbgl::style::LineJoinType parseLineJoin(napi_env env, napi_value value, mbgl::style::LineJoinType fallback) {
+mln::style::LineJoinType parseLineJoin(napi_env env, napi_value value, mln::style::LineJoinType fallback) {
     size_t len = 0;
     napi_get_value_string_utf8(env, value, nullptr, 0, &len);
     std::string str(len, '\0');
     napi_get_value_string_utf8(env, value, str.data(), len + 1, nullptr);
-    if (str == "miter") return mbgl::style::LineJoinType::Miter;
-    if (str == "bevel") return mbgl::style::LineJoinType::Bevel;
-    if (str == "round") return mbgl::style::LineJoinType::Round;
+    if (str == "miter") return mln::style::LineJoinType::Miter;
+    if (str == "bevel") return mln::style::LineJoinType::Bevel;
+    if (str == "round") return mln::style::LineJoinType::Round;
     return fallback;
 }
 
 // Parse "[[lng, lat], ...]" into a geographic LineString
-bool parseLineString(napi_env env, napi_value value, mbgl::LineString<double>& out) {
+bool parseLineString(napi_env env, napi_value value, mln::LineString<double>& out) {
     bool isArray = false;
     napi_is_array(env, value, &isArray);
     if (!isArray) return false;
@@ -198,20 +198,20 @@ bool parseLineString(napi_env env, napi_value value, mbgl::LineString<double>& o
 
 // Project a geographic ring to tile {0, 0, 0} coordinates (same convention as
 // the Interface's geographic addPolyline overload)
-mbgl::GeometryCoordinates projectRing(const std::vector<mbgl::Point<double>>& ring) {
-    mbgl::GeometryCoordinates result;
+mln::GeometryCoordinates projectRing(const std::vector<mln::Point<double>>& ring) {
+    mln::GeometryCoordinates result;
     result.reserve(ring.size());
     for (const auto& point : ring) {
-        const auto projected = mbgl::Projection::project(mbgl::LatLng(point.y, point.x), 0);
-        result.emplace_back(static_cast<int16_t>(projected.x * mbgl::util::EXTENT),
-                            static_cast<int16_t>(projected.y * mbgl::util::EXTENT));
+        const auto projected = mln::Projection::project(mln::LatLng(point.y, point.x), 0);
+        result.emplace_back(static_cast<int16_t>(projected.x * mln::util::EXTENT),
+                            static_cast<int16_t>(projected.y * mln::util::EXTENT));
     }
     return result;
 }
 
 // Parse "[[[lng, lat], ...], ...]" (rings, first = outer, rest = holes) into a
 // tile-coordinate GeometryCollection
-bool parseRings(napi_env env, napi_value value, mbgl::GeometryCollection& out) {
+bool parseRings(napi_env env, napi_value value, mln::GeometryCollection& out) {
     bool isArray = false;
     napi_is_array(env, value, &isArray);
     if (!isArray) return false;
@@ -225,7 +225,7 @@ bool parseRings(napi_env env, napi_value value, mbgl::GeometryCollection& out) {
         napi_value ringValue;
         napi_get_element(env, value, r, &ringValue);
 
-        mbgl::LineString<double> ring;
+        mln::LineString<double> ring;
         if (!parseLineString(env, ringValue, ring)) {
             return false;
         }
@@ -235,8 +235,8 @@ bool parseRings(napi_env env, napi_value value, mbgl::GeometryCollection& out) {
 }
 
 // Shared option parsing for polyline items
-mbgl::style::CustomDrawableLayerHost::Interface::LineOptions parseLineOptions(napi_env env, napi_value optionsObj) {
-    using Interface = mbgl::style::CustomDrawableLayerHost::Interface;
+mln::style::CustomDrawableLayerHost::Interface::LineOptions parseLineOptions(napi_env env, napi_value optionsObj) {
+    using Interface = mln::style::CustomDrawableLayerHost::Interface;
     Interface::LineOptions options;
 
     if (!optionsObj) {
@@ -286,7 +286,7 @@ napi_ref CustomDrawableLayerNAPI::constructor = nullptr;
 napi_env CustomDrawableLayerNAPI::constructorEnv = nullptr;
 
 CustomDrawableLayerNAPI::CustomDrawableLayerNAPI(const std::string& layerId,
-                                                 std::unique_ptr<mbgl::style::CustomDrawableLayer> layer,
+                                                 std::unique_ptr<mln::style::CustomDrawableLayer> layer,
                                                  std::shared_ptr<CustomDrawableState> state_)
     : layerId(layerId),
       layer(std::move(layer)),
@@ -295,7 +295,7 @@ CustomDrawableLayerNAPI::CustomDrawableLayerNAPI(const std::string& layerId,
     Logger::info("CustomDrawableLayerNAPI", "CustomDrawableLayer created: %s", layerId.c_str());
 }
 
-CustomDrawableLayerNAPI::CustomDrawableLayerNAPI(mbgl::style::CustomDrawableLayer* layerPtr,
+CustomDrawableLayerNAPI::CustomDrawableLayerNAPI(mln::style::CustomDrawableLayer* layerPtr,
                                                  std::shared_ptr<CustomDrawableState> state_)
     : ownsLayer(false), state(std::move(state_)) {
     if (layerPtr) {
@@ -364,7 +364,7 @@ napi_value CustomDrawableLayerNAPI::New(napi_env env, napi_callback_info info) {
 
     auto state = std::make_shared<CustomDrawableState>();
     auto host = std::make_unique<HarmonyDrawableLayerHost>(state);
-    auto layer = std::make_unique<mbgl::style::CustomDrawableLayer>(layerId, std::move(host));
+    auto layer = std::make_unique<mln::style::CustomDrawableLayer>(layerId, std::move(host));
 
     {
         std::lock_guard<std::mutex> lock(registryMutex);
@@ -389,7 +389,7 @@ napi_value CustomDrawableLayerNAPI::New(napi_env env, napi_callback_info info) {
     return thisVar;
 }
 
-napi_value CustomDrawableLayerNAPI::CreateInstance(napi_env env, mbgl::style::CustomDrawableLayer* layerPtr) {
+napi_value CustomDrawableLayerNAPI::CreateInstance(napi_env env, mln::style::CustomDrawableLayer* layerPtr) {
     if (!layerPtr) {
         napi_value result;
         napi_get_null(env, &result);
@@ -413,7 +413,7 @@ napi_value CustomDrawableLayerNAPI::CreateInstance(napi_env env, mbgl::style::Cu
     }
 
     auto* napiObj = new CustomDrawableLayerNAPI(layerPtr, std::move(state));
-    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "CustomDrawableLayer", napiObj);
+    return mln::harmony::WrapExistingInstance(env, constructor, Destructor, "CustomDrawableLayer", napiObj);
 }
 
 // Id / type / visibility / zoom range all share the canonical base-layer
@@ -465,13 +465,13 @@ napi_value CustomDrawableLayerNAPI::AddPolyline(napi_env env, napi_callback_info
         return nullptr;
     }
 
-    mbgl::LineString<double> coords;
+    mln::LineString<double> coords;
     if (!parseLineString(env, args.GetValue(0), coords)) {
         napi_throw_error(env, nullptr, "addPolyline requires [[lng, lat], ...] coordinates");
         return nullptr;
     }
 
-    using Interface = mbgl::style::CustomDrawableLayerHost::Interface;
+    using Interface = mln::style::CustomDrawableLayerHost::Interface;
     Interface::LineOptions options;
     Interface::LineShaderType shaderType = Interface::LineShaderType::Classic;
     if (args.Count() >= 2) {
@@ -500,9 +500,9 @@ napi_value CustomDrawableLayerNAPI::AddPolyline(napi_env env, napi_callback_info
         }
     }
 
-    auto coordsPtr = std::make_shared<mbgl::LineString<double>>(std::move(coords));
+    auto coordsPtr = std::make_shared<mln::LineString<double>>(std::move(coords));
     auto command = [coordsPtr, options, shaderType](CustomDrawableState::Interface& interface)
-        -> mbgl::util::SimpleIdentity {
+        -> mln::util::SimpleIdentity {
         interface.setLineOptions(options);
         return interface.addPolyline(*coordsPtr, shaderType);
     };
@@ -529,13 +529,13 @@ napi_value CustomDrawableLayerNAPI::AddFill(napi_env env, napi_callback_info inf
         return nullptr;
     }
 
-    mbgl::GeometryCollection rings;
+    mln::GeometryCollection rings;
     if (!parseRings(env, args.GetValue(0), rings)) {
         napi_throw_error(env, nullptr, "addFill requires [[[lng, lat], ...], ...] rings");
         return nullptr;
     }
 
-    using Interface = mbgl::style::CustomDrawableLayerHost::Interface;
+    using Interface = mln::style::CustomDrawableLayerHost::Interface;
     Interface::FillOptions options;
     if (args.Count() >= 2) {
         napi_value optionsObj = args.GetValue(1);
@@ -550,8 +550,8 @@ napi_value CustomDrawableLayerNAPI::AddFill(napi_env env, napi_callback_info inf
         }
     }
 
-    auto ringsPtr = std::make_shared<mbgl::GeometryCollection>(std::move(rings));
-    auto command = [ringsPtr, options](CustomDrawableState::Interface& interface) -> mbgl::util::SimpleIdentity {
+    auto ringsPtr = std::make_shared<mln::GeometryCollection>(std::move(rings));
+    auto command = [ringsPtr, options](CustomDrawableState::Interface& interface) -> mln::util::SimpleIdentity {
         interface.setFillOptions(options);
         return interface.addFill(*ringsPtr);
     };
@@ -585,4 +585,4 @@ napi_value CustomDrawableLayerNAPI::Clear(napi_env env, napi_callback_info info)
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

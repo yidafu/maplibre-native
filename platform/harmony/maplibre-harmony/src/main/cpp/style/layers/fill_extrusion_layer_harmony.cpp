@@ -5,28 +5,28 @@
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
 #include "style/layers/layer_property_utils.hpp"
-#include <mbgl/style/layers/fill_extrusion_layer.hpp>
-#include <mbgl/style/property_value.hpp>
-#include <mbgl/style/expression/image.hpp>
-#include <mbgl/style/types.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/style/layers/fill_extrusion_layer.hpp>
+#include <mln/style/property_value.hpp>
+#include <mln/style/expression/image.hpp>
+#include <mln/style/types.hpp>
+#include <mln/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "layer_property_macros.hpp"
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
 napi_ref FillExtrusionLayerNAPI::constructor = nullptr;
 napi_env FillExtrusionLayerNAPI::constructorEnv = nullptr;
 
 FillExtrusionLayerNAPI::FillExtrusionLayerNAPI(const std::string& layerId, const std::string& sourceId)
-    : layer(std::make_unique<mbgl::style::FillExtrusionLayer>(layerId, sourceId)) {
+    : layer(std::make_unique<mln::style::FillExtrusionLayer>(layerId, sourceId)) {
 }
 
-FillExtrusionLayerNAPI::FillExtrusionLayerNAPI(mbgl::style::FillExtrusionLayer* layerPtr) {
+FillExtrusionLayerNAPI::FillExtrusionLayerNAPI(mln::style::FillExtrusionLayer* layerPtr) {
     if (layerPtr) {
         weakLayer = layerPtr->makeWeakPtr();
         Logger::info("FillExtrusionLayerNAPI", "FillExtrusionLayer created from existing layer (WeakPtr)");
@@ -145,23 +145,23 @@ napi_value FillExtrusionLayerNAPI::GetFilter(napi_env env, napi_callback_info in
 // New Properties
 // ============================================================================
 
-DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionTranslateAnchor, setPaintProperty, "fill-extrusion-translate-anchor", setFillExtrusionTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, SetFillExtrusionTranslateAnchor, setPaintProperty, "fill-extrusion-translate-anchor", setFillExtrusionTranslateAnchor, mln::style::TranslateAnchorType)
 
-DEFINE_LAYER_GETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, GetFillExtrusionTranslateAnchor, getFillExtrusionTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_LAYER_GETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, GetFillExtrusionTranslateAnchor, getFillExtrusionTranslateAnchor, mln::style::TranslateAnchorType)
 
-DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionVerticalGradient, setPaintProperty, "fill-extrusion-vertical-gradient", setFillExtrusionVerticalGradient, bool)
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, SetFillExtrusionVerticalGradient, setPaintProperty, "fill-extrusion-vertical-gradient", setFillExtrusionVerticalGradient, bool)
 
-DEFINE_LAYER_GETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, GetFillExtrusionVerticalGradient, getFillExtrusionVerticalGradient, bool)
+DEFINE_LAYER_GETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, GetFillExtrusionVerticalGradient, getFillExtrusionVerticalGradient, bool)
 
 // ==================== Generic Property Methods ====================
 
 napi_value FillExtrusionLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
-    return SetPropertyImpl<FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer>(env, info);
+    return SetPropertyImpl<FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer>(env, info);
 }
 
 napi_value FillExtrusionLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
-    return SetPropertiesImpl<FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer>(env, info);
+    return SetPropertiesImpl<FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer>(env, info);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

@@ -2,12 +2,12 @@
 #include "napi_double_props.hpp"
 #include "utils/logger.h"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using Logger = mbgl::harmony::Logger;
+using Logger = mln::harmony::Logger;
 
-napi_value LatLngBoundsHarmony::CreateLatLngBoundsObject(napi_env env, const mbgl::LatLngBounds& bounds) {
+napi_value LatLngBoundsHarmony::CreateLatLngBoundsObject(napi_env env, const mln::LatLngBounds& bounds) {
     return CreateDoublePropsObject(env, "LatLngBoundsHarmony",
                                    {{"north", bounds.north()},
                                     {"east", bounds.east()},
@@ -15,7 +15,7 @@ napi_value LatLngBoundsHarmony::CreateLatLngBoundsObject(napi_env env, const mbg
                                     {"west", bounds.west()}});
 }
 
-bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mbgl::LatLngBounds& outBounds) {
+bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mln::LatLngBounds& outBounds) {
     double north = 0.0;
     double east = 0.0;
     double south = 0.0;
@@ -40,14 +40,14 @@ bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mbgl
     }
 
     // Build bounds (using northeast and southwest corners)
-    outBounds = mbgl::LatLngBounds::hull(
-        mbgl::LatLng(north, east),  // Northeast corner
-        mbgl::LatLng(south, west)   // Southwest corner
+    outBounds = mln::LatLngBounds::hull(
+        mln::LatLng(north, east),  // Northeast corner
+        mln::LatLng(south, west)   // Southwest corner
     );
 
     return true;
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

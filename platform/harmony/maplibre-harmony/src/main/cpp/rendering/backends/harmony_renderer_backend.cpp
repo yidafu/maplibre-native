@@ -1,7 +1,7 @@
 #include "harmony_renderer_backend.hpp"
 #include <cassert>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 void HarmonyRendererBackend::updateViewPort() {}
@@ -32,4 +32,4 @@ void HarmonyRendererBackend::resumeRendering() {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

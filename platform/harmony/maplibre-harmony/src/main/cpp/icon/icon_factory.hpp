@@ -1,13 +1,13 @@
 #pragma once
 
-#include <mbgl/util/image.hpp>
+#include <mln/util/image.hpp>
 #include <memory>
 #include <string>
 
 // Forward declarations for HarmonyOS types
 struct NativeResourceManager;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -32,7 +32,7 @@ public:
      * @return Decoded PremultipliedImage
      * @throws std::runtime_error if decoding fails
      */
-    static std::shared_ptr<mbgl::PremultipliedImage> decodeImage(
+    static std::shared_ptr<mln::PremultipliedImage> decodeImage(
         const uint8_t* data, size_t size);
     
     /**
@@ -44,7 +44,7 @@ public:
      * @param scale Pixel scale ratio (default 1.0)
      * @return PremultipliedImage
      */
-    static std::shared_ptr<mbgl::PremultipliedImage> createFromRawData(
+    static std::shared_ptr<mln::PremultipliedImage> createFromRawData(
         const uint8_t* data, size_t size);
     
     /**
@@ -58,7 +58,7 @@ public:
      * @return PremultipliedImage
      * @throws std::runtime_error if file not found or read fails
      */
-    static std::shared_ptr<mbgl::PremultipliedImage> createFromRawfile(
+    static std::shared_ptr<mln::PremultipliedImage> createFromRawfile(
         NativeResourceManager* resourceMgr, const std::string& fileName);
     
     /**
@@ -68,7 +68,7 @@ public:
      * @return PremultipliedImage
      * @throws std::runtime_error if file not found or read fails
      */
-    static std::shared_ptr<mbgl::PremultipliedImage> createFromFilePath(
+    static std::shared_ptr<mln::PremultipliedImage> createFromFilePath(
         const std::string& path);
     
     /**
@@ -80,7 +80,7 @@ public:
      * @param size Icon size (default 48x48)
      * @return PremultipliedImage of the generated icon
      */
-    static std::shared_ptr<mbgl::PremultipliedImage> createDefaultMarker(
+    static std::shared_ptr<mln::PremultipliedImage> createDefaultMarker(
         uint32_t size = 48);
 
 private:
@@ -88,5 +88,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

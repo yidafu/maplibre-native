@@ -5,18 +5,18 @@
 #include <multimedia/image_framework/image_pixel_map_napi.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
 // Static member initialization
 napi_ref IconNAPI::constructor = nullptr;
 napi_env IconNAPI::constructorEnv = nullptr;
 
 IconNAPI::IconNAPI(std::string id, int width, int height, float scale,
-                   std::shared_ptr<mbgl::PremultipliedImage> image)
+                   std::shared_ptr<mln::PremultipliedImage> image)
     : id(std::move(id)),
       width(width),
       height(height),
@@ -137,8 +137,8 @@ napi_value IconNAPI::New(napi_env env, napi_callback_info info) {
     }
 
     // Create PremultipliedImage and copy data
-    auto image = std::make_shared<mbgl::PremultipliedImage>(
-        mbgl::Size{width, height}
+    auto image = std::make_shared<mln::PremultipliedImage>(
+        mln::Size{width, height}
     );
 
     std::memcpy(image->data.get(), pixelData, byteSize);
@@ -283,7 +283,7 @@ bool IconNAPI::IsIconObject(napi_env env, napi_value value) {
 
 napi_value IconNAPI::CreateFromImage(napi_env env, 
                                       const std::string& id,
-                                      std::shared_ptr<mbgl::PremultipliedImage> image,
+                                      std::shared_ptr<mln::PremultipliedImage> image,
                                       float scale) {
     if (!image) {
         Logger::error("IconNAPI", "Cannot create Icon from null image");
@@ -329,5 +329,5 @@ napi_value IconNAPI::CreateFromImage(napi_env env,
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

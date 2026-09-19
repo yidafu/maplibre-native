@@ -1,17 +1,17 @@
 #include "harmony_map_render_thread.hpp"
 #include "../utils/logger.h"
 
-#include <mbgl/gfx/backend_scope.hpp>
-#include <mbgl/actor/scheduler.hpp>
-#include <mbgl/util/thread_pool.hpp>
-#include <mbgl/util/logging.hpp>
+#include <mln/gfx/backend_scope.hpp>
+#include <mln/actor/scheduler.hpp>
+#include <mln/util/thread_pool.hpp>
+#include <mln/util/logging.hpp>
 
 #include <future>
 #include <chrono>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Static instance counter initialization
@@ -419,7 +419,7 @@ void HarmonyMapRenderThread::setObserver(RendererObserver& observer) {
     // Capture the pointer by value: when invoked from a non-render thread the
     // task runs asynchronously, and capturing a reference would be UB if this
     // stack frame is gone by then. The caller must guarantee the observer
-    // outlives the renderer that receives it (mbgl::Map owns the observer and
+    // outlives the renderer that receives it (mln::Map owns the observer and
     // outlives the render thread in the current ownership model).
     RendererObserver* observerPtr = &observer;
     invoke([this, observerPtr]() {
@@ -1001,7 +1001,7 @@ void HarmonyMapRenderThread::onVSyncFrame() {
     auto params = pendingUpdateParams_;
     pendingUpdateParams_.reset();
     
-    std::unique_ptr<mbgl::PremultipliedImage> snapshotImage;
+    std::unique_ptr<mln::PremultipliedImage> snapshotImage;
     SnapshotSuccessCallback snapshotSuccess;
     SnapshotErrorCallback snapshotError;
     
@@ -1038,7 +1038,7 @@ void HarmonyMapRenderThread::onVSyncFrame() {
             if (shouldCapture) {
                 try {
                     auto image = backend->readFramebuffer();
-                    snapshotImage = std::make_unique<mbgl::PremultipliedImage>(std::move(image));
+                    snapshotImage = std::make_unique<mln::PremultipliedImage>(std::move(image));
                 } catch (const std::exception& e) {
                     if (snapshotError) {
                         snapshotError(std::string("Failed to read framebuffer: ") + e.what());
@@ -1105,4 +1105,4 @@ void HarmonyMapRenderThread::onVSyncFrame() {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

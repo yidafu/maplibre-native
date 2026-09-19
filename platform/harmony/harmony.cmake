@@ -111,37 +111,37 @@ if(MLN_WITH_OPENGL)
     target_sources(
         mbgl-core
         PRIVATE
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/attribute.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/command_encoder.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/context.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/fence.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/debugging_extension.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/enum.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/index_buffer_resource.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/object.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/offscreen_texture.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/render_pass.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/renderbuffer_resource.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/renderer_backend.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/resource_pool.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/timestamp_query_extension.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/uniform.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/upload_pass.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/value.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_array.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_buffer_resource.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/buffer_allocator.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/drawable_gl.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/drawable_gl_builder.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/layer_group_gl.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/texture2d.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/uniform_buffer_gl.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_attribute_gl.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/shader_info.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/shader_program_gl.cpp
-            ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/legacy/programs.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/attribute.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/command_encoder.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/context.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/fence.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/debugging_extension.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/enum.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/index_buffer_resource.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/object.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/offscreen_texture.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/render_pass.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/renderbuffer_resource.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/renderer_backend.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/resource_pool.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/timestamp_query_extension.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/uniform.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/upload_pass.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/value.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/vertex_array.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/vertex_buffer_resource.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/buffer_allocator.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/drawable_gl.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/drawable_gl_builder.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/layer_group_gl.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/texture2d.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/uniform_buffer_gl.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/gl/vertex_attribute_gl.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/shaders/gl/shader_info.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/shaders/gl/shader_program_gl.cpp
+            ${PROJECT_SOURCE_DIR}/src/mln/shaders/gl/legacy/programs.cpp
             # Platform-specific OpenGL sources
-            ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/gl/headless_backend.cpp
+            ${PROJECT_SOURCE_DIR}/platform/default/src/mln/gl/headless_backend.cpp
             ${PROJECT_SOURCE_DIR}/platform/linux/src/headless_backend_egl.cpp
     )
     message(STATUS "HarmonyOS: Added OpenGL renderer backend sources")
@@ -158,7 +158,7 @@ if(MLN_WITH_VULKAN)
     target_sources(
         mbgl-core
         PRIVATE
-            ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/vulkan/headless_backend.cpp
+            ${PROJECT_SOURCE_DIR}/platform/default/src/mln/vulkan/headless_backend.cpp
     )
     
     message(STATUS "HarmonyOS: Configured Vulkan backend with headers from vendor/Vulkan-Headers")

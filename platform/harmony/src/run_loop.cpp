@@ -13,11 +13,11 @@
 
 #include "run_loop_impl.hpp"
 #include "loop_guard.hpp"
-#include <mbgl/actor/scheduler.hpp>
-#include <mbgl/util/async_task.hpp>
-#include <mbgl/util/monotonic_timer.hpp>
-#include <mbgl/util/run_loop.hpp>
-#include <mbgl/util/thread_local.hpp>
+#include <mln/actor/scheduler.hpp>
+#include <mln/util/async_task.hpp>
+#include <mln/util/monotonic_timer.hpp>
+#include <mln/util/run_loop.hpp>
+#include <mln/util/thread_local.hpp>
 
 #include <uv.h>
 
@@ -31,7 +31,7 @@
 // Use platform logger
 #include "../maplibre-harmony/src/main/cpp/utils/logger.h"
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
 namespace {
 
@@ -51,7 +51,7 @@ const char* uvErrorString(int errorCode) {
 
 } // namespace
 
-namespace mbgl {
+namespace mln {
 namespace util {
 
 /**
@@ -468,7 +468,7 @@ void RunLoop::updateTime() {
  * If called from a different thread, work is delegated to the RunLoop thread.
  * Blocks until queues are empty.
  */
-void RunLoop::waitForEmpty([[maybe_unused]] const mbgl::util::SimpleIdentity tag) {
+void RunLoop::waitForEmpty([[maybe_unused]] const mln::util::SimpleIdentity tag) {
     if (impl->tid != std::this_thread::get_id()) {
         std::atomic<bool> done{false};
         
@@ -620,4 +620,4 @@ void RunLoop::removeWatch(int fd) {
 }
 
 } // namespace util
-} // namespace mbgl
+} // namespace mln

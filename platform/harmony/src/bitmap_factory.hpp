@@ -1,9 +1,9 @@
 #pragma once
 
 #include "bitmap.hpp"
-#include <mbgl/util/image.hpp>
+#include <mln/util/image.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Provide a simplified bitmap factory for Harmony.
@@ -11,9 +11,9 @@ namespace harmony {
 
 class BitmapFactory {
 public:
-    static std::unique_ptr<Bitmap> createBitmap(const mbgl::PremultipliedImage& image);
-    static mbgl::PremultipliedImage convertToPremultipliedImage(const Bitmap& bitmap);
+    static std::unique_ptr<Bitmap> createBitmap(const mln::PremultipliedImage& image);
+    static mln::PremultipliedImage convertToPremultipliedImage(const Bitmap& bitmap);
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

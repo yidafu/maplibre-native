@@ -3,9 +3,9 @@
 #include <atomic>
 #include <memory>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 namespace {
@@ -397,4 +397,4 @@ bool ThreadSafeCallback::DispatchTask(napi_env env, std::function<void(napi_env)
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

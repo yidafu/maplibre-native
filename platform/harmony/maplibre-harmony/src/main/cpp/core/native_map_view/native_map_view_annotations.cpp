@@ -9,10 +9,10 @@
 #include "geometry/point_harmony.hpp"
 #include "geometry/projected_meters_harmony.hpp"
 #include "utils/logger.h"
-#include <mbgl/util/projection.hpp>
-#include <mbgl/map/camera.hpp>
-#include <mbgl/util/constants.hpp>
-#include <mbgl/math/angles.hpp>
+#include <mln/util/projection.hpp>
+#include <mln/map/camera.hpp>
+#include <mln/util/constants.hpp>
+#include <mln/math/angles.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -20,19 +20,19 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include <mbgl/style/style.hpp>
+#include <mln/style/style.hpp>
 #include <napi/native_api.h>
 #include <limits>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
-using mbgl::harmony::MarkerNAPI;
-using mbgl::harmony::PolylineNAPI;
-using mbgl::harmony::PolygonNAPI;
-using mbgl::harmony::StyleNAPI;
-using mbgl::harmony::IconNAPI;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
+using mln::harmony::MarkerNAPI;
+using mln::harmony::PolylineNAPI;
+using mln::harmony::PolygonNAPI;
+using mln::harmony::StyleNAPI;
+using mln::harmony::IconNAPI;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 namespace {
@@ -69,9 +69,9 @@ NativeMapView* UnwrapMapInstance(napi_env env, const NapiArgs& args) {
 }
 
 struct HarmonyViewAnnotationUpdate {
-    std::optional<mbgl::LatLng> anchor;
-    std::optional<mbgl::Size> size;
-    std::optional<mbgl::ScreenCoordinate> offset;
+    std::optional<mln::LatLng> anchor;
+    std::optional<mln::Size> size;
+    std::optional<mln::ScreenCoordinate> offset;
     std::optional<double> anchorHeight;  // Height for anchor positioning
     std::optional<double> anchorU;       // Horizontal anchor (0=left, 1=right)
     std::optional<double> anchorV;       // Vertical anchor (0=top, 1=bottom)
@@ -91,7 +91,7 @@ double clampToDouble(double value, double fallback = 0.0) {
     return value;
 }
 
-std::optional<mbgl::LatLng> parseAnchorLatLng(napi_env env, NapiArgs& args, napi_value anchorObj) {
+std::optional<mln::LatLng> parseAnchorLatLng(napi_env env, NapiArgs& args, napi_value anchorObj) {
     if (!anchorObj) {
         return std::nullopt;
     }
@@ -108,10 +108,10 @@ std::optional<mbgl::LatLng> parseAnchorLatLng(napi_env env, NapiArgs& args, napi
         return std::nullopt;
     }
 
-    return mbgl::LatLng{latitude, longitude};
+    return mln::LatLng{latitude, longitude};
 }
 
-std::optional<mbgl::Size> parseSize(NapiArgs& args, napi_value sizeObj) {
+std::optional<mln::Size> parseSize(NapiArgs& args, napi_value sizeObj) {
     if (!sizeObj) {
         return std::nullopt;
     }
@@ -126,10 +126,10 @@ std::optional<mbgl::Size> parseSize(NapiArgs& args, napi_value sizeObj) {
     width = std::max(0.0, width);
     height = std::max(0.0, height);
 
-    return mbgl::Size{static_cast<uint32_t>(std::llround(width)), static_cast<uint32_t>(std::llround(height))};
+    return mln::Size{static_cast<uint32_t>(std::llround(width)), static_cast<uint32_t>(std::llround(height))};
 }
 
-std::optional<mbgl::ScreenCoordinate> parseOffset(NapiArgs& args, napi_value offsetObj, double pixelRatio) {
+std::optional<mln::ScreenCoordinate> parseOffset(NapiArgs& args, napi_value offsetObj, double pixelRatio) {
     if (!offsetObj) {
         return std::nullopt;
     }
@@ -146,7 +146,7 @@ std::optional<mbgl::ScreenCoordinate> parseOffset(NapiArgs& args, napi_value off
         return std::nullopt;
     }
 
-    return mbgl::ScreenCoordinate{offsetX * pixelRatio, offsetY * pixelRatio};
+    return mln::ScreenCoordinate{offsetX * pixelRatio, offsetY * pixelRatio};
 }
 
 HarmonyViewAnnotation parseAnnotationDefaults(const NativeMapView& instance) {
@@ -157,10 +157,10 @@ HarmonyViewAnnotation parseAnnotationDefaults(const NativeMapView& instance) {
     annotation.scalesWithViewingDistance = false;
     annotation.rotatesWithCamera = false;
     annotation.minZoom = 0.0;
-    annotation.maxZoom = mbgl::util::DEFAULT_MAX_ZOOM;
-    annotation.size = mbgl::Size{0, 0};
-    annotation.offset = mbgl::ScreenCoordinate{0.0, 0.0};
-    annotation.anchor = mbgl::LatLng{};
+    annotation.maxZoom = mln::util::DEFAULT_MAX_ZOOM;
+    annotation.size = mln::Size{0, 0};
+    annotation.offset = mln::ScreenCoordinate{0.0, 0.0};
+    annotation.anchor = mln::LatLng{};
     return annotation;
 }
 
@@ -196,7 +196,7 @@ std::optional<HarmonyViewAnnotation> parseAddOptions(NativeMapView& instance, Na
         if (std::isfinite(width) && std::isfinite(height)) {
             width = std::max(0.0, width);
             height = std::max(0.0, height);
-            annotation.size = mbgl::Size{static_cast<uint32_t>(std::llround(width)), static_cast<uint32_t>(std::llround(height))};
+            annotation.size = mln::Size{static_cast<uint32_t>(std::llround(width)), static_cast<uint32_t>(std::llround(height))};
         }
     }
 
@@ -209,7 +209,7 @@ std::optional<HarmonyViewAnnotation> parseAddOptions(NativeMapView& instance, Na
         double offsetX = args.GetDoubleProperty(optionsObj, "offsetX", std::numeric_limits<double>::quiet_NaN());
         double offsetY = args.GetDoubleProperty(optionsObj, "offsetY", std::numeric_limits<double>::quiet_NaN());
         if (std::isfinite(offsetX) && std::isfinite(offsetY)) {
-            annotation.offset = mbgl::ScreenCoordinate{offsetX * instance.getPixelRatioValue(), offsetY * instance.getPixelRatioValue()};
+            annotation.offset = mln::ScreenCoordinate{offsetX * instance.getPixelRatioValue(), offsetY * instance.getPixelRatioValue()};
         }
     }
 
@@ -229,7 +229,7 @@ std::optional<HarmonyViewAnnotation> parseAddOptions(NativeMapView& instance, Na
     annotation.scalesWithViewingDistance = args.GetBoolProperty(optionsObj, "scalesWithViewingDistance", false);
     annotation.rotatesWithCamera = args.GetBoolProperty(optionsObj, "rotatesWithCamera", false);
     annotation.minZoom = args.GetDoubleProperty(optionsObj, "minZoom", 0.0);
-    annotation.maxZoom = args.GetDoubleProperty(optionsObj, "maxZoom", mbgl::util::DEFAULT_MAX_ZOOM);
+    annotation.maxZoom = args.GetDoubleProperty(optionsObj, "maxZoom", mln::util::DEFAULT_MAX_ZOOM);
 
     return annotation;
 }
@@ -258,7 +258,7 @@ std::optional<HarmonyViewAnnotationUpdate> parseUpdateOptions(NativeMapView& ins
         if (std::isfinite(width) && std::isfinite(height)) {
             width = std::max(0.0, width);
             height = std::max(0.0, height);
-            update.size = mbgl::Size{static_cast<uint32_t>(std::llround(width)), static_cast<uint32_t>(std::llround(height))};
+            update.size = mln::Size{static_cast<uint32_t>(std::llround(width)), static_cast<uint32_t>(std::llround(height))};
         }
     }
 
@@ -269,7 +269,7 @@ std::optional<HarmonyViewAnnotationUpdate> parseUpdateOptions(NativeMapView& ins
         double offsetX = args.GetDoubleProperty(optionsObj, "offsetX", std::numeric_limits<double>::quiet_NaN());
         double offsetY = args.GetDoubleProperty(optionsObj, "offsetY", std::numeric_limits<double>::quiet_NaN());
         if (std::isfinite(offsetX) && std::isfinite(offsetY)) {
-            update.offset = mbgl::ScreenCoordinate{offsetX * instance.getPixelRatioValue(), offsetY * instance.getPixelRatioValue()};
+            update.offset = mln::ScreenCoordinate{offsetX * instance.getPixelRatioValue(), offsetY * instance.getPixelRatioValue()};
         }
     }
 
@@ -306,14 +306,14 @@ std::optional<HarmonyViewAnnotationUpdate> parseUpdateOptions(NativeMapView& ins
         update.minZoom = clampToDouble(args.GetDoubleProperty(optionsObj, "minZoom", 0.0), 0.0);
     }
     if (hasNamedProperty(env, optionsObj, "maxZoom")) {
-        update.maxZoom = clampToDouble(args.GetDoubleProperty(optionsObj, "maxZoom", mbgl::util::DEFAULT_MAX_ZOOM), mbgl::util::DEFAULT_MAX_ZOOM);
+        update.maxZoom = clampToDouble(args.GetDoubleProperty(optionsObj, "maxZoom", mln::util::DEFAULT_MAX_ZOOM), mln::util::DEFAULT_MAX_ZOOM);
     }
 
     return update;
 }
 
 HarmonyViewAnnotationFrame buildFrame(const HarmonyViewAnnotation& annotation,
-                                     const mbgl::Map& map,
+                                     const mln::Map& map,
                                      double currentZoom,
                                      double pixelRatio,
                                      double currentBearing,
@@ -331,7 +331,7 @@ HarmonyViewAnnotationFrame buildFrame(const HarmonyViewAnnotation& annotation,
 
     if (annotation.scalesWithViewingDistance) {
         const double pitchClamped = std::clamp(currentPitch, 0.0, 60.0);
-        const double pitchFactor = std::cos(mbgl::util::deg2rad(pitchClamped));
+        const double pitchFactor = std::cos(mln::util::deg2rad(pitchClamped));
         frame.scale = pitchFactor <= 0.0 ? 1.0 : 1.0 / pitchFactor;
     }
 
@@ -343,13 +343,13 @@ HarmonyViewAnnotationFrame buildFrame(const HarmonyViewAnnotation& annotation,
         frame.visible = false;
     }
 
-    const mbgl::ScreenCoordinate screen = map.pixelForLatLng(annotation.anchor);
+    const mln::ScreenCoordinate screen = map.pixelForLatLng(annotation.anchor);
 
     // Calculate screen position: anchor + offset.
     // Note: the icon-height offset for InfoWindows is applied on the ArkTS side
     // via centerOffset (dy = -icon height). annotation.anchorHeight is parsed
     // and stored but intentionally not applied here.
-    frame.screen = mbgl::ScreenCoordinate{
+    frame.screen = mln::ScreenCoordinate{
         screen.x + annotation.offset.x,
         screen.y + annotation.offset.y
     };
@@ -559,15 +559,15 @@ napi_value NativeMapView::AddAnnotationsBatch(napi_env env, napi_callback_info i
     // ...then add them all with a single round trip to the render thread
     // (one blocking hop total, not one per annotation).
     auto addedIds = instance->invokeOnMapThreadSync(
-        [&](mbgl::Map* m) {
-            std::vector<mbgl::AnnotationID> result;
+        [&](mln::Map* m) {
+            std::vector<mln::AnnotationID> result;
             result.reserve(pending.size());
             for (auto& p : pending) {
                 result.push_back(m->addAnnotation(p.annotation));
             }
             return result;
         },
-        std::vector<mbgl::AnnotationID>{});
+        std::vector<mln::AnnotationID>{});
 
     for (size_t i = 0; i < addedIds.size() && i < pending.size(); i++) {
         pending[i].wrapper->setAnnotationId(addedIds[i]);
@@ -581,7 +581,7 @@ napi_value NativeMapView::AddAnnotationsBatch(napi_env env, napi_callback_info i
 
     // Trigger a repaint
     if (!addedIds.empty()) {
-        instance->invokeOnMapThread([](mbgl::Map* m) { m->triggerRepaint(); });
+        instance->invokeOnMapThread([](mln::Map* m) { m->triggerRepaint(); });
         if constexpr (MarkerFlavor) {
             Logger::info("NativeMapView", "[MarkerDebug] NAPI-Repaint: Repaint triggered for %zu markers", addedIds.size());
         }
@@ -648,14 +648,14 @@ napi_value NativeMapView::UpdateAnnotationImpl(napi_env env, napi_callback_info 
     }
 
     auto annotationId = wrapper->getAnnotationId();
-    if (annotationId == static_cast<mbgl::AnnotationID>(-1)) {
+    if (annotationId == static_cast<mln::AnnotationID>(-1)) {
         Logger::error("NativeMapView", "%s: %s has invalid ID (not added to map yet)", label, wrapperName);
         return undefined;
     }
 
     try {
         AnnotationT annotation = makeAnnotation(wrapper);
-        instance->invokeOnMapThread([instance, annotationId, annotation](mbgl::Map* m) {
+        instance->invokeOnMapThread([instance, annotationId, annotation](mln::Map* m) {
             m->updateAnnotation(annotationId, annotation);
             m->triggerRepaint();
             if constexpr (MarkerFlavor) {
@@ -673,18 +673,18 @@ napi_value NativeMapView::UpdateAnnotationImpl(napi_env env, napi_callback_info 
 }
 
 napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
-    return UpdateAnnotationImpl<mbgl::harmony::MarkerNAPI, mbgl::SymbolAnnotation, true>(
+    return UpdateAnnotationImpl<mln::harmony::MarkerNAPI, mln::SymbolAnnotation, true>(
         env, info, "updateMarker", "Marker", "[MarkerDebug] updateMarker",
-        [](mbgl::harmony::MarkerNAPI* marker) {
-            return mbgl::SymbolAnnotation(marker->getPositionPoint(), marker->getIconId());
+        [](mln::harmony::MarkerNAPI* marker) {
+            return mln::SymbolAnnotation(marker->getPositionPoint(), marker->getIconId());
         });
 }
 
 napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
-    return AddAnnotationsBatch<mbgl::harmony::MarkerNAPI, mbgl::SymbolAnnotation, true>(
+    return AddAnnotationsBatch<mln::harmony::MarkerNAPI, mln::SymbolAnnotation, true>(
         env, info, "addMarkers", "markers", "marker", "Marker",
-        [](mbgl::harmony::MarkerNAPI* marker) {
-            return mbgl::SymbolAnnotation(marker->getPositionPoint(), marker->getIconId());
+        [](mln::harmony::MarkerNAPI* marker) {
+            return mln::SymbolAnnotation(marker->getPositionPoint(), marker->getIconId());
         });
 }
 
@@ -696,25 +696,25 @@ napi_value NativeMapView::onLowMemory(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
-    return AddAnnotationsBatch<PolylineNAPI, mbgl::LineAnnotation>(
+    return AddAnnotationsBatch<PolylineNAPI, mln::LineAnnotation>(
         env, info, "addPolylines", "polylines", "polyline", "Polyline",
         [](PolylineNAPI* polyline) { return polyline->toAnnotation(); });
 }
 
 napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
-    return AddAnnotationsBatch<PolygonNAPI, mbgl::FillAnnotation>(
+    return AddAnnotationsBatch<PolygonNAPI, mln::FillAnnotation>(
         env, info, "addPolygons", "polygons", "polygon", "Polygon",
         [](PolygonNAPI* polygon) { return polygon->toAnnotation(); });
 }
 
 napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) {
-    return UpdateAnnotationImpl<PolylineNAPI, mbgl::LineAnnotation>(
+    return UpdateAnnotationImpl<PolylineNAPI, mln::LineAnnotation>(
         env, info, "updatePolyline", "Polyline", "updatePolyline",
         [](PolylineNAPI* polyline) { return polyline->toAnnotation(); });
 }
 
 napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
-    return UpdateAnnotationImpl<PolygonNAPI, mbgl::FillAnnotation>(
+    return UpdateAnnotationImpl<PolygonNAPI, mln::FillAnnotation>(
         env, info, "updatePolygon", "Polygon", "updatePolygon",
         [](PolygonNAPI* polygon) { return polygon->toAnnotation(); });
 }
@@ -784,7 +784,7 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
         }
         
         try {
-            instance->invokeOnMapThread([annotationId](mbgl::Map* m){ m->removeAnnotation(static_cast<mbgl::AnnotationID>(annotationId)); });
+            instance->invokeOnMapThread([annotationId](mln::Map* m){ m->removeAnnotation(static_cast<mln::AnnotationID>(annotationId)); });
         } catch (const std::exception& e) {
             Logger::error("NativeMapView", "removeAnnotations[%u]: Failed to remove ID=%ld - %s", i, annotationId, e.what());
         }
@@ -792,7 +792,7 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
     
     // Trigger a repaint
     if (length > 0) {
-        instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
+        instance->invokeOnMapThread([](mln::Map* m){ m->triggerRepaint(); });
     }
     
     return undefined;
@@ -845,8 +845,8 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
                      iconId.c_str(), iconNapi->getWidth(), iconNapi->getHeight(), scale);
         
         // Add image to style directly (no data copy needed!)
-        instance->invokeOnMapThread([iconId, scale, image](mbgl::Map* m) {
-            auto styleImage = std::make_unique<mbgl::style::Image>(
+        instance->invokeOnMapThread([iconId, scale, image](mln::Map* m) {
+            auto styleImage = std::make_unique<mln::style::Image>(
                 iconId, 
                 image->clone(),  // Clone the image for the style
                 scale
@@ -901,10 +901,10 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
             std::string symbolCopy = symbol;
             float scaleCopy = static_cast<float>(scale);
             int w = width, h = height;
-            instance->invokeOnMapThread([symbolCopy, scaleCopy, w, h, pixels = std::move(pixels)](mbgl::Map* m) {
-                mbgl::PremultipliedImage image({static_cast<uint32_t>(w), static_cast<uint32_t>(h)});
+            instance->invokeOnMapThread([symbolCopy, scaleCopy, w, h, pixels = std::move(pixels)](mln::Map* m) {
+                mln::PremultipliedImage image({static_cast<uint32_t>(w), static_cast<uint32_t>(h)});
                 std::memcpy(image.data.get(), pixels.data(), pixels.size());
-                auto styleImage = std::make_unique<mbgl::style::Image>(symbolCopy, std::move(image), scaleCopy);
+                auto styleImage = std::make_unique<mln::style::Image>(symbolCopy, std::move(image), scaleCopy);
                 m->getStyle().addImage(std::move(styleImage));
             });
             Logger::debug("NativeMapView", "addAnnotationIcon: Icon '%s' scheduled to add", symbol.c_str());
@@ -959,7 +959,7 @@ napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info 
     Logger::info("NativeMapView", "removeAnnotationIcon: symbol=%s", symbol.c_str());
     
     try {
-        instance->invokeOnMapThread([symbol](mbgl::Map* m){ m->getStyle().removeImage(symbol); });
+        instance->invokeOnMapThread([symbol](mln::Map* m){ m->getStyle().removeImage(symbol); });
         Logger::info("NativeMapView", "removeAnnotationIcon: Icon '%s' removed successfully", symbol.c_str());
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "removeAnnotationIcon: Failed - %s", e.what());
@@ -995,7 +995,7 @@ napi_value NativeMapView::getTopOffsetPixelsForAnnotationSymbol(napi_env env, na
     symbolName.resize(symbolLength);
     
     try {
-        double offset = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTopOffsetPixelsForAnnotationImage(symbolName); }, 0.0);
+        double offset = instance->invokeOnMapThreadSync([&](mln::Map* m){ return m->getTopOffsetPixelsForAnnotationImage(symbolName); }, 0.0);
         napi_create_double(env, offset, &result);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol: Failed - %s", e.what());
@@ -1037,7 +1037,7 @@ napi_value NativeMapView::addViewAnnotation(napi_env env, napi_callback_info inf
         instance->viewAnnotations_[annotationId] = annotation;
     }
 
-    instance->invokeOnMapThread([instance](mbgl::Map* map) {
+    instance->invokeOnMapThread([instance](mln::Map* map) {
         if (map) {
             map->triggerRepaint();
         }
@@ -1133,7 +1133,7 @@ napi_value NativeMapView::updateViewAnnotation(napi_env env, napi_callback_info 
     }
 
     if (updated) {
-        instance->invokeOnMapThread([instance](mbgl::Map* map) {
+        instance->invokeOnMapThread([instance](mln::Map* map) {
             if (map) {
                 map->triggerRepaint();
             }
@@ -1171,7 +1171,7 @@ napi_value NativeMapView::removeViewAnnotation(napi_env env, napi_callback_info 
     }
 
     if (removed) {
-        instance->invokeOnMapThread([instance](mbgl::Map* map) {
+        instance->invokeOnMapThread([instance](mln::Map* map) {
             if (map) {
                 map->triggerRepaint();
             }
@@ -1205,7 +1205,7 @@ napi_value NativeMapView::getViewAnnotationFrames(napi_env env, napi_callback_in
     }
 
     auto frames = instance->invokeOnMapThreadSync(
-        [annotations, pixelRatio](mbgl::Map* map) {
+        [annotations, pixelRatio](mln::Map* map) {
             std::vector<HarmonyViewAnnotationFrame> result;
             if (!map) {
                 return result;
@@ -1347,7 +1347,7 @@ napi_value NativeMapView::setViewAnnotationFramesListener(napi_env env, napi_cal
 
     // Deliver the current state to the new listener (async hop to the map
     // thread; the cleared snapshot above bypasses the epsilon dedupe).
-    instance->invokeOnMapThread([instance](mbgl::Map*) {
+    instance->invokeOnMapThread([instance](mln::Map*) {
         instance->pushViewAnnotationFrames();
     });
 
@@ -1355,4 +1355,4 @@ napi_value NativeMapView::setViewAnnotationFramesListener(napi_env env, napi_cal
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

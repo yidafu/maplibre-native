@@ -2,15 +2,15 @@
 #include "utils/logger.h"
 #include "napi/core/napi_args.hpp"
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 napi_ref BitmapNAPI::constructor = nullptr;
 
-BitmapNAPI::BitmapNAPI(std::shared_ptr<mbgl::PremultipliedImage> img) 
+BitmapNAPI::BitmapNAPI(std::shared_ptr<mln::PremultipliedImage> img) 
     : image(img) {
 }
 
@@ -66,7 +66,7 @@ napi_value BitmapNAPI::New(napi_env env, napi_callback_info info) {
     napi_value thisObj = args.This();
     
     // Create empty bitmap (for now, actual creation is done via CreateFromImage)
-    auto image = std::make_shared<mbgl::PremultipliedImage>(mbgl::Size{0, 0});
+    auto image = std::make_shared<mln::PremultipliedImage>(mln::Size{0, 0});
     BitmapNAPI* bitmap = new BitmapNAPI(image);
     
     napi_status status = napi_wrap(env, thisObj, bitmap, Destructor, nullptr, nullptr);
@@ -170,7 +170,7 @@ napi_value BitmapNAPI::IsMutable(napi_env env, napi_callback_info info) {
 
 napi_value BitmapNAPI::CreateFromImage(napi_env env,
                                        const std::string& id,
-                                       std::shared_ptr<mbgl::PremultipliedImage> image) {
+                                       std::shared_ptr<mln::PremultipliedImage> image) {
     if (!constructor) {
         Logger::error("BitmapNAPI", "CreateFromImage: Constructor not initialized");
         napi_value undefined;
@@ -239,5 +239,5 @@ BitmapNAPI* BitmapNAPI::Unwrap(napi_env env, napi_value value) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

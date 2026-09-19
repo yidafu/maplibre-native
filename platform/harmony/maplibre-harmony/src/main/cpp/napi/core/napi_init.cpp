@@ -53,73 +53,73 @@ static napi_value Init(napi_env env, napi_value exports) {
     // Note: LatLng now lives in the ETS layer and no longer requires NAPI registration
     
     // Initialize offline map APIs
-    mbgl::harmony::OfflineManagerNAPI::Init(env, exports);
-    mbgl::harmony::OfflineRegionNAPI::Init(env, exports);
+    mln::harmony::OfflineManagerNAPI::Init(env, exports);
+    mln::harmony::OfflineRegionNAPI::Init(env, exports);
     
     // Initialize snapshot API
-    mbgl::harmony::MapSnapshotterNAPI::Init(env, exports);
+    mln::harmony::MapSnapshotterNAPI::Init(env, exports);
     
     // Initialize NativeMapView
-    mbgl::harmony::NativeMapView::Init(env, exports);
+    mln::harmony::NativeMapView::Init(env, exports);
     
     // Initialize Marker
-    mbgl::harmony::MarkerNAPI::Init(env, exports);
+    mln::harmony::MarkerNAPI::Init(env, exports);
     
     // Initialize Polyline
-    mbgl::harmony::PolylineNAPI::Init(env, exports);
+    mln::harmony::PolylineNAPI::Init(env, exports);
     
     // Initialize Polygon (annotations)
-    mbgl::harmony::PolygonNAPI::Init(env, exports);
+    mln::harmony::PolygonNAPI::Init(env, exports);
     
     // Initialize Icon
-    mbgl::harmony::IconNAPI::Init(env, exports);
+    mln::harmony::IconNAPI::Init(env, exports);
     
     // Initialize IconFactory
-    mbgl::harmony::IconFactoryNAPI::Init(env, exports);
+    mln::harmony::IconFactoryNAPI::Init(env, exports);
     
     // Initialize Image
-    mbgl::harmony::ImageNAPI::Init(env, exports);
+    mln::harmony::ImageNAPI::Init(env, exports);
     
     // Initialize Bitmap
-    mbgl::harmony::BitmapNAPI::Init(env, exports);
+    mln::harmony::BitmapNAPI::Init(env, exports);
     
     // Initialize style API bindings (NAPI objects)
-    mbgl::harmony::StyleNAPI::Init(env, exports);
-    mbgl::harmony::StyleBuilderNAPI::Init(env, exports);
+    mln::harmony::StyleNAPI::Init(env, exports);
+    mln::harmony::StyleBuilderNAPI::Init(env, exports);
     
     // Initialize source NAPI classes
-    mbgl::harmony::GeoJsonSourceNAPI::Init(env, exports);
-    mbgl::harmony::VectorSourceNAPI::Init(env, exports);
-    mbgl::harmony::RasterSourceNAPI::Init(env, exports);
-    mbgl::harmony::RasterDemSourceNAPI::Init(env, exports);
-    mbgl::harmony::ImageSourceNAPI::Init(env, exports);
-    mbgl::harmony::CustomGeometrySourceNAPI::Init(env, exports);
-    mbgl::harmony::VideoSourceNAPI::Init(env, exports);
+    mln::harmony::GeoJsonSourceNAPI::Init(env, exports);
+    mln::harmony::VectorSourceNAPI::Init(env, exports);
+    mln::harmony::RasterSourceNAPI::Init(env, exports);
+    mln::harmony::RasterDemSourceNAPI::Init(env, exports);
+    mln::harmony::ImageSourceNAPI::Init(env, exports);
+    mln::harmony::CustomGeometrySourceNAPI::Init(env, exports);
+    mln::harmony::VideoSourceNAPI::Init(env, exports);
     
     // Initialize layer bindings
-    mbgl::harmony::FillLayerNAPI::Init(env, exports);
-    mbgl::harmony::LineLayerNAPI::Init(env, exports);
-    mbgl::harmony::CircleLayerNAPI::Init(env, exports);
-    mbgl::harmony::BackgroundLayerNAPI::Init(env, exports);
-    mbgl::harmony::RasterLayerNAPI::Init(env, exports);
-    mbgl::harmony::SymbolLayerNAPI::Init(env, exports);
-    mbgl::harmony::HeatmapLayerNAPI::Init(env, exports);
-    mbgl::harmony::HillshadeLayerNAPI::Init(env, exports);
-    mbgl::harmony::FillExtrusionLayerNAPI::Init(env, exports);
-    mbgl::harmony::ColorReliefLayerNAPI::Init(env, exports);
-    mbgl::harmony::LocationIndicatorLayerNAPI::Init(env, exports);
-    mbgl::harmony::CustomLayerNAPI::Init(env, exports);
-    mbgl::harmony::CustomDrawableLayerNAPI::Init(env, exports);
+    mln::harmony::FillLayerNAPI::Init(env, exports);
+    mln::harmony::LineLayerNAPI::Init(env, exports);
+    mln::harmony::CircleLayerNAPI::Init(env, exports);
+    mln::harmony::BackgroundLayerNAPI::Init(env, exports);
+    mln::harmony::RasterLayerNAPI::Init(env, exports);
+    mln::harmony::SymbolLayerNAPI::Init(env, exports);
+    mln::harmony::HeatmapLayerNAPI::Init(env, exports);
+    mln::harmony::HillshadeLayerNAPI::Init(env, exports);
+    mln::harmony::FillExtrusionLayerNAPI::Init(env, exports);
+    mln::harmony::ColorReliefLayerNAPI::Init(env, exports);
+    mln::harmony::LocationIndicatorLayerNAPI::Init(env, exports);
+    mln::harmony::CustomLayerNAPI::Init(env, exports);
+    mln::harmony::CustomDrawableLayerNAPI::Init(env, exports);
     
     // Style components
-    mbgl::harmony::LightHarmony::Init(env, exports);
+    mln::harmony::LightHarmony::Init(env, exports);
     
     // Network configuration
-    mbgl::harmony::NetworkNAPI::Init(env, exports);
-    mbgl::harmony::URLTransformNAPI::Init(env, exports);
+    mln::harmony::NetworkNAPI::Init(env, exports);
+    mln::harmony::URLTransformNAPI::Init(env, exports);
     
     // Global configuration management
-    mbgl::harmony::MapLibreSettingsNAPI::Init(env, exports);
+    mln::harmony::MapLibreSettingsNAPI::Init(env, exports);
 
     return exports;
 }

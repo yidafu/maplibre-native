@@ -8,15 +8,15 @@
 #include "style/layers/layer_property_utils.hpp"
 #include "layer_property_macros.hpp"
 #include "style/harmony_symbol_layer_properties.hpp"
-#include <mbgl/style/layers/symbol_layer.hpp>
-#include <mbgl/style/expression/formatted.hpp>
-#include <mbgl/style/expression/image.hpp>
+#include <mln/style/layers/symbol_layer.hpp>
+#include <mln/style/expression/formatted.hpp>
+#include <mln/style/expression/image.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Static member initialization
@@ -25,17 +25,17 @@ napi_env SymbolLayerNAPI::constructorEnv = nullptr;
 
 SymbolLayerNAPI::SymbolLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : ownsLayer(true) {
-    layer = std::make_unique<mbgl::style::SymbolLayer>(layerId, sourceId);
+    layer = std::make_unique<mln::style::SymbolLayer>(layerId, sourceId);
     
 // Set the default fonts for the Harmony platform
-    auto defaultFonts = mbgl::style::harmony::getDefaultTextFont();
-    layer->setTextFont(mbgl::style::PropertyValue<std::vector<std::string>>(defaultFonts));
+    auto defaultFonts = mln::style::harmony::getDefaultTextFont();
+    layer->setTextFont(mln::style::PropertyValue<std::vector<std::string>>(defaultFonts));
     
     Logger::info("SymbolLayerNAPI", "SymbolLayer created: %s (source: %s) with Harmony fonts", 
                  layerId.c_str(), sourceId.c_str());
 }
 
-SymbolLayerNAPI::SymbolLayerNAPI(mbgl::style::SymbolLayer* layerPtr)
+SymbolLayerNAPI::SymbolLayerNAPI(mln::style::SymbolLayer* layerPtr)
     : ownsLayer(false) {
     if (layerPtr) {
         weakLayer = layerPtr->makeWeakPtr();
@@ -44,7 +44,7 @@ SymbolLayerNAPI::SymbolLayerNAPI(mbgl::style::SymbolLayer* layerPtr)
 }
 
 
-SymbolLayerNAPI::SymbolLayerNAPI(std::unique_ptr<mbgl::style::SymbolLayer> layer_)
+SymbolLayerNAPI::SymbolLayerNAPI(std::unique_ptr<mln::style::SymbolLayer> layer_)
     : layer(std::move(layer_)), ownsLayer(true) {
     Logger::info("SymbolLayerNAPI", "SymbolLayer created from existing layer");
 }
@@ -71,67 +71,67 @@ void SymbolLayerNAPI::Destructor(napi_env env, void* nativeObject, void* finaliz
 // ============================================================================
 
 #define DEFINE_SYMBOL_SETTER(Fn, Helper, PropName, SetFn, ...)                 \
-    DEFINE_LAYER_SETTER(SymbolLayerNAPI, mbgl::style::SymbolLayer, Fn, Helper, PropName, SetFn, __VA_ARGS__)
+    DEFINE_LAYER_SETTER(SymbolLayerNAPI, mln::style::SymbolLayer, Fn, Helper, PropName, SetFn, __VA_ARGS__)
 
 #define DEFINE_SYMBOL_GETTER(Fn, GetFn, ...)                                   \
-    DEFINE_LAYER_GETTER(SymbolLayerNAPI, mbgl::style::SymbolLayer, Fn, GetFn, __VA_ARGS__)
+    DEFINE_LAYER_GETTER(SymbolLayerNAPI, mln::style::SymbolLayer, Fn, GetFn, __VA_ARGS__)
 
 // --- Generated property accessors ---
 
-DEFINE_SYMBOL_SETTER(SetIconImage, setDataDrivenLayoutProperty, "icon-image", setIconImage, mbgl::style::expression::Image)
-DEFINE_SYMBOL_GETTER(GetIconImage, getIconImage, mbgl::style::expression::Image)
+DEFINE_SYMBOL_SETTER(SetIconImage, setDataDrivenLayoutProperty, "icon-image", setIconImage, mln::style::expression::Image)
+DEFINE_SYMBOL_GETTER(GetIconImage, getIconImage, mln::style::expression::Image)
 DEFINE_SYMBOL_SETTER(SetIconSize, setLayoutProperty, "icon-size", setIconSize, float)
 DEFINE_SYMBOL_GETTER(GetIconSize, getIconSize, float)
 DEFINE_SYMBOL_SETTER(SetIconRotate, setDataDrivenLayoutProperty, "icon-rotate", setIconRotate, float)
 DEFINE_SYMBOL_GETTER(GetIconRotate, getIconRotate, float)
-DEFINE_SYMBOL_SETTER(SetIconAnchor, setLayoutProperty, "icon-anchor", setIconAnchor, mbgl::style::SymbolAnchorType)
-DEFINE_SYMBOL_GETTER(GetIconAnchor, getIconAnchor, mbgl::style::SymbolAnchorType)
+DEFINE_SYMBOL_SETTER(SetIconAnchor, setLayoutProperty, "icon-anchor", setIconAnchor, mln::style::SymbolAnchorType)
+DEFINE_SYMBOL_GETTER(GetIconAnchor, getIconAnchor, mln::style::SymbolAnchorType)
 DEFINE_SYMBOL_SETTER(SetIconAllowOverlap, setLayoutProperty, "icon-allow-overlap", setIconAllowOverlap, bool)
 DEFINE_SYMBOL_GETTER(GetIconAllowOverlap, getIconAllowOverlap, bool)
-DEFINE_SYMBOL_SETTER(SetTextField, setDataDrivenLayoutProperty, "text-field", setTextField, mbgl::style::expression::Formatted)
-DEFINE_SYMBOL_GETTER(GetTextField, getTextField, mbgl::style::expression::Formatted)
+DEFINE_SYMBOL_SETTER(SetTextField, setDataDrivenLayoutProperty, "text-field", setTextField, mln::style::expression::Formatted)
+DEFINE_SYMBOL_GETTER(GetTextField, getTextField, mln::style::expression::Formatted)
 DEFINE_SYMBOL_SETTER(SetTextSize, setLayoutProperty, "text-size", setTextSize, float)
 DEFINE_SYMBOL_GETTER(GetTextSize, getTextSize, float)
 DEFINE_SYMBOL_SETTER(SetTextMaxWidth, setLayoutProperty, "text-max-width", setTextMaxWidth, float)
 DEFINE_SYMBOL_GETTER(GetTextMaxWidth, getTextMaxWidth, float)
-DEFINE_SYMBOL_SETTER(SetTextAnchor, setLayoutProperty, "text-anchor", setTextAnchor, mbgl::style::SymbolAnchorType)
-DEFINE_SYMBOL_GETTER(GetTextAnchor, getTextAnchor, mbgl::style::SymbolAnchorType)
+DEFINE_SYMBOL_SETTER(SetTextAnchor, setLayoutProperty, "text-anchor", setTextAnchor, mln::style::SymbolAnchorType)
+DEFINE_SYMBOL_GETTER(GetTextAnchor, getTextAnchor, mln::style::SymbolAnchorType)
 DEFINE_SYMBOL_SETTER(SetTextAllowOverlap, setLayoutProperty, "text-allow-overlap", setTextAllowOverlap, bool)
 DEFINE_SYMBOL_GETTER(GetTextAllowOverlap, getTextAllowOverlap, bool)
 DEFINE_SYMBOL_SETTER(SetIconOpacity, setPaintProperty, "icon-opacity", setIconOpacity, float)
 DEFINE_SYMBOL_GETTER(GetIconOpacity, getIconOpacity, float)
-DEFINE_SYMBOL_SETTER(SetIconColor, setPaintProperty, "icon-color", setIconColor, mbgl::Color)
-DEFINE_SYMBOL_GETTER(GetIconColor, getIconColor, mbgl::Color)
-DEFINE_SYMBOL_SETTER(SetIconHaloColor, setPaintProperty, "icon-halo-color", setIconHaloColor, mbgl::Color)
-DEFINE_SYMBOL_GETTER(GetIconHaloColor, getIconHaloColor, mbgl::Color)
+DEFINE_SYMBOL_SETTER(SetIconColor, setPaintProperty, "icon-color", setIconColor, mln::Color)
+DEFINE_SYMBOL_GETTER(GetIconColor, getIconColor, mln::Color)
+DEFINE_SYMBOL_SETTER(SetIconHaloColor, setPaintProperty, "icon-halo-color", setIconHaloColor, mln::Color)
+DEFINE_SYMBOL_GETTER(GetIconHaloColor, getIconHaloColor, mln::Color)
 DEFINE_SYMBOL_SETTER(SetIconHaloWidth, setPaintProperty, "icon-halo-width", setIconHaloWidth, float)
 DEFINE_SYMBOL_GETTER(GetIconHaloWidth, getIconHaloWidth, float)
 DEFINE_SYMBOL_SETTER(SetTextOpacity, setPaintProperty, "text-opacity", setTextOpacity, float)
 DEFINE_SYMBOL_GETTER(GetTextOpacity, getTextOpacity, float)
-DEFINE_SYMBOL_SETTER(SetTextColor, setPaintProperty, "text-color", setTextColor, mbgl::Color)
-DEFINE_SYMBOL_GETTER(GetTextColor, getTextColor, mbgl::Color)
-DEFINE_SYMBOL_SETTER(SetTextHaloColor, setPaintProperty, "text-halo-color", setTextHaloColor, mbgl::Color)
-DEFINE_SYMBOL_GETTER(GetTextHaloColor, getTextHaloColor, mbgl::Color)
+DEFINE_SYMBOL_SETTER(SetTextColor, setPaintProperty, "text-color", setTextColor, mln::Color)
+DEFINE_SYMBOL_GETTER(GetTextColor, getTextColor, mln::Color)
+DEFINE_SYMBOL_SETTER(SetTextHaloColor, setPaintProperty, "text-halo-color", setTextHaloColor, mln::Color)
+DEFINE_SYMBOL_GETTER(GetTextHaloColor, getTextHaloColor, mln::Color)
 DEFINE_SYMBOL_SETTER(SetTextHaloWidth, setPaintProperty, "text-halo-width", setTextHaloWidth, float)
 DEFINE_SYMBOL_GETTER(GetTextHaloWidth, getTextHaloWidth, float)
 DEFINE_SYMBOL_SETTER(SetIconIgnorePlacement, setLayoutProperty, "icon-ignore-placement", setIconIgnorePlacement, bool)
 DEFINE_SYMBOL_GETTER(GetIconIgnorePlacement, getIconIgnorePlacement, bool)
 DEFINE_SYMBOL_SETTER(SetIconOptional, setLayoutProperty, "icon-optional", setIconOptional, bool)
 DEFINE_SYMBOL_GETTER(GetIconOptional, getIconOptional, bool)
-DEFINE_SYMBOL_SETTER(SetIconPadding, setLayoutProperty, "icon-padding", setIconPadding, mbgl::Padding)
-DEFINE_SYMBOL_GETTER(GetIconPadding, getIconPadding, mbgl::Padding)
+DEFINE_SYMBOL_SETTER(SetIconPadding, setLayoutProperty, "icon-padding", setIconPadding, mln::Padding)
+DEFINE_SYMBOL_GETTER(GetIconPadding, getIconPadding, mln::Padding)
 DEFINE_SYMBOL_SETTER(SetIconKeepUpright, setLayoutProperty, "icon-keep-upright", setIconKeepUpright, bool)
 DEFINE_SYMBOL_GETTER(GetIconKeepUpright, getIconKeepUpright, bool)
-DEFINE_SYMBOL_SETTER(SetIconPitchAlignment, setLayoutProperty, "icon-pitch-alignment", setIconPitchAlignment, mbgl::style::AlignmentType)
-DEFINE_SYMBOL_GETTER(GetIconPitchAlignment, getIconPitchAlignment, mbgl::style::AlignmentType)
-DEFINE_SYMBOL_SETTER(SetIconRotationAlignment, setLayoutProperty, "icon-rotation-alignment", setIconRotationAlignment, mbgl::style::AlignmentType)
-DEFINE_SYMBOL_GETTER(GetIconRotationAlignment, getIconRotationAlignment, mbgl::style::AlignmentType)
-DEFINE_SYMBOL_SETTER(SetIconTextFit, setLayoutProperty, "icon-text-fit", setIconTextFit, mbgl::style::IconTextFitType)
-DEFINE_SYMBOL_GETTER(GetIconTextFit, getIconTextFit, mbgl::style::IconTextFitType)
+DEFINE_SYMBOL_SETTER(SetIconPitchAlignment, setLayoutProperty, "icon-pitch-alignment", setIconPitchAlignment, mln::style::AlignmentType)
+DEFINE_SYMBOL_GETTER(GetIconPitchAlignment, getIconPitchAlignment, mln::style::AlignmentType)
+DEFINE_SYMBOL_SETTER(SetIconRotationAlignment, setLayoutProperty, "icon-rotation-alignment", setIconRotationAlignment, mln::style::AlignmentType)
+DEFINE_SYMBOL_GETTER(GetIconRotationAlignment, getIconRotationAlignment, mln::style::AlignmentType)
+DEFINE_SYMBOL_SETTER(SetIconTextFit, setLayoutProperty, "icon-text-fit", setIconTextFit, mln::style::IconTextFitType)
+DEFINE_SYMBOL_GETTER(GetIconTextFit, getIconTextFit, mln::style::IconTextFitType)
 DEFINE_SYMBOL_SETTER(SetTextLetterSpacing, setLayoutProperty, "text-letter-spacing", setTextLetterSpacing, float)
 DEFINE_SYMBOL_GETTER(GetTextLetterSpacing, getTextLetterSpacing, float)
-DEFINE_SYMBOL_SETTER(SetTextJustify, setLayoutProperty, "text-justify", setTextJustify, mbgl::style::TextJustifyType)
-DEFINE_SYMBOL_GETTER(GetTextJustify, getTextJustify, mbgl::style::TextJustifyType)
+DEFINE_SYMBOL_SETTER(SetTextJustify, setLayoutProperty, "text-justify", setTextJustify, mln::style::TextJustifyType)
+DEFINE_SYMBOL_GETTER(GetTextJustify, getTextJustify, mln::style::TextJustifyType)
 DEFINE_SYMBOL_SETTER(SetTextRadialOffset, setLayoutProperty, "text-radial-offset", setTextRadialOffset, float)
 DEFINE_SYMBOL_GETTER(GetTextRadialOffset, getTextRadialOffset, float)
 DEFINE_SYMBOL_SETTER(SetTextRotate, setLayoutProperty, "text-rotate", setTextRotate, float)
@@ -140,40 +140,40 @@ DEFINE_SYMBOL_SETTER(SetTextPadding, setLayoutProperty, "text-padding", setTextP
 DEFINE_SYMBOL_GETTER(GetTextPadding, getTextPadding, float)
 DEFINE_SYMBOL_SETTER(SetTextKeepUpright, setLayoutProperty, "text-keep-upright", setTextKeepUpright, bool)
 DEFINE_SYMBOL_GETTER(GetTextKeepUpright, getTextKeepUpright, bool)
-DEFINE_SYMBOL_SETTER(SetTextTransform, setLayoutProperty, "text-transform", setTextTransform, mbgl::style::TextTransformType)
-DEFINE_SYMBOL_GETTER(GetTextTransform, getTextTransform, mbgl::style::TextTransformType)
+DEFINE_SYMBOL_SETTER(SetTextTransform, setLayoutProperty, "text-transform", setTextTransform, mln::style::TextTransformType)
+DEFINE_SYMBOL_GETTER(GetTextTransform, getTextTransform, mln::style::TextTransformType)
 DEFINE_SYMBOL_SETTER(SetTextMaxAngle, setLayoutProperty, "text-max-angle", setTextMaxAngle, float)
 DEFINE_SYMBOL_GETTER(GetTextMaxAngle, getTextMaxAngle, float)
-DEFINE_SYMBOL_SETTER(SetTextRotationAlignment, setLayoutProperty, "text-rotation-alignment", setTextRotationAlignment, mbgl::style::AlignmentType)
-DEFINE_SYMBOL_GETTER(GetTextRotationAlignment, getTextRotationAlignment, mbgl::style::AlignmentType)
-DEFINE_SYMBOL_SETTER(SetTextPitchAlignment, setLayoutProperty, "text-pitch-alignment", setTextPitchAlignment, mbgl::style::AlignmentType)
-DEFINE_SYMBOL_GETTER(GetTextPitchAlignment, getTextPitchAlignment, mbgl::style::AlignmentType)
+DEFINE_SYMBOL_SETTER(SetTextRotationAlignment, setLayoutProperty, "text-rotation-alignment", setTextRotationAlignment, mln::style::AlignmentType)
+DEFINE_SYMBOL_GETTER(GetTextRotationAlignment, getTextRotationAlignment, mln::style::AlignmentType)
+DEFINE_SYMBOL_SETTER(SetTextPitchAlignment, setLayoutProperty, "text-pitch-alignment", setTextPitchAlignment, mln::style::AlignmentType)
+DEFINE_SYMBOL_GETTER(GetTextPitchAlignment, getTextPitchAlignment, mln::style::AlignmentType)
 DEFINE_SYMBOL_SETTER(SetTextLineHeight, setLayoutProperty, "text-line-height", setTextLineHeight, float)
 DEFINE_SYMBOL_GETTER(GetTextLineHeight, getTextLineHeight, float)
 DEFINE_SYMBOL_SETTER(SetTextIgnorePlacement, setLayoutProperty, "text-ignore-placement", setTextIgnorePlacement, bool)
 DEFINE_SYMBOL_GETTER(GetTextIgnorePlacement, getTextIgnorePlacement, bool)
 DEFINE_SYMBOL_SETTER(SetTextOptional, setLayoutProperty, "text-optional", setTextOptional, bool)
 DEFINE_SYMBOL_GETTER(GetTextOptional, getTextOptional, bool)
-DEFINE_SYMBOL_SETTER(SetSymbolPlacement, setLayoutProperty, "symbol-placement", setSymbolPlacement, mbgl::style::SymbolPlacementType)
-DEFINE_SYMBOL_GETTER(GetSymbolPlacement, getSymbolPlacement, mbgl::style::SymbolPlacementType)
+DEFINE_SYMBOL_SETTER(SetSymbolPlacement, setLayoutProperty, "symbol-placement", setSymbolPlacement, mln::style::SymbolPlacementType)
+DEFINE_SYMBOL_GETTER(GetSymbolPlacement, getSymbolPlacement, mln::style::SymbolPlacementType)
 DEFINE_SYMBOL_SETTER(SetSymbolSpacing, setLayoutProperty, "symbol-spacing", setSymbolSpacing, float)
 DEFINE_SYMBOL_GETTER(GetSymbolSpacing, getSymbolSpacing, float)
 DEFINE_SYMBOL_SETTER(SetSymbolAvoidEdges, setLayoutProperty, "symbol-avoid-edges", setSymbolAvoidEdges, bool)
 DEFINE_SYMBOL_GETTER(GetSymbolAvoidEdges, getSymbolAvoidEdges, bool)
 DEFINE_SYMBOL_SETTER(SetSymbolSortKey, setDataDrivenLayoutProperty, "symbol-sort-key", setSymbolSortKey, float)
 DEFINE_SYMBOL_GETTER(GetSymbolSortKey, getSymbolSortKey, float)
-DEFINE_SYMBOL_SETTER(SetSymbolZOrder, setLayoutProperty, "symbol-z-order", setSymbolZOrder, mbgl::style::SymbolZOrderType)
-DEFINE_SYMBOL_GETTER(GetSymbolZOrder, getSymbolZOrder, mbgl::style::SymbolZOrderType)
+DEFINE_SYMBOL_SETTER(SetSymbolZOrder, setLayoutProperty, "symbol-z-order", setSymbolZOrder, mln::style::SymbolZOrderType)
+DEFINE_SYMBOL_GETTER(GetSymbolZOrder, getSymbolZOrder, mln::style::SymbolZOrderType)
 DEFINE_SYMBOL_SETTER(SetIconHaloBlur, setPaintProperty, "icon-halo-blur", setIconHaloBlur, float)
 DEFINE_SYMBOL_GETTER(GetIconHaloBlur, getIconHaloBlur, float)
-DEFINE_SYMBOL_SETTER(SetIconTranslateAnchor, setPaintProperty, "icon-translate-anchor", setIconTranslateAnchor, mbgl::style::TranslateAnchorType)
-DEFINE_SYMBOL_GETTER(GetIconTranslateAnchor, getIconTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_SYMBOL_SETTER(SetIconTranslateAnchor, setPaintProperty, "icon-translate-anchor", setIconTranslateAnchor, mln::style::TranslateAnchorType)
+DEFINE_SYMBOL_GETTER(GetIconTranslateAnchor, getIconTranslateAnchor, mln::style::TranslateAnchorType)
 DEFINE_SYMBOL_SETTER(SetTextHaloBlur, setPaintProperty, "text-halo-blur", setTextHaloBlur, float)
 DEFINE_SYMBOL_GETTER(GetTextHaloBlur, getTextHaloBlur, float)
-DEFINE_SYMBOL_SETTER(SetTextTranslateAnchor, setPaintProperty, "text-translate-anchor", setTextTranslateAnchor, mbgl::style::TranslateAnchorType)
-DEFINE_SYMBOL_GETTER(GetTextTranslateAnchor, getTextTranslateAnchor, mbgl::style::TranslateAnchorType)
-DEFINE_SYMBOL_SETTER(SetTextVariableAnchorOffset, setLayoutProperty, "text-variable-anchor-offset", setTextVariableAnchorOffset, mbgl::VariableAnchorOffsetCollection)
-DEFINE_SYMBOL_GETTER(GetTextVariableAnchorOffset, getTextVariableAnchorOffset, mbgl::VariableAnchorOffsetCollection)
+DEFINE_SYMBOL_SETTER(SetTextTranslateAnchor, setPaintProperty, "text-translate-anchor", setTextTranslateAnchor, mln::style::TranslateAnchorType)
+DEFINE_SYMBOL_GETTER(GetTextTranslateAnchor, getTextTranslateAnchor, mln::style::TranslateAnchorType)
+DEFINE_SYMBOL_SETTER(SetTextVariableAnchorOffset, setLayoutProperty, "text-variable-anchor-offset", setTextVariableAnchorOffset, mln::VariableAnchorOffsetCollection)
+DEFINE_SYMBOL_GETTER(GetTextVariableAnchorOffset, getTextVariableAnchorOffset, mln::VariableAnchorOffsetCollection)
 DEFINE_SYMBOL_SETTER(SetIconOffset, setLayoutProperty, "icon-offset", setIconOffset, std::array<float, 2>)
 DEFINE_SYMBOL_GETTER(GetIconOffset, getIconOffset, std::array<float, 2>)
 DEFINE_SYMBOL_SETTER(SetTextFont, setLayoutProperty, "text-font", setTextFont, std::vector<std::string>)
@@ -182,8 +182,8 @@ DEFINE_SYMBOL_SETTER(SetTextOffset, setLayoutProperty, "text-offset", setTextOff
 DEFINE_SYMBOL_GETTER(GetTextOffset, getTextOffset, std::array<float, 2>)
 DEFINE_SYMBOL_SETTER(SetIconTextFitPadding, setLayoutProperty, "icon-text-fit-padding", setIconTextFitPadding, std::array<float, 4>)
 DEFINE_SYMBOL_GETTER(GetIconTextFitPadding, getIconTextFitPadding, std::array<float, 4>)
-DEFINE_SYMBOL_SETTER(SetTextVariableAnchor, setLayoutProperty, "text-variable-anchor", setTextVariableAnchor, std::vector<mbgl::style::TextVariableAnchorType>)
-DEFINE_SYMBOL_SETTER(SetTextWritingMode, setLayoutProperty, "text-writing-mode", setTextWritingMode, std::vector<mbgl::style::TextWritingModeType>)
+DEFINE_SYMBOL_SETTER(SetTextVariableAnchor, setLayoutProperty, "text-variable-anchor", setTextVariableAnchor, std::vector<mln::style::TextVariableAnchorType>)
+DEFINE_SYMBOL_SETTER(SetTextWritingMode, setLayoutProperty, "text-writing-mode", setTextWritingMode, std::vector<mln::style::TextWritingModeType>)
 DEFINE_SYMBOL_SETTER(SetIconTranslate, setPaintProperty, "icon-translate", setIconTranslate, std::array<float, 2>)
 DEFINE_SYMBOL_GETTER(GetIconTranslate, getIconTranslate, std::array<float, 2>)
 DEFINE_SYMBOL_SETTER(SetTextTranslate, setPaintProperty, "text-translate", setTextTranslate, std::array<float, 2>)
@@ -360,7 +360,7 @@ DEFINE_LAYER_NEW(SymbolLayerNAPI, "SymbolLayer", 2, new SymbolLayerNAPI(layerId,
         std::string layerId = args.GetString(0, "layerId");
         std::string sourceId = args.GetString(1, "sourceId");)
 
-napi_value SymbolLayerNAPI::CreateInstance(napi_env env, mbgl::style::SymbolLayer* layerPtr) {
+napi_value SymbolLayerNAPI::CreateInstance(napi_env env, mln::style::SymbolLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "SymbolLayer",
                                 layerPtr ? new SymbolLayerNAPI(layerPtr) : nullptr);
 }
@@ -469,12 +469,12 @@ napi_value SymbolLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
 // ==================== Generic Property Methods ====================
 
 napi_value SymbolLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
-    return SetPropertyImpl<SymbolLayerNAPI, mbgl::style::SymbolLayer>(env, info);
+    return SetPropertyImpl<SymbolLayerNAPI, mln::style::SymbolLayer>(env, info);
 }
 
 napi_value SymbolLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
-    return SetPropertiesImpl<SymbolLayerNAPI, mbgl::style::SymbolLayer>(env, info);
+    return SetPropertiesImpl<SymbolLayerNAPI, mln::style::SymbolLayer>(env, info);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

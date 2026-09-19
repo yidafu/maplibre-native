@@ -1,27 +1,27 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/map/map.hpp>
-#include <mbgl/style/style.hpp>
+#include <mln/map/map.hpp>
+#include <mln/style/style.hpp>
 #include "core/map_registry.hpp"
 #include <functional>
 #include <string>
 #include <unordered_map>
 #include <memory>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
  * StyleNAPI - NAPI wrapper for Style
  *
- * Wraps mbgl::style::Style to provide an object-oriented style management API.
+ * Wraps mln::style::Style to provide an object-oriented style management API.
  * Mirrors the Android Style class.
  *
  * === THREAD SAFETY ===
  *
  * StyleNAPI methods are called from the main (UI/JS) thread while the render
- * thread reads the same mbgl::Style (layer/source collections) every frame.
+ * thread reads the same mln::Style (layer/source collections) every frame.
  * Core style collections have no internal locking: the wrapper vector
  * (src/mbgl/style/collection.hpp) is a plain std::vector, so structural
  * mutations (addLayer/addSource/addImage/remove...) and collection iterations
@@ -35,7 +35,7 @@ namespace harmony {
  *
  * === MAP POINTER LIFECYCLE ===
  *
- * The `map` member is a raw pointer to an mbgl::Map owned by
+ * The `map` member is a raw pointer to an mln::Map owned by
  * HarmonyMapRenderThread, received through the JS API as a numeric value. When
  * NativeMapView reinitializes the renderer (surface loss, hardReset, font
  * changes) that pointer dangles. Construction therefore resolves a MapToken
@@ -45,7 +45,7 @@ namespace harmony {
  */
 class StyleNAPI {
 public:
-    StyleNAPI(mbgl::Map* map);
+    StyleNAPI(mln::Map* map);
     ~StyleNAPI();
     
     // Register NAPI bindings
@@ -94,7 +94,7 @@ public:
     // Internal helpers
     void setFullyLoaded(bool loaded) { fullyLoaded = loaded; }
     bool isFullyLoaded() const { return fullyLoaded; }
-    mbgl::Map* getMap() const { return map; }
+    mln::Map* getMap() const { return map; }
 
     /**
      * Token-aware Map fetch. Returns nullptr once the renderer that owned the
@@ -102,7 +102,7 @@ public:
      * NativeMapView::detachMapRegistry). Falls back to the raw pointer for
      * wrappers constructed before any registry entry existed.
      */
-    mbgl::Map* acquireMap() const;
+    mln::Map* acquireMap() const;
 
     /**
      * Run op(map) serialized with the render thread. Structural style changes
@@ -116,21 +116,21 @@ public:
      * gone or was never resolvable — callers should throw a JS error in that
      * case.
      */
-    bool runOnMap(const std::function<void(mbgl::Map&)>& op);
+    bool runOnMap(const std::function<void(mln::Map&)>& op);
 
     // Constructor reference (used to create instances)
     static napi_ref constructor;
     static napi_env constructorEnv;
 
 private:
-    mbgl::Map* map;  // Holds a Map pointer (not owned)
+    mln::Map* map;  // Holds a Map pointer (not owned)
     // Liveness + dispatch channel resolved from MapRegistry at construction
-    std::shared_ptr<mbgl::harmony::MapToken> token_;
-    mbgl::harmony::MapRegistry::Dispatcher dispatcher_;
+    std::shared_ptr<mln::harmony::MapToken> token_;
+    mln::harmony::MapRegistry::Dispatcher dispatcher_;
     bool fullyLoaded;
     
     // Caches (mirroring Android)
-    // Only IDs are cached here; actual objects are owned by mbgl::style::Style
+    // Only IDs are cached here; actual objects are owned by mln::style::Style
     std::unordered_map<std::string, bool> sources;  // sourceId -> exists
     std::unordered_map<std::string, bool> layers;   // layerId -> exists
 
@@ -139,5 +139,5 @@ public:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

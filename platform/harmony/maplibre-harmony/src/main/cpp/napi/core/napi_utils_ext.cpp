@@ -1,7 +1,7 @@
 #include "napi_utils.h"
 #include <cstring>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace napi {
 
@@ -62,5 +62,5 @@ napi_value CreateBoolValue(napi_env env, bool value) {
 
 } // namespace napi
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

@@ -4,7 +4,7 @@
 // Shared NAPI accessor shells for the source wrapper classes. Every source
 // NAPI class used to hand-duplicate GetId (x7), GetUrl (x4) and the
 // "tile size is immutable" SetTileSize (x2); the bodies were identical apart
-// from the class name. Expand only inside namespace mbgl::harmony.
+// from the class name. Expand only inside namespace mln::harmony.
 //
 // The per-method "unwrap this, check the wrapper, check the source" preamble
 // (~13 lines in every accessor of every source class) is likewise shared here
@@ -20,12 +20,12 @@
 #include <utility>
 #include <vector>
 
-#include <mbgl/util/geo.hpp>
-#include <mbgl/util/range.hpp>
-#include <mbgl/util/tileset.hpp>
-#include <mbgl/util/variant.hpp>
+#include <mln/util/geo.hpp>
+#include <mln/util/range.hpp>
+#include <mln/util/tileset.hpp>
+#include <mln/util/variant.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -91,10 +91,10 @@ auto ResolveSource(napi_env env, napi_value jsThis, NapiCls** outWrapper,
  * Default image/video quad (whole world) used when no coordinates are
  * supplied yet.
  */
-inline std::array<mbgl::LatLng, 4> DefaultLatLngQuad() {
+inline std::array<mln::LatLng, 4> DefaultLatLngQuad() {
     return {{
-        mbgl::LatLng{0, 0}, mbgl::LatLng{0, 1},
-        mbgl::LatLng{1, 1}, mbgl::LatLng{1, 0}
+        mln::LatLng{0, 0}, mln::LatLng{0, 1},
+        mln::LatLng{1, 1}, mln::LatLng{1, 0}
     }};
 }
 
@@ -103,7 +103,7 @@ inline std::array<mbgl::LatLng, 4> DefaultLatLngQuad() {
  * Returns false when the value is not such an array; historical quirk kept:
  * corners before the offending one may already have been written to `out`.
  */
-inline bool ParseLatLngQuad(napi_env env, napi_value coordsValue, std::array<mbgl::LatLng, 4>& out) {
+inline bool ParseLatLngQuad(napi_env env, napi_value coordsValue, std::array<mln::LatLng, 4>& out) {
     bool isArray = false;
     napi_is_array(env, coordsValue, &isArray);
     if (!isArray) return false;
@@ -128,7 +128,7 @@ inline bool ParseLatLngQuad(napi_env env, napi_value coordsValue, std::array<mbg
         napi_get_value_double(env, lngValue, &lng);
         napi_get_value_double(env, latValue, &lat);
 
-        out[i] = mbgl::LatLng{lat, lng};
+        out[i] = mln::LatLng{lat, lng};
     }
     return true;
 }
@@ -229,15 +229,15 @@ inline void ParseTileCacheOptions(napi::NapiArgs& args, napi_value optionsObj,
  * fall back to the URL when tiles are absent. `encoding` lets raster-dem pin
  * the tileset raster encoding.
  */
-inline mbgl::variant<std::string, mbgl::Tileset> MakeUrlOrTileset(
+inline mln::variant<std::string, mln::Tileset> MakeUrlOrTileset(
     const TileCacheOptions& options, const char* tag, const char* label,
-    std::optional<mbgl::Tileset::RasterEncoding> encoding = std::nullopt) {
-    mbgl::variant<std::string, mbgl::Tileset> urlOrTileset;
+    std::optional<mln::Tileset::RasterEncoding> encoding = std::nullopt) {
+    mln::variant<std::string, mln::Tileset> urlOrTileset;
     if (!options.tiles.empty()) {
         // Create a Tileset from the tiles array
-        mbgl::Tileset tileset;
+        mln::Tileset tileset;
         tileset.tiles = options.tiles;
-        tileset.zoomRange = mbgl::Range<uint8_t>(options.minzoom, options.maxzoom);
+        tileset.zoomRange = mln::Range<uint8_t>(options.minzoom, options.maxzoom);
         if (encoding) {
             tileset.rasterEncoding = *encoding;
         }
@@ -252,7 +252,7 @@ inline mbgl::variant<std::string, mbgl::Tileset> MakeUrlOrTileset(
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #define DEFINE_SOURCE_GET_ID(NapiCls)                                          \
     napi_value NapiCls::GetId(napi_env env, napi_callback_info info) {         \
@@ -283,7 +283,7 @@ inline mbgl::variant<std::string, mbgl::Tileset> MakeUrlOrTileset(
                 return napi::CreateStringValue(env, *url);                     \
             }                                                                  \
         } catch (const std::exception& e) {                                    \
-            mbgl::harmony::Logger::error(#NapiCls, "GetUrl failed: %s", e.what()); \
+            mln::harmony::Logger::error(#NapiCls, "GetUrl failed: %s", e.what()); \
         }                                                                      \
         return napi::CreateStringValue(env, "");                               \
     }
@@ -321,11 +321,11 @@ inline mbgl::variant<std::string, mbgl::Tileset> MakeUrlOrTileset(
 
 // CreateInstance: re-wrap a source the style already owns through its WeakPtr
 // (the C++ analogue of the constructor). `SourceT` is the concrete
-// mbgl::style::XSource this wrapper targets - note VideoSourceNAPI wraps
-// mbgl::style::ImageSource, not a "VideoSource".
+// mln::style::XSource this wrapper targets - note VideoSourceNAPI wraps
+// mln::style::ImageSource, not a "VideoSource".
 #define DEFINE_SOURCE_CREATE_INSTANCE(NapiCls, TypeName, SourceT)                   \
     napi_value NapiCls::CreateInstance(napi_env env, SourceT* sourcePtr) {          \
-        return mbgl::harmony::WrapExistingInstance(                                 \
+        return mln::harmony::WrapExistingInstance(                                 \
             env, constructor, Destructor, TypeName,                                 \
             sourcePtr ? new NapiCls(sourcePtr) : nullptr);                          \
     }

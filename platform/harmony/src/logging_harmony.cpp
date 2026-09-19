@@ -1,10 +1,10 @@
-#include <mbgl/util/logging.hpp>
-#include <mbgl/util/enum.hpp>
+#include <mln/util/logging.hpp>
+#include <mln/util/enum.hpp>
 
 // Include the new Logger class wrapper.
 #include "../maplibre-harmony/src/main/cpp/utils/logger.h"
 
-namespace mbgl {
+namespace mln {
 
 void Log::platformRecord(EventSeverity severity, const std::string& msg) {
     // Delegate logging to the new Logger wrapper.
@@ -30,4 +30,4 @@ void Log::platformRecord(EventSeverity severity, const std::string& msg) {
     }
 }
 
-} // namespace mbgl
+} // namespace mln

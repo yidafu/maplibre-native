@@ -59,7 +59,7 @@ bool ReadStringArrayArg(napi_env env, napi_value arrayValue,
 // element cannot be read.
 bool ParseRenderedQueryOptions(napi_env env, NapiArgs& args,
                                size_t layerIdsArgIndex, size_t filterArgIndex,
-                               mbgl::RenderedQueryOptions& options) {
+                               mln::RenderedQueryOptions& options) {
     // Parse optional layerIds parameter
     if (args.Count() >= layerIdsArgIndex + 1) {
         napi_value layerIdsValue = args.GetValue(layerIdsArgIndex);
@@ -96,7 +96,7 @@ bool ParseRenderedQueryOptions(napi_env env, NapiArgs& args,
             napi_is_array(env, filterValue, &isArray);
 
             if (isArray) {
-                auto filter = mbgl::harmony::napiArrayToFilter(env, filterValue);
+                auto filter = mln::harmony::napiArrayToFilter(env, filterValue);
                 if (filter) {
                     options.filter = *filter;
                 }
@@ -153,7 +153,7 @@ napi_value NativeMapView::getMetersPerPixelAtLatitude(napi_env env, napi_callbac
     }
 
     try {
-        double metersPerPixel = mbgl::Projection::getMetersPerPixelAtLatitude(latitude, zoom);
+        double metersPerPixel = mln::Projection::getMetersPerPixelAtLatitude(latitude, zoom);
         napi_create_double(env, metersPerPixel, &result);
     } catch (const std::exception &e) {
         Logger::error("NativeMapView", "getMetersPerPixelAtLatitude: Failed - %s", e.what());
@@ -176,8 +176,8 @@ napi_value NativeMapView::projectedMetersForLatLng(napi_env env, napi_callback_i
     }
 
     try {
-        mbgl::ProjectedMeters projectedMeters =
-            mbgl::Projection::projectedMetersForLatLng(mbgl::LatLng(latitude, longitude));
+        mln::ProjectedMeters projectedMeters =
+            mln::Projection::projectedMetersForLatLng(mln::LatLng(latitude, longitude));
 
         napi_value result = ProjectedMetersHarmony::CreateProjectedMetersObject(env, projectedMeters);
         return result;
@@ -208,9 +208,9 @@ napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) 
     }
 
     try {
-        mbgl::ScreenCoordinate pixel = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map *m) { return m->pixelForLatLng(mbgl::LatLng(latitude, longitude)); },
-            mbgl::ScreenCoordinate{});
+        mln::ScreenCoordinate pixel = instance->invokeOnMapThreadSync(
+            [&](mln::Map *m) { return m->pixelForLatLng(mln::LatLng(latitude, longitude)); },
+            mln::ScreenCoordinate{});
         napi_value result = PointHarmony::CreatePointObject(env, pixel);
         return result;
     } catch (const std::exception &e) {
@@ -258,7 +258,7 @@ napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info
         }
 
         // Build LatLng vector
-        std::vector<mbgl::LatLng> latLngs;
+        std::vector<mln::LatLng> latLngs;
         latLngs.reserve(length / 2);
 
         for (uint32_t i = 0; i < length; i += 2) {
@@ -274,8 +274,8 @@ napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info
         }
 
         // Invoke Map API for batch conversion
-        std::vector<mbgl::ScreenCoordinate> coordinates = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map *m) { return m->pixelsForLatLngs(latLngs); }, std::vector<mbgl::ScreenCoordinate>{});
+        std::vector<mln::ScreenCoordinate> coordinates = instance->invokeOnMapThreadSync(
+            [&](mln::Map *m) { return m->pixelsForLatLngs(latLngs); }, std::vector<mln::ScreenCoordinate>{});
 
         // Create output array
         napi_value outputArray;
@@ -314,7 +314,7 @@ napi_value NativeMapView::latLngForProjectedMeters(napi_env env, napi_callback_i
     }
 
     try {
-        mbgl::LatLng latLng = mbgl::Projection::latLngForProjectedMeters(mbgl::ProjectedMeters(northing, easting));
+        mln::LatLng latLng = mln::Projection::latLngForProjectedMeters(mln::ProjectedMeters(northing, easting));
 
         napi_value result = LatLngHarmony::CreateLatLngObject(env, latLng);
         return result;
@@ -345,8 +345,8 @@ napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) 
     }
 
     try {
-        mbgl::LatLng latLng = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map *m) { return m->latLngForPixel(mbgl::ScreenCoordinate(x, y)); }, mbgl::LatLng{});
+        mln::LatLng latLng = instance->invokeOnMapThreadSync(
+            [&](mln::Map *m) { return m->latLngForPixel(mln::ScreenCoordinate(x, y)); }, mln::LatLng{});
         napi_value result = LatLngHarmony::CreateLatLngObject(env, latLng);
         return result;
     } catch (const std::exception &e) {
@@ -394,7 +394,7 @@ napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info
         }
 
         // Build ScreenCoordinate vector
-        std::vector<mbgl::ScreenCoordinate> coordinates;
+        std::vector<mln::ScreenCoordinate> coordinates;
         coordinates.reserve(length / 2);
 
         for (uint32_t i = 0; i < length; i += 2) {
@@ -410,8 +410,8 @@ napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info
         }
 
         // Invoke Map API for batch conversion
-        std::vector<mbgl::LatLng> latLngs = instance->invokeOnMapThreadSync(
-            [&](mbgl::Map *m) { return m->latLngsForPixels(coordinates); }, std::vector<mbgl::LatLng>{});
+        std::vector<mln::LatLng> latLngs = instance->invokeOnMapThreadSync(
+            [&](mln::Map *m) { return m->latLngsForPixels(coordinates); }, std::vector<mln::LatLng>{});
 
         // Create output array
         napi_value outputArray;
@@ -478,10 +478,10 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
         }
 
         // 2. Build ScreenCoordinate
-        mbgl::ScreenCoordinate point(x, y);
+        mln::ScreenCoordinate point(x, y);
 
         // 3. Build query options
-        mbgl::RenderedQueryOptions options;
+        mln::RenderedQueryOptions options;
 
         // 4. Parse optional layerIds parameter and
         // 5. parse optional filter parameter
@@ -495,12 +495,12 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
             return undefined;
         }
 
-        std::vector<mbgl::Feature> features = instance->harmonyRenderer->queryRenderedFeatures(point, options);
+        std::vector<mln::Feature> features = instance->harmonyRenderer->queryRenderedFeatures(point, options);
 
         Logger::info("NativeMapView", "queryRenderedFeaturesForPoint: Found %zu features", features.size());
 
         // 7. Convert result to NAPI array
-        napi_value result = mbgl::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
+        napi_value result = mln::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
 
         return result;
 
@@ -554,10 +554,10 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
         }
 
         // 2. Build ScreenBox
-        mbgl::ScreenBox box{mbgl::ScreenCoordinate{left, top}, mbgl::ScreenCoordinate{right, bottom}};
+        mln::ScreenBox box{mln::ScreenCoordinate{left, top}, mln::ScreenCoordinate{right, bottom}};
 
         // 3. Build query options
-        mbgl::RenderedQueryOptions options;
+        mln::RenderedQueryOptions options;
 
         // 4. Parse optional layerIds parameter and
         // 5. parse optional filter parameter
@@ -571,12 +571,12 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
             return undefined;
         }
 
-        std::vector<mbgl::Feature> features = instance->harmonyRenderer->queryRenderedFeatures(box, options);
+        std::vector<mln::Feature> features = instance->harmonyRenderer->queryRenderedFeatures(box, options);
 
         Logger::info("NativeMapView", "queryRenderedFeaturesForBox: Found %zu features", features.size());
 
         // 7. Convert result to NAPI array
-        napi_value result = mbgl::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
+        napi_value result = mln::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
 
         return result;
 
@@ -627,7 +627,7 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
         }
 
         // 2. Build query options
-        mbgl::SourceQueryOptions options;
+        mln::SourceQueryOptions options;
 
         // 3. Parse optional sourceLayerIds parameter
         if (args.Count() >= 2) {
@@ -678,13 +678,13 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
             return undefined;
         }
 
-        std::vector<mbgl::Feature> features = instance->harmonyRenderer->querySourceFeatures(sourceId, options);
+        std::vector<mln::Feature> features = instance->harmonyRenderer->querySourceFeatures(sourceId, options);
 
         Logger::info("NativeMapView", "querySourceFeatures: Found %zu features from source '%s'", 
                     features.size(), sourceId.c_str());
 
         // 6. Convert result to NAPI array
-        napi_value result = mbgl::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
+        napi_value result = mln::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
 
         return result;
 

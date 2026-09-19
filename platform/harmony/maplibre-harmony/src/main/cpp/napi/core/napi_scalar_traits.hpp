@@ -15,7 +15,7 @@
 #include <napi/native_api.h>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace napi {
 
@@ -146,6 +146,6 @@ struct NapiScalarTraits<std::string> {
 
 } // namespace napi
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBREHARMONY_NAPI_SCALAR_TRAITS_HPP

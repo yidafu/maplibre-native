@@ -4,28 +4,28 @@
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/layers/layer_property_utils.hpp"
-#include <mbgl/style/layers/background_layer.hpp>
-#include <mbgl/style/property_value.hpp>
-#include <mbgl/style/expression/image.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/style/layers/background_layer.hpp>
+#include <mln/style/property_value.hpp>
+#include <mln/style/expression/image.hpp>
+#include <mln/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "layer_property_macros.hpp"
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
 // Static member initialization
 napi_ref BackgroundLayerNAPI::constructor = nullptr;
 napi_env BackgroundLayerNAPI::constructorEnv = nullptr;
 
 BackgroundLayerNAPI::BackgroundLayerNAPI(const std::string& layerId)
-    : layer(std::make_unique<mbgl::style::BackgroundLayer>(layerId)) {
+    : layer(std::make_unique<mln::style::BackgroundLayer>(layerId)) {
 }
 
-BackgroundLayerNAPI::BackgroundLayerNAPI(mbgl::style::BackgroundLayer* layerPtr) {
+BackgroundLayerNAPI::BackgroundLayerNAPI(mln::style::BackgroundLayer* layerPtr) {
     if (layerPtr) {
         weakLayer = layerPtr->makeWeakPtr();
         Logger::info("BackgroundLayerNAPI", "BackgroundLayer created from existing layer (WeakPtr)");
@@ -84,7 +84,7 @@ napi_value BackgroundLayerNAPI::Init(napi_env env, napi_value exports) {
 DEFINE_LAYER_NEW(BackgroundLayerNAPI, "BackgroundLayer", 1, new BackgroundLayerNAPI(layerId),
         std::string layerId = args.GetString(0, "layerId");)
 
-napi_value BackgroundLayerNAPI::CreateInstance(napi_env env, mbgl::style::BackgroundLayer* layerPtr) {
+napi_value BackgroundLayerNAPI::CreateInstance(napi_env env, mln::style::BackgroundLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "BackgroundLayer",
                                 layerPtr ? new BackgroundLayerNAPI(layerPtr) : nullptr);
 }
@@ -94,19 +94,19 @@ napi_value BackgroundLayerNAPI::CreateInstance(napi_env env, mbgl::style::Backgr
 // Paint Property Setters (Expression supported)
 // ============================================================================
 
-DEFINE_LAYER_SETTER(BackgroundLayerNAPI, mbgl::style::BackgroundLayer, SetBackgroundColor, setPaintProperty, "background-color", setBackgroundColor, mbgl::Color)
+DEFINE_LAYER_SETTER(BackgroundLayerNAPI, mln::style::BackgroundLayer, SetBackgroundColor, setPaintProperty, "background-color", setBackgroundColor, mln::Color)
 
-DEFINE_LAYER_SETTER(BackgroundLayerNAPI, mbgl::style::BackgroundLayer, SetBackgroundOpacity, setPaintProperty, "background-opacity", setBackgroundOpacity, float)
+DEFINE_LAYER_SETTER(BackgroundLayerNAPI, mln::style::BackgroundLayer, SetBackgroundOpacity, setPaintProperty, "background-opacity", setBackgroundOpacity, float)
 
-DEFINE_LAYER_SETTER(BackgroundLayerNAPI, mbgl::style::BackgroundLayer, SetBackgroundPattern, setPaintProperty, "background-pattern", setBackgroundPattern, mbgl::style::expression::Image)
+DEFINE_LAYER_SETTER(BackgroundLayerNAPI, mln::style::BackgroundLayer, SetBackgroundPattern, setPaintProperty, "background-pattern", setBackgroundPattern, mln::style::expression::Image)
 
 // ============================================================================
 // Property Getters (return constants or Expressions)
 // ============================================================================
 
-DEFINE_LAYER_GETTER(BackgroundLayerNAPI, mbgl::style::BackgroundLayer, GetBackgroundColor, getBackgroundColor, mbgl::Color)
+DEFINE_LAYER_GETTER(BackgroundLayerNAPI, mln::style::BackgroundLayer, GetBackgroundColor, getBackgroundColor, mln::Color)
 
-DEFINE_LAYER_GETTER(BackgroundLayerNAPI, mbgl::style::BackgroundLayer, GetBackgroundOpacity, getBackgroundOpacity, float)
+DEFINE_LAYER_GETTER(BackgroundLayerNAPI, mln::style::BackgroundLayer, GetBackgroundOpacity, getBackgroundOpacity, float)
 
 // ============================================================================
 // Base Layer Methods
@@ -155,12 +155,12 @@ napi_value BackgroundLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info
 // ==================== Generic Property Methods ====================
 
 napi_value BackgroundLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
-    return SetPropertyImpl<BackgroundLayerNAPI, mbgl::style::BackgroundLayer>(env, info);
+    return SetPropertyImpl<BackgroundLayerNAPI, mln::style::BackgroundLayer>(env, info);
 }
 
 napi_value BackgroundLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
-    return SetPropertiesImpl<BackgroundLayerNAPI, mbgl::style::BackgroundLayer>(env, info);
+    return SetPropertiesImpl<BackgroundLayerNAPI, mln::style::BackgroundLayer>(env, info);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

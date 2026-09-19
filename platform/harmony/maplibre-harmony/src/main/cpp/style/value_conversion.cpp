@@ -1,10 +1,10 @@
 #include "value_conversion.hpp"
 #include "utils/logger.h"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
 // Type alias for brevity
 using Value = mapbox::feature::value;
@@ -203,5 +203,5 @@ napi_value valueMapToNapiObject(
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

@@ -5,10 +5,10 @@
 
 #include <variant>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using Logger = mbgl::harmony::Logger;
+using Logger = mln::harmony::Logger;
 
 namespace {
 
@@ -100,7 +100,7 @@ void WriteCommonOptions(napi_env env, napi_value obj, const Definition& def) {
 
 // ========== Convert from NAPI object to C++ definition ==========
 
-mbgl::OfflineRegionDefinition OfflineRegionDefinitionNAPI::FromNapiObject(napi_env env, napi_value obj) {
+mln::OfflineRegionDefinition OfflineRegionDefinitionNAPI::FromNapiObject(napi_env env, napi_value obj) {
     // Check object type
     napi_value typeValue;
     if (napi_get_named_property(env, obj, "type", &typeValue) != napi_ok) {
@@ -122,12 +122,12 @@ mbgl::OfflineRegionDefinition OfflineRegionDefinitionNAPI::FromNapiObject(napi_e
 
 // ========== Convert from C++ definition to NAPI object ==========
 
-napi_value OfflineRegionDefinitionNAPI::ToNapiObject(napi_env env, const mbgl::OfflineRegionDefinition& definition) {
+napi_value OfflineRegionDefinitionNAPI::ToNapiObject(napi_env env, const mln::OfflineRegionDefinition& definition) {
     return std::visit([env](const auto& def) {
         using T = std::decay_t<decltype(def)>;
-        if constexpr (std::is_same_v<T, mbgl::OfflineTilePyramidRegionDefinition>) {
+        if constexpr (std::is_same_v<T, mln::OfflineTilePyramidRegionDefinition>) {
             return TilePyramidToNapi(env, def);
-        } else if constexpr (std::is_same_v<T, mbgl::OfflineGeometryRegionDefinition>) {
+        } else if constexpr (std::is_same_v<T, mln::OfflineGeometryRegionDefinition>) {
             return GeometryToNapi(env, def);
         }
         return static_cast<napi_value>(nullptr);
@@ -136,7 +136,7 @@ napi_value OfflineRegionDefinitionNAPI::ToNapiObject(napi_env env, const mbgl::O
 
 // ========== TilePyramid definition conversion ==========
 
-mbgl::OfflineTilePyramidRegionDefinition OfflineRegionDefinitionNAPI::TilePyramidFromNapi(napi_env env, napi_value obj) {
+mln::OfflineTilePyramidRegionDefinition OfflineRegionDefinitionNAPI::TilePyramidFromNapi(napi_env env, napi_value obj) {
     // Get styleURL
     napi_value styleURLValue;
     napi_get_named_property(env, obj, "styleURL", &styleURLValue);
@@ -146,14 +146,14 @@ mbgl::OfflineTilePyramidRegionDefinition OfflineRegionDefinitionNAPI::TilePyrami
     napi_value boundsValue;
     napi_get_named_property(env, obj, "bounds", &boundsValue);
 
-    mbgl::LatLngBounds bounds;
-    if (!mbgl::harmony::LatLngBoundsHarmony::ParseLatLngBounds(env, boundsValue, bounds)) {
+    mln::LatLngBounds bounds;
+    if (!mln::harmony::LatLngBoundsHarmony::ParseLatLngBounds(env, boundsValue, bounds)) {
         throw std::runtime_error("Failed to parse bounds");
     }
 
     CommonRegionOptions opts = ReadCommonOptions(env, obj);
 
-    return mbgl::OfflineTilePyramidRegionDefinition(
+    return mln::OfflineTilePyramidRegionDefinition(
         std::move(styleURL),
         bounds,
         opts.minZoom,
@@ -163,7 +163,7 @@ mbgl::OfflineTilePyramidRegionDefinition OfflineRegionDefinitionNAPI::TilePyrami
     );
 }
 
-napi_value OfflineRegionDefinitionNAPI::TilePyramidToNapi(napi_env env, const mbgl::OfflineTilePyramidRegionDefinition& def) {
+napi_value OfflineRegionDefinitionNAPI::TilePyramidToNapi(napi_env env, const mln::OfflineTilePyramidRegionDefinition& def) {
     napi_value obj;
     napi_create_object(env, &obj);
     
@@ -178,7 +178,7 @@ napi_value OfflineRegionDefinitionNAPI::TilePyramidToNapi(napi_env env, const mb
     napi_set_named_property(env, obj, "styleURL", styleURLValue);
     
     // Set bounds
-    napi_value boundsValue = mbgl::harmony::LatLngBoundsHarmony::CreateLatLngBoundsObject(env, def.bounds);
+    napi_value boundsValue = mln::harmony::LatLngBoundsHarmony::CreateLatLngBoundsObject(env, def.bounds);
     napi_set_named_property(env, obj, "bounds", boundsValue);
 
     WriteCommonOptions(env, obj, def);
@@ -188,7 +188,7 @@ napi_value OfflineRegionDefinitionNAPI::TilePyramidToNapi(napi_env env, const mb
 
 // ========== Geometry definition conversion ==========
 
-mbgl::OfflineGeometryRegionDefinition OfflineRegionDefinitionNAPI::GeometryFromNapi(napi_env env, napi_value obj) {
+mln::OfflineGeometryRegionDefinition OfflineRegionDefinitionNAPI::GeometryFromNapi(napi_env env, napi_value obj) {
     // Get styleURL
     napi_value styleURLValue;
     napi_get_named_property(env, obj, "styleURL", &styleURLValue);
@@ -198,11 +198,11 @@ mbgl::OfflineGeometryRegionDefinition OfflineRegionDefinitionNAPI::GeometryFromN
     napi_value geometryValue;
     napi_get_named_property(env, obj, "geometry", &geometryValue);
 
-    mbgl::Geometry<double> geometry = mbgl::harmony::geojson::GeoJsonConverter::JsObjectToGeometry(env, geometryValue);
+    mln::Geometry<double> geometry = mln::harmony::geojson::GeoJsonConverter::JsObjectToGeometry(env, geometryValue);
 
     CommonRegionOptions opts = ReadCommonOptions(env, obj);
 
-    return mbgl::OfflineGeometryRegionDefinition(
+    return mln::OfflineGeometryRegionDefinition(
         std::move(styleURL),
         geometry,
         opts.minZoom,
@@ -212,7 +212,7 @@ mbgl::OfflineGeometryRegionDefinition OfflineRegionDefinitionNAPI::GeometryFromN
     );
 }
 
-napi_value OfflineRegionDefinitionNAPI::GeometryToNapi(napi_env env, const mbgl::OfflineGeometryRegionDefinition& def) {
+napi_value OfflineRegionDefinitionNAPI::GeometryToNapi(napi_env env, const mln::OfflineGeometryRegionDefinition& def) {
     napi_value obj;
     napi_create_object(env, &obj);
     
@@ -227,7 +227,7 @@ napi_value OfflineRegionDefinitionNAPI::GeometryToNapi(napi_env env, const mbgl:
     napi_set_named_property(env, obj, "styleURL", styleURLValue);
     
     // Set geometry
-    napi_value geometryValue = mbgl::harmony::geojson::GeoJsonConverter::GeometryToJsObject(env, def.geometry);
+    napi_value geometryValue = mln::harmony::geojson::GeoJsonConverter::GeometryToJsObject(env, def.geometry);
     napi_set_named_property(env, obj, "geometry", geometryValue);
 
     WriteCommonOptions(env, obj, def);
@@ -236,5 +236,5 @@ napi_value OfflineRegionDefinitionNAPI::GeometryToNapi(napi_env env, const mbgl:
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

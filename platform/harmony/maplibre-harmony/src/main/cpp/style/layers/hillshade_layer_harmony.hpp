@@ -1,11 +1,11 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/style/layers/hillshade_layer.hpp>
+#include <mln/style/layers/hillshade_layer.hpp>
 #include <memory>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -17,10 +17,10 @@ public:
     static napi_value New(napi_env env, napi_callback_info info);
     
     // Construct from an existing layer (uses WeakPtr, does not take ownership)
-    HillshadeLayerNAPI(mbgl::style::HillshadeLayer* layerPtr);
+    HillshadeLayerNAPI(mln::style::HillshadeLayer* layerPtr);
 
     // Create a NAPI instance from an existing native object
-    static napi_value CreateInstance(napi_env env, mbgl::style::HillshadeLayer* layerPtr);
+    static napi_value CreateInstance(napi_env env, mln::style::HillshadeLayer* layerPtr);
     
     static void Destructor(napi_env env, void* nativeObject, void* hint);
     
@@ -58,20 +58,20 @@ public:
     static napi_value SetProperty(napi_env env, napi_callback_info info);
     static napi_value SetProperties(napi_env env, napi_callback_info info);
     
-    std::unique_ptr<mbgl::style::Layer> releaseLayer() {
+    std::unique_ptr<mln::style::Layer> releaseLayer() {
         if (!layer) throw std::runtime_error("Layer already added to style");
         return std::move(layer);
     }
     
-    mbgl::style::HillshadeLayer* getLayer() { 
+    mln::style::HillshadeLayer* getLayer() { 
         if (!layer && weakLayer) {
-            return static_cast<mbgl::style::HillshadeLayer*>(weakLayer.get());
+            return static_cast<mln::style::HillshadeLayer*>(weakLayer.get());
         }
         return layer.get(); 
     }
     
     // Attach to style after adding (creates WeakPtr)
-    void attachToStyle(mbgl::style::HillshadeLayer* layerPtr) {
+    void attachToStyle(mln::style::HillshadeLayer* layerPtr) {
         if (layerPtr) {
             weakLayer = layerPtr->makeWeakPtr();
         }
@@ -83,10 +83,10 @@ private:
     
     static napi_ref constructor;
     static napi_env constructorEnv;
-    std::unique_ptr<mbgl::style::HillshadeLayer> layer;
-    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
+    std::unique_ptr<mln::style::HillshadeLayer> layer;
+    mapbox::base::WeakPtr<mln::style::Layer> weakLayer;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

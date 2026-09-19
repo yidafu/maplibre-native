@@ -4,26 +4,26 @@
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/layers/layer_property_utils.hpp"
-#include <mbgl/style/expression/image.hpp>
-#include <mbgl/style/rotation.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/style/expression/image.hpp>
+#include <mln/style/rotation.hpp>
+#include <mln/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "layer_property_macros.hpp"
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
 napi_ref LocationIndicatorLayerNAPI::constructor = nullptr;
 napi_env LocationIndicatorLayerNAPI::constructorEnv = nullptr;
 
 LocationIndicatorLayerNAPI::LocationIndicatorLayerNAPI(const std::string& layerId)
-    : layer(std::make_unique<mbgl::style::LocationIndicatorLayer>(layerId)) {
+    : layer(std::make_unique<mln::style::LocationIndicatorLayer>(layerId)) {
 }
 
-LocationIndicatorLayerNAPI::LocationIndicatorLayerNAPI(mbgl::style::LocationIndicatorLayer* layerPtr) {
+LocationIndicatorLayerNAPI::LocationIndicatorLayerNAPI(mln::style::LocationIndicatorLayer* layerPtr) {
     if (layerPtr) {
         weakLayer = layerPtr->makeWeakPtr();
         Logger::info("LocationIndicatorLayerNAPI", "LocationIndicatorLayer created from existing layer (WeakPtr)");
@@ -98,7 +98,7 @@ napi_value LocationIndicatorLayerNAPI::Init(napi_env env, napi_value exports) {
 DEFINE_LAYER_NEW(LocationIndicatorLayerNAPI, "LocationIndicatorLayer", 1, new LocationIndicatorLayerNAPI(layerId),
         std::string layerId = args.GetString(0, "layerId");)
 
-napi_value LocationIndicatorLayerNAPI::CreateInstance(napi_env env, mbgl::style::LocationIndicatorLayer* layerPtr) {
+napi_value LocationIndicatorLayerNAPI::CreateInstance(napi_env env, mln::style::LocationIndicatorLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "LocationIndicatorLayer",
                                 layerPtr ? new LocationIndicatorLayerNAPI(layerPtr) : nullptr);
 }
@@ -107,61 +107,61 @@ napi_value LocationIndicatorLayerNAPI::CreateInstance(napi_env env, mbgl::style:
 // Layout Properties (images)
 // ============================================================================
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetBearingImage, setDataDrivenLayoutProperty, "bearing-image", setBearingImage, mbgl::style::expression::Image)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetBearingImage, setDataDrivenLayoutProperty, "bearing-image", setBearingImage, mln::style::expression::Image)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetBearingImage, getBearingImage, mbgl::style::expression::Image)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetBearingImage, getBearingImage, mln::style::expression::Image)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetShadowImage, setDataDrivenLayoutProperty, "shadow-image", setShadowImage, mbgl::style::expression::Image)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetShadowImage, setDataDrivenLayoutProperty, "shadow-image", setShadowImage, mln::style::expression::Image)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetShadowImage, getShadowImage, mbgl::style::expression::Image)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetShadowImage, getShadowImage, mln::style::expression::Image)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetTopImage, setDataDrivenLayoutProperty, "top-image", setTopImage, mbgl::style::expression::Image)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetTopImage, setDataDrivenLayoutProperty, "top-image", setTopImage, mln::style::expression::Image)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetTopImage, getTopImage, mbgl::style::expression::Image)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetTopImage, getTopImage, mln::style::expression::Image)
 
 // ============================================================================
 // Paint Properties
 // ============================================================================
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetAccuracyRadius, setPaintProperty, "accuracy-radius", setAccuracyRadius, float)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetAccuracyRadius, setPaintProperty, "accuracy-radius", setAccuracyRadius, float)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetAccuracyRadius, getAccuracyRadius, float)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetAccuracyRadius, getAccuracyRadius, float)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetAccuracyRadiusBorderColor, setPaintProperty, "accuracy-radius-border-color", setAccuracyRadiusBorderColor, mbgl::Color)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetAccuracyRadiusBorderColor, setPaintProperty, "accuracy-radius-border-color", setAccuracyRadiusBorderColor, mln::Color)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetAccuracyRadiusBorderColor, getAccuracyRadiusBorderColor, mbgl::Color)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetAccuracyRadiusBorderColor, getAccuracyRadiusBorderColor, mln::Color)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetAccuracyRadiusColor, setPaintProperty, "accuracy-radius-color", setAccuracyRadiusColor, mbgl::Color)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetAccuracyRadiusColor, setPaintProperty, "accuracy-radius-color", setAccuracyRadiusColor, mln::Color)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetAccuracyRadiusColor, getAccuracyRadiusColor, mbgl::Color)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetAccuracyRadiusColor, getAccuracyRadiusColor, mln::Color)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetBearing, setPaintProperty, "bearing", setBearing, mbgl::style::Rotation)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetBearing, setPaintProperty, "bearing", setBearing, mln::style::Rotation)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetBearing, getBearing, mbgl::style::Rotation)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetBearing, getBearing, mln::style::Rotation)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetBearingImageSize, setPaintProperty, "bearing-image-size", setBearingImageSize, float)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetBearingImageSize, setPaintProperty, "bearing-image-size", setBearingImageSize, float)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetBearingImageSize, getBearingImageSize, float)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetBearingImageSize, getBearingImageSize, float)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetImageTiltDisplacement, setPaintProperty, "image-tilt-displacement", setImageTiltDisplacement, float)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetImageTiltDisplacement, setPaintProperty, "image-tilt-displacement", setImageTiltDisplacement, float)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetImageTiltDisplacement, getImageTiltDisplacement, float)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetImageTiltDisplacement, getImageTiltDisplacement, float)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetLocation, setPaintProperty, "location", setLocation, std::array<double,3>)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetLocation, setPaintProperty, "location", setLocation, std::array<double,3>)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetLocation, getLocation, std::array<double,3>)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetLocation, getLocation, std::array<double,3>)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetPerspectiveCompensation, setPaintProperty, "perspective-compensation", setPerspectiveCompensation, float)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetPerspectiveCompensation, setPaintProperty, "perspective-compensation", setPerspectiveCompensation, float)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetPerspectiveCompensation, getPerspectiveCompensation, float)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetPerspectiveCompensation, getPerspectiveCompensation, float)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetShadowImageSize, setPaintProperty, "shadow-image-size", setShadowImageSize, float)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetShadowImageSize, setPaintProperty, "shadow-image-size", setShadowImageSize, float)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetShadowImageSize, getShadowImageSize, float)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetShadowImageSize, getShadowImageSize, float)
 
-DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, SetTopImageSize, setPaintProperty, "top-image-size", setTopImageSize, float)
+DEFINE_LAYER_SETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, SetTopImageSize, setPaintProperty, "top-image-size", setTopImageSize, float)
 
-DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer, GetTopImageSize, getTopImageSize, float)
+DEFINE_LAYER_GETTER(LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer, GetTopImageSize, getTopImageSize, float)
 
 // ============================================================================
 // Base Layer Methods
@@ -204,12 +204,12 @@ napi_value LocationIndicatorLayerNAPI::GetMaxZoom(napi_env env, napi_callback_in
 // ==================== Generic Property Methods ====================
 
 napi_value LocationIndicatorLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
-    return SetPropertyImpl<LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer>(env, info);
+    return SetPropertyImpl<LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer>(env, info);
 }
 
 napi_value LocationIndicatorLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
-    return SetPropertiesImpl<LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer>(env, info);
+    return SetPropertiesImpl<LocationIndicatorLayerNAPI, mln::style::LocationIndicatorLayer>(env, info);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

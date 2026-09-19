@@ -5,29 +5,29 @@
 #include "map_snapshotter_harmony.hpp"
 #include "../utils/logger.h"
 
-#include <mbgl/map/camera.hpp>
-#include <mbgl/util/geo.hpp>
-#include <mbgl/storage/resource_options.hpp>
+#include <mln/map/camera.hpp>
+#include <mln/util/geo.hpp>
+#include <mln/storage/resource_options.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 MapSnapshotterHarmony::MapSnapshotterHarmony(
     const SnapshotOptions& options,
-    const mbgl::ResourceOptions& resourceOptions,
-    const mbgl::ClientOptions& clientOptions
+    const mln::ResourceOptions& resourceOptions,
+    const mln::ClientOptions& clientOptions
 ) : options_(options),
     pixelRatio_(options.pixelRatio),
     showLogo_(options.showLogo) {
     
     // Create the core MapSnapshotter
-    mbgl::Size size{options.width, options.height};
+    mln::Size size{options.width, options.height};
     
     std::optional<std::string> localFont = options.localFontFamily.empty() 
         ? std::nullopt 
         : std::optional<std::string>(options.localFontFamily);
     
-    snapshotter_ = std::make_unique<mbgl::MapSnapshotter>(
+    snapshotter_ = std::make_unique<mln::MapSnapshotter>(
         size,
         pixelRatio_,
         resourceOptions,
@@ -94,14 +94,14 @@ std::string MapSnapshotterHarmony::getStyleJSON() const {
     return snapshotter_->getStyleJSON();
 }
 
-void MapSnapshotterHarmony::setSize(const mbgl::Size& size) {
+void MapSnapshotterHarmony::setSize(const mln::Size& size) {
     if (!snapshotter_) return;
     snapshotter_->setSize(size);
     Logger::info("MapSnapshotterHarmony", "Size set: %dx%d", size.width, size.height);
 }
 
-mbgl::Size MapSnapshotterHarmony::getSize() const {
-    if (!snapshotter_) return mbgl::Size{0, 0};
+mln::Size MapSnapshotterHarmony::getSize() const {
+    if (!snapshotter_) return mln::Size{0, 0};
     return snapshotter_->getSize();
 }
 
@@ -109,33 +109,33 @@ float MapSnapshotterHarmony::getPixelRatio() const {
     return pixelRatio_;
 }
 
-void MapSnapshotterHarmony::setCameraOptions(const mbgl::CameraOptions& camera) {
+void MapSnapshotterHarmony::setCameraOptions(const mln::CameraOptions& camera) {
     if (!snapshotter_) return;
     snapshotter_->setCameraOptions(camera);
     Logger::info("MapSnapshotterHarmony", "Camera options set");
 }
 
-mbgl::CameraOptions MapSnapshotterHarmony::getCameraOptions() const {
-    if (!snapshotter_) return mbgl::CameraOptions{};
+mln::CameraOptions MapSnapshotterHarmony::getCameraOptions() const {
+    if (!snapshotter_) return mln::CameraOptions{};
     return snapshotter_->getCameraOptions();
 }
 
-void MapSnapshotterHarmony::setRegion(const mbgl::LatLngBounds& bounds) {
+void MapSnapshotterHarmony::setRegion(const mln::LatLngBounds& bounds) {
     if (!snapshotter_) return;
     snapshotter_->setRegion(bounds);
     Logger::info("MapSnapshotterHarmony", "Region set");
 }
 
-mbgl::LatLngBounds MapSnapshotterHarmony::getRegion() const {
-    if (!snapshotter_) return mbgl::LatLngBounds::empty();
+mln::LatLngBounds MapSnapshotterHarmony::getRegion() const {
+    if (!snapshotter_) return mln::LatLngBounds::empty();
     return snapshotter_->getRegion();
 }
 
-mbgl::style::Style& MapSnapshotterHarmony::getStyle() {
+mln::style::Style& MapSnapshotterHarmony::getStyle() {
     return snapshotter_->getStyle();
 }
 
-const mbgl::style::Style& MapSnapshotterHarmony::getStyle() const {
+const mln::style::Style& MapSnapshotterHarmony::getStyle() const {
     return snapshotter_->getStyle();
 }
 
@@ -143,17 +143,17 @@ void MapSnapshotterHarmony::snapshot(SnapshotCallback callback) {
     if (!snapshotter_) {
         Logger::error("MapSnapshotterHarmony", "Snapshotter not initialized");
         callback(std::make_exception_ptr(std::runtime_error("Snapshotter not initialized")),
-                 mbgl::PremultipliedImage{}, {}, nullptr, nullptr);
+                 mln::PremultipliedImage{}, {}, nullptr, nullptr);
         return;
     }
 
     Logger::info("MapSnapshotterHarmony", "Starting snapshot");
 
     snapshotter_->snapshot([callback](std::exception_ptr err,
-                                     mbgl::PremultipliedImage image,
+                                     mln::PremultipliedImage image,
                                      std::vector<std::string> attributions,
-                                     mbgl::MapSnapshotter::PointForFn pointForFn,
-                                     mbgl::MapSnapshotter::LatLngForFn latLngForFn) {
+                                     mln::MapSnapshotter::PointForFn pointForFn,
+                                     mln::MapSnapshotter::LatLngForFn latLngForFn) {
         // Forward all callback arguments, including coordinate conversion functions
         callback(err, std::move(image), std::move(attributions), pointForFn, latLngForFn);
     });
@@ -193,5 +193,5 @@ void MapSnapshotterHarmony::setObserverCallback(ObserverCallback callback) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

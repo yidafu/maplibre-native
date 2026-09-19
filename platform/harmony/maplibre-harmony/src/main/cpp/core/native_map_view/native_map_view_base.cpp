@@ -5,20 +5,20 @@
 #include "sources/custom_geometry_source_napi.hpp"
 
 #include <js_native_api_types.h>
-#include <mbgl/map/map.hpp>
-#include <mbgl/map/map_options.hpp>
-#include <mbgl/storage/resource_options.hpp>
-#include <mbgl/util/client_options.hpp>
-#include <mbgl/storage/file_source.hpp>
-#include <mbgl/storage/file_source_manager.hpp>
-#include <mbgl/storage/sqlite3.hpp>
-#include <mbgl/style/style.hpp>
-#include <mbgl/util/exception.hpp>
-#include <mbgl/util/chrono.hpp>
-#include <mbgl/util/run_loop.hpp>
-#include <mbgl/util/timer.hpp>
-#include <mbgl/annotation/annotation.hpp>
-#include <mbgl/util/geometry.hpp>
+#include <mln/map/map.hpp>
+#include <mln/map/map_options.hpp>
+#include <mln/storage/resource_options.hpp>
+#include <mln/util/client_options.hpp>
+#include <mln/storage/file_source.hpp>
+#include <mln/storage/file_source_manager.hpp>
+#include <mln/storage/sqlite3.hpp>
+#include <mln/style/style.hpp>
+#include <mln/util/exception.hpp>
+#include <mln/util/chrono.hpp>
+#include <mln/util/run_loop.hpp>
+#include <mln/util/timer.hpp>
+#include <mln/annotation/annotation.hpp>
+#include <mln/util/geometry.hpp>
 #include <napi/native_api.h>
 
 // Include Harmony renderer headers
@@ -57,11 +57,11 @@
 #include <set>
 #include <filesystem>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
-using mbgl::harmony::ANRDetector;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
+using mln::harmony::ANRDetector;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // ✅ Use atomic counters to accurately track active instances
@@ -91,7 +91,7 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string
     nativeWindow = nullptr;
     
     // Initialize the callback manager
-    callbackManager_ = std::make_shared<mbgl::harmony::CallbackManager>(env);
+    callbackManager_ = std::make_shared<mln::harmony::CallbackManager>(env);
 }
 
 NativeMapView::~NativeMapView() {
@@ -117,8 +117,8 @@ void NativeMapView::attachMapRegistry() {
     // documented SIGSEGV@0x8 crash pattern).
     MapRegistry::registerMap(
         reinterpret_cast<uintptr_t>(map), token,
-        [this](std::function<void(mbgl::Map*)>&& op) {
-            invokeOnMapThreadSync([op = std::move(op)](mbgl::Map* m) -> int {
+        [this](std::function<void(mln::Map*)>&& op) {
+            invokeOnMapThreadSync([op = std::move(op)](mln::Map* m) -> int {
                 if (op && m) {
                     op(m);
                 }
@@ -156,8 +156,8 @@ void NativeMapView::cleanupAllResources() {
 
     // Clear the renderer query hooks — owner-checked, so only the hooks this
     // instance registered are removed (other map instances keep theirs).
-    mbgl::harmony::GeoJsonSourceNAPI::clearRendererHooks(harmonyRenderer.get());
-    mbgl::harmony::CustomGeometrySourceNAPI::clearQuerySourceFeaturesFn(harmonyRenderer.get());
+    mln::harmony::GeoJsonSourceNAPI::clearRendererHooks(harmonyRenderer.get());
+    mln::harmony::CustomGeometrySourceNAPI::clearQuerySourceFeaturesFn(harmonyRenderer.get());
 
     // Prevent duplicate cleanup
     if (resourcesCleaned_.exchange(true)) {
@@ -233,8 +233,8 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
     // Owner-checked clearing of the renderer query hooks while harmonyRenderer
     // is still alive, so no later query can reach the renderer being destroyed
     // (the async path previously left these dangling).
-    mbgl::harmony::GeoJsonSourceNAPI::clearRendererHooks(harmonyRenderer.get());
-    mbgl::harmony::CustomGeometrySourceNAPI::clearQuerySourceFeaturesFn(harmonyRenderer.get());
+    mln::harmony::GeoJsonSourceNAPI::clearRendererHooks(harmonyRenderer.get());
+    mln::harmony::CustomGeometrySourceNAPI::clearQuerySourceFeaturesFn(harmonyRenderer.get());
 
     resetSnapshotState();
 
@@ -286,7 +286,7 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
         napi_status stubStatus = napi_create_function(
             env_, "mbgl_cleanup_bridge", NAPI_AUTO_LENGTH, CleanupBridgeStub, nullptr, &stub);
         auto bridge = (stubStatus == napi_ok && stub)
-            ? mbgl::harmony::ThreadSafeCallback::Create(env_, stub, "cleanupAsync_bridge")
+            ? mln::harmony::ThreadSafeCallback::Create(env_, stub, "cleanupAsync_bridge")
             : nullptr;
 
         if (!bridge) {
@@ -856,31 +856,31 @@ void NativeMapView::wireSourceQueryCallbacks() {
     if (!harmonyRenderer) return;
 
     // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
-    mbgl::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
+    mln::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
         [renderer = harmonyRenderer.get()](
             const std::string& sourceID,
-            const mbgl::Feature& feature,
+            const mln::Feature& feature,
             const std::string& extension,
             const std::string& extensionField,
-            const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
-            if (!renderer) return mbgl::FeatureCollection{};
+            const std::optional<std::map<std::string, mln::Value>>& args) -> mln::FeatureExtensionValue {
+            if (!renderer) return mln::FeatureCollection{};
             return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
         },
         harmonyRenderer.get());
 
     // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
-    mbgl::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
+    mln::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
         [renderer = harmonyRenderer.get()](
             const std::string& sourceID,
-            const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
+            const mln::SourceQueryOptions& options) -> std::vector<mln::Feature> {
             if (!renderer) return {};
             return renderer->querySourceFeatures(sourceID, options);
         },
         harmonyRenderer.get());
-    mbgl::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
+    mln::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
         [renderer = harmonyRenderer.get()](
             const std::string& sourceID,
-            const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
+            const mln::SourceQueryOptions& options) -> std::vector<mln::Feature> {
             if (!renderer) return {};
             return renderer->querySourceFeatures(sourceID, options);
         },
@@ -1124,7 +1124,7 @@ napi_value NativeMapView::setLocalIdeographFontFamily(napi_env env, napi_callbac
         // documented SIGSEGV@0x8 pattern).
         if (!currentStyleUrl.empty() && instance->map) {
             instance->styleLoadedOnce.store(false, std::memory_order_release);
-            instance->invokeOnMapThread([styleUrl = currentStyleUrl](mbgl::Map* m) {
+            instance->invokeOnMapThread([styleUrl = currentStyleUrl](mln::Map* m) {
                 m->getStyle().loadURL(styleUrl);
             });
             Logger::info("NativeMapView", "setLocalIdeographFontFamily: Style reloaded, glyphs will be re-rasterized");
@@ -1290,7 +1290,7 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
     if (instance->map) {
         // Build EdgeInsets (constructor order: top, left, bottom, right)
         // contentPadding_ storage order: [0]=left, [1]=top, [2]=right, [3]=bottom
-        mbgl::EdgeInsets paddingInsets{
+        mln::EdgeInsets paddingInsets{
             newPadding[1] * instance->pixelRatio, // top = newPadding[1]
             newPadding[0] * instance->pixelRatio, // left = newPadding[0]
             newPadding[3] * instance->pixelRatio, // bottom = newPadding[3]
@@ -1323,7 +1323,7 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
         
         // Apply on the render thread.
         // Use jumpTo for immediate effect (no animation).
-        instance->invokeOnMapThread([newCamera](mbgl::Map* m) {
+        instance->invokeOnMapThread([newCamera](mln::Map* m) {
             Logger::info("NativeMapView", "setContentPadding: Executing jumpTo on render thread");
             m->jumpTo(newCamera);
             m->triggerRepaint();
@@ -1477,4 +1477,4 @@ napi_value NativeMapView::cancelAllRequests(napi_env env, napi_callback_info inf
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

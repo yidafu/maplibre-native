@@ -3,9 +3,9 @@
 #include "utils/logger.h"
 #include <stdexcept>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 EGLDisplayManager& EGLDisplayManager::getInstance() {
@@ -210,5 +210,5 @@ void EGLDisplayManager::cleanupDisplay() {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

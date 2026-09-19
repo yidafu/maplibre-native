@@ -1,15 +1,15 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/util/geo.hpp>
+#include <mln/util/geo.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
  * Point NAPI conversion helper.
  *
- * Converts between mbgl::ScreenCoordinate (C++) and ETS Point objects.
+ * Converts between mln::ScreenCoordinate (C++) and ETS Point objects.
  * ETS definition: { x: number, y: number }
  * Equivalent to Android's PointF.
  */
@@ -30,7 +30,7 @@ public:
      * @param coord Screen coordinate
      * @return NAPI object { x: number, y: number }
      */
-    static napi_value CreatePointObject(napi_env env, const mbgl::ScreenCoordinate& coord);
+    static napi_value CreatePointObject(napi_env env, const mln::ScreenCoordinate& coord);
     
     /**
      * Parse a Point from a NAPI value.
@@ -49,9 +49,9 @@ public:
      * @param outCoord Output ScreenCoordinate
      * @return True if parsing succeeded
      */
-    static bool ParseScreenCoordinate(napi_env env, napi_value value, mbgl::ScreenCoordinate& outCoord);
+    static bool ParseScreenCoordinate(napi_env env, napi_value value, mln::ScreenCoordinate& outCoord);
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

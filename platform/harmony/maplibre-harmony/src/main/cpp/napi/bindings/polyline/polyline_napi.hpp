@@ -1,13 +1,13 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/annotation/annotation.hpp>
-#include <mbgl/util/geometry.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/annotation/annotation.hpp>
+#include <mln/util/geometry.hpp>
+#include <mln/util/color.hpp>
 #include <string>
 #include <vector>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -56,19 +56,19 @@ public:
     static napi_value SetId(napi_env env, napi_callback_info info);
     static napi_value SetMapLibreMap(napi_env env, napi_callback_info info);
     
-    // Convert to mbgl::LineAnnotation
-    mbgl::LineAnnotation toAnnotation() const;
+    // Convert to mln::LineAnnotation
+    mln::LineAnnotation toAnnotation() const;
     
     // Data access methods (for C++ internal use)
-    const std::vector<mbgl::Point<double>>& getPointsInternal() const { return points; }
-    mbgl::Color getColorValue() const { return color; }
+    const std::vector<mln::Point<double>>& getPointsInternal() const { return points; }
+    mln::Color getColorValue() const { return color; }
     float getWidthValue() const { return width; }
     float getAlphaValue() const { return alpha; }
     bool isVisible() const { return visible; }
     int getZIndex() const { return zIndex; }
-    mbgl::AnnotationID getAnnotationId() const { return annotationId; }
+    mln::AnnotationID getAnnotationId() const { return annotationId; }
     
-    void setAnnotationId(mbgl::AnnotationID id) { annotationId = id; }
+    void setAnnotationId(mln::AnnotationID id) { annotationId = id; }
     
 private:
     static napi_ref constructor;
@@ -79,9 +79,9 @@ private:
     ~PolylineNAPI();
     
     // Polyline state
-    mbgl::AnnotationID annotationId;
-    std::vector<mbgl::Point<double>> points;  // List of (longitude, latitude)
-    mbgl::Color color;
+    mln::AnnotationID annotationId;
+    std::vector<mln::Point<double>> points;  // List of (longitude, latitude)
+    mln::Color color;
     float width;
     float alpha;
     bool visible;
@@ -95,4 +95,4 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

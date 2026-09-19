@@ -273,7 +273,7 @@ add_library(maplibre
     style/layers/location_indicator_layer_harmony.cpp
     
     # HarmonyOS i18n files are in mbgl-core (harmony.cmake)
-    # ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp
+    # ${MBGL_SOURCE_DIR}/platform/default/src/mln/i18n/collator.cpp
 )
 
 # Conditionally add rendering backend sources

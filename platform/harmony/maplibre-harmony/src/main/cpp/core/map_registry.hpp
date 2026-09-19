@@ -5,15 +5,15 @@
 #include <memory>
 #include <stdint.h>
 
-namespace mbgl {
+namespace mln {
 class Map;
 }
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
- * Liveness token for a raw mbgl::Map owned by a HarmonyMapRenderThread.
+ * Liveness token for a raw mln::Map owned by a HarmonyMapRenderThread.
  *
  * The render thread can be torn down and rebuilt at any time (surface loss,
  * hardReset, font-family changes). Any wrapper that cached the raw Map pointer
@@ -21,7 +21,7 @@ namespace harmony {
  * instead and can detect invalidation cheaply.
  */
 struct MapToken {
-    mbgl::Map* map = nullptr;
+    mln::Map* map = nullptr;
     std::atomic<bool> valid{true};
 };
 
@@ -39,7 +39,7 @@ struct MapToken {
 class MapRegistry {
 public:
     /// Execute op(map) on the map/render thread and return once it has run.
-    using Dispatcher = std::function<void(std::function<void(mbgl::Map*)>&&)>;
+    using Dispatcher = std::function<void(std::function<void(mln::Map*)>&&)>;
 
     /// Publish the current Map of a view. Invalidates any previous entry
     /// registered under a different address for the same owner is the caller's
@@ -62,4 +62,4 @@ public:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

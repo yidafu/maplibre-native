@@ -7,9 +7,9 @@
 #include "utils/logger.h"
 #include <sstream>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace napi {
 
@@ -477,4 +477,4 @@ bool NapiArgs::GetArrayElementBool(napi_value array, uint32_t index, bool defaul
 
 } // namespace napi
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

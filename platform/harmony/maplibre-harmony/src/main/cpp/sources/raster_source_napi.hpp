@@ -1,26 +1,26 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/style/sources/raster_source.hpp>
+#include <mln/style/sources/raster_source.hpp>
 #include <string>
 #include <memory>
 
 #include "source_napi_base.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
  * RasterSourceNAPI - NAPI wrapper for Raster Source
  *
- * Wraps mbgl::style::RasterSource to provide an object-oriented raster tile interface.
+ * Wraps mln::style::RasterSource to provide an object-oriented raster tile interface.
  * Ownership state and the shared accessors live in SourceNapiBase.
  */
-class RasterSourceNAPI : public SourceNapiBase<RasterSourceNAPI, mbgl::style::RasterSource> {
+class RasterSourceNAPI : public SourceNapiBase<RasterSourceNAPI, mln::style::RasterSource> {
 public:
-    RasterSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::RasterSource> source);
+    RasterSourceNAPI(const std::string& id, std::unique_ptr<mln::style::RasterSource> source);
     // Construct from an existing Source (uses WeakPtr, does not take ownership)
-    RasterSourceNAPI(mbgl::style::RasterSource* sourcePtr);
+    RasterSourceNAPI(mln::style::RasterSource* sourcePtr);
 
     ~RasterSourceNAPI();
 
@@ -28,7 +28,7 @@ public:
     static napi_value Init(napi_env env, napi_value exports);
     static napi_value New(napi_env env, napi_callback_info info);
     // Create a NAPI instance from an existing native object
-    static napi_value CreateInstance(napi_env env, mbgl::style::RasterSource* sourcePtr);
+    static napi_value CreateInstance(napi_env env, mln::style::RasterSource* sourcePtr);
 
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
 
@@ -45,4 +45,4 @@ public:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

@@ -1,14 +1,14 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/style/layers/custom_drawable_layer.hpp>
+#include <mln/style/layers/custom_drawable_layer.hpp>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -19,12 +19,12 @@ namespace harmony {
  * render thread. The mutex protects the command list across threads.
  */
 struct CustomDrawableState {
-    using Interface = mbgl::style::CustomDrawableLayerHost::Interface;
-    using DrawCommand = std::function<mbgl::util::SimpleIdentity(Interface&)>;
+    using Interface = mln::style::CustomDrawableLayerHost::Interface;
+    using DrawCommand = std::function<mln::util::SimpleIdentity(Interface&)>;
 
     std::mutex mutex;
     std::vector<DrawCommand> commands;
-    std::vector<mbgl::util::SimpleIdentity> drawableIds;
+    std::vector<mln::util::SimpleIdentity> drawableIds;
     bool dirty = false;
 };
 
@@ -38,10 +38,10 @@ struct CustomDrawableState {
  */
 class CustomDrawableLayerNAPI {
 public:
-    CustomDrawableLayerNAPI(const std::string& layerId, std::unique_ptr<mbgl::style::CustomDrawableLayer> layer,
+    CustomDrawableLayerNAPI(const std::string& layerId, std::unique_ptr<mln::style::CustomDrawableLayer> layer,
                             std::shared_ptr<CustomDrawableState> state);
     // Construct from an existing Layer (uses WeakPtr, does not take ownership)
-    CustomDrawableLayerNAPI(mbgl::style::CustomDrawableLayer* layerPtr,
+    CustomDrawableLayerNAPI(mln::style::CustomDrawableLayer* layerPtr,
                             std::shared_ptr<CustomDrawableState> state);
 
     ~CustomDrawableLayerNAPI();
@@ -50,7 +50,7 @@ public:
     static napi_value Init(napi_env env, napi_value exports);
     static napi_value New(napi_env env, napi_callback_info info);
     // Create a NAPI instance from an existing native layer
-    static napi_value CreateInstance(napi_env env, mbgl::style::CustomDrawableLayer* layerPtr);
+    static napi_value CreateInstance(napi_env env, mln::style::CustomDrawableLayer* layerPtr);
 
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
 
@@ -71,22 +71,22 @@ public:
 
     // Internal helpers
     std::string getId() const { return layerId; }
-    mbgl::style::CustomDrawableLayer* getLayer() const {
+    mln::style::CustomDrawableLayer* getLayer() const {
         if (!layer && weakLayer) {
-            return static_cast<mbgl::style::CustomDrawableLayer*>(weakLayer.get());
+            return static_cast<mln::style::CustomDrawableLayer*>(weakLayer.get());
         }
         return layer.get();
     }
 
     // Release ownership (for Style.addLayer)
-    std::unique_ptr<mbgl::style::Layer> releaseLayer() {
+    std::unique_ptr<mln::style::Layer> releaseLayer() {
         ownsLayer = false;
-        return std::unique_ptr<mbgl::style::Layer>(layer.release());
+        return std::unique_ptr<mln::style::Layer>(layer.release());
     }
 
     // After addLayer, keep a WeakPtr so the wrapper survives after the style
     // takes over ownership
-    void attachToStyle(mbgl::style::CustomDrawableLayer* layerPtr) {
+    void attachToStyle(mln::style::CustomDrawableLayer* layerPtr) {
         if (layerPtr) {
             weakLayer = layerPtr->makeWeakPtr();
         }
@@ -97,11 +97,11 @@ public:
 
 private:
     std::string layerId;
-    std::unique_ptr<mbgl::style::CustomDrawableLayer> layer;
+    std::unique_ptr<mln::style::CustomDrawableLayer> layer;
     bool ownsLayer;
-    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
+    mapbox::base::WeakPtr<mln::style::Layer> weakLayer;
     std::shared_ptr<CustomDrawableState> state;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

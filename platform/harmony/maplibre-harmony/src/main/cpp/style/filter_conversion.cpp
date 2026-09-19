@@ -2,14 +2,14 @@
 #include "conversion/harmony_conversion.hpp"
 #include "value_conversion.hpp"
 #include "utils/logger.h"
-#include <mbgl/style/conversion/filter.hpp>
+#include <mln/style/conversion/filter.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using Logger = mbgl::harmony::Logger;
+using Logger = mln::harmony::Logger;
 
-std::optional<mbgl::style::Filter> napiArrayToFilter(
+std::optional<mln::style::Filter> napiArrayToFilter(
     napi_env env, 
     napi_value filterArray
 ) {
@@ -27,8 +27,8 @@ std::optional<mbgl::style::Filter> napiArrayToFilter(
         NapiValue napiValue(env, filterArray);
         
         // Use the conversion system to convert to Filter
-        mbgl::style::conversion::Error error;
-        auto converted = mbgl::style::conversion::convert<mbgl::style::Filter>(
+        mln::style::conversion::Error error;
+        auto converted = mln::style::conversion::convert<mln::style::Filter>(
             std::move(napiValue), 
             error
         );
@@ -48,13 +48,13 @@ std::optional<mbgl::style::Filter> napiArrayToFilter(
 
 napi_value filterToNapiArray(
     napi_env env,
-    const mbgl::style::Filter& filter
+    const mln::style::Filter& filter
 ) {
     try {
         // Serialize the filter (Filter class has its own serialize method)
-        mbgl::Value serialized = filter.serialize();
+        mln::Value serialized = filter.serialize();
         
-        // Convert mbgl::Value to NAPI array using existing conversion
+        // Convert mln::Value to NAPI array using existing conversion
         return mbglValueToNapiValue(env, serialized);
     } catch (const std::exception& e) {
         Logger::error("FilterConversion", "Exception during filter serialization: %s", e.what());
@@ -67,4 +67,4 @@ napi_value filterToNapiArray(
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

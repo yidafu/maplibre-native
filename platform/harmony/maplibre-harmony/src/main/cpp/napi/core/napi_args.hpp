@@ -10,7 +10,7 @@
 #include <vector>
 #include <optional>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace napi {
 
@@ -383,7 +383,7 @@ private:
 
 } // namespace napi
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBREHARMONY_NAPI_ARGS_HPP
 

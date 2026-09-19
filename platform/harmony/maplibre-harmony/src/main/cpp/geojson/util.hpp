@@ -1,16 +1,16 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/util/feature.hpp>
-#include <mbgl/util/geometry.hpp>
+#include <mln/util/feature.hpp>
+#include <mln/util/geometry.hpp>
 #include <vector>
 #include <string>
 
-// Shared mbgl::Value <-> napi_value conversion (single implementation for the
+// Shared mln::Value <-> napi_value conversion (single implementation for the
 // style and geojson paths).
 #include "../style/value_conversion.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace geojson {
 
@@ -22,22 +22,22 @@ std::vector<double> NapiArrayToDoubleVector(napi_env env, napi_value array);
 /**
  * Convert a NAPI array to a vector of coordinate points.
  */
-std::vector<mbgl::Point<double>> NapiArrayToPointVector(napi_env env, napi_value array);
+std::vector<mln::Point<double>> NapiArrayToPointVector(napi_env env, napi_value array);
 
 /**
  * Convert a NAPI array to a vector of LineStrings.
  */
-std::vector<mbgl::LineString<double>> NapiArrayToLineStringVector(napi_env env, napi_value array);
+std::vector<mln::LineString<double>> NapiArrayToLineStringVector(napi_env env, napi_value array);
 
 /**
  * Convert a NAPI array to a vector of LinearRings (for a single polygon).
  */
-std::vector<mbgl::LinearRing<double>> NapiArrayToLinearRingVector(napi_env env, napi_value array);
+std::vector<mln::LinearRing<double>> NapiArrayToLinearRingVector(napi_env env, napi_value array);
 
 /**
  * Convert a NAPI array to a vector of Polygons.
  */
-std::vector<mbgl::Polygon<double>> NapiArrayToPolygonVector(napi_env env, napi_value array);
+std::vector<mln::Polygon<double>> NapiArrayToPolygonVector(napi_env env, napi_value array);
 
 /**
  * Convert a vector of doubles to a NAPI array.
@@ -47,31 +47,31 @@ napi_value DoubleVectorToNapiArray(napi_env env, const std::vector<double>& vec)
 /**
  * Convert a vector of points to a NAPI array.
  */
-napi_value PointVectorToNapiArray(napi_env env, const std::vector<mbgl::Point<double>>& points);
+napi_value PointVectorToNapiArray(napi_env env, const std::vector<mln::Point<double>>& points);
 
 /**
  * Convert a vector of LineStrings to a NAPI array.
  */
-napi_value LineStringVectorToNapiArray(napi_env env, const std::vector<mbgl::LineString<double>>& lineStrings);
+napi_value LineStringVectorToNapiArray(napi_env env, const std::vector<mln::LineString<double>>& lineStrings);
 
 /**
  * Convert a vector of LinearRings to a NAPI array (for polygon rings).
  */
-napi_value LinearRingVectorToNapiArray(napi_env env, const std::vector<mbgl::LinearRing<double>>& rings);
+napi_value LinearRingVectorToNapiArray(napi_env env, const std::vector<mln::LinearRing<double>>& rings);
 
 /**
  * Convert a vector of Polygons to a NAPI array.
  */
-napi_value PolygonVectorToNapiArray(napi_env env, const std::vector<mbgl::Polygon<double>>& polygons);
+napi_value PolygonVectorToNapiArray(napi_env env, const std::vector<mln::Polygon<double>>& polygons);
 
 // Aliases over the shared Value conversion (style/value_conversion.hpp),
 // keeping the historical geojson:: spellings used by geojson_converter.cpp.
-inline napi_value PropertyMapToNapiObject(napi_env env, const mbgl::PropertyMap& properties) {
-    return mbgl::harmony::valueMapToNapiObject(env, properties);
+inline napi_value PropertyMapToNapiObject(napi_env env, const mln::PropertyMap& properties) {
+    return mln::harmony::valueMapToNapiObject(env, properties);
 }
 
-inline mbgl::PropertyMap NapiObjectToPropertyMap(napi_env env, napi_value obj) {
-    return mbgl::harmony::napiObjectToValueMap(env, obj);
+inline mln::PropertyMap NapiObjectToPropertyMap(napi_env env, napi_value obj) {
+    return mln::harmony::napiObjectToValueMap(env, obj);
 }
 
 /**
@@ -106,5 +106,5 @@ bool IsUndefined(napi_env env, napi_value value);
 
 } // namespace geojson
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

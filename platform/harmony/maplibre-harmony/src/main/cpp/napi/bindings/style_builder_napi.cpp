@@ -6,11 +6,11 @@
 #include <multimedia/image_framework/image_pixel_map_napi.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Static member initialization
@@ -34,7 +34,7 @@ void StyleBuilderNAPI::Destructor(napi_env env, void* nativeObject, void* finali
 namespace {
 // 解包 StyleBuilderNAPI 实例；失败时抛出统一错误并返回 nullptr，调用方判空即可。
 StyleBuilderNAPI* RequireBuilder(napi_env env, napi_value thisObj) {
-    StyleBuilderNAPI* builder = mbgl::harmony::napi::NapiArgs::Unwrap<StyleBuilderNAPI>(env, thisObj);
+    StyleBuilderNAPI* builder = mln::harmony::napi::NapiArgs::Unwrap<StyleBuilderNAPI>(env, thisObj);
     if (!builder) {
         napi_throw_error(env, nullptr, "Invalid StyleBuilder instance");
     }
@@ -427,5 +427,5 @@ napi_value StyleBuilderNAPI::WithTransitionOptions(napi_env env, napi_callback_i
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

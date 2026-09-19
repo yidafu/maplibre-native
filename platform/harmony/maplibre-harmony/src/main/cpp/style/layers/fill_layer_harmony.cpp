@@ -5,29 +5,29 @@
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
 #include "style/layers/layer_property_utils.hpp"
-#include <mbgl/style/layers/fill_layer.hpp>
-#include <mbgl/style/property_value.hpp>
-#include <mbgl/style/expression/image.hpp>
-#include <mbgl/style/types.hpp>
-#include <mbgl/util/color.hpp>
+#include <mln/style/layers/fill_layer.hpp>
+#include <mln/style/property_value.hpp>
+#include <mln/style/expression/image.hpp>
+#include <mln/style/types.hpp>
+#include <mln/util/color.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "layer_property_macros.hpp"
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
 // Static member initialization
 napi_ref FillLayerNAPI::constructor = nullptr;
 napi_env FillLayerNAPI::constructorEnv = nullptr;
 
 FillLayerNAPI::FillLayerNAPI(const std::string& layerId, const std::string& sourceId)
-    : layer(std::make_unique<mbgl::style::FillLayer>(layerId, sourceId)) {
+    : layer(std::make_unique<mln::style::FillLayer>(layerId, sourceId)) {
 }
 
-FillLayerNAPI::FillLayerNAPI(mbgl::style::FillLayer* layerPtr) {
+FillLayerNAPI::FillLayerNAPI(mln::style::FillLayer* layerPtr) {
     if (layerPtr) {
         weakLayer = layerPtr->makeWeakPtr();
         Logger::info("FillLayerNAPI", "FillLayer created from existing layer (WeakPtr)");
@@ -77,7 +77,7 @@ DEFINE_LAYER_NEW(FillLayerNAPI, "FillLayer", 2, new FillLayerNAPI(layerId, sourc
         std::string layerId = args.GetString(0, "layerId");
         std::string sourceId = args.GetString(1, "sourceId");)
 
-napi_value FillLayerNAPI::CreateInstance(napi_env env, mbgl::style::FillLayer* layerPtr) {
+napi_value FillLayerNAPI::CreateInstance(napi_env env, mln::style::FillLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "FillLayer",
                                 layerPtr ? new FillLayerNAPI(layerPtr) : nullptr);
 }
@@ -87,25 +87,25 @@ napi_value FillLayerNAPI::CreateInstance(napi_env env, mbgl::style::FillLayer* l
 // Paint Property Setters (Expression supported)
 // ============================================================================
 
-DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillColor, setPaintProperty, "fill-color", setFillColor, mbgl::Color)
+DEFINE_LAYER_SETTER(FillLayerNAPI, mln::style::FillLayer, SetFillColor, setPaintProperty, "fill-color", setFillColor, mln::Color)
 
-DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillOpacity, setPaintProperty, "fill-opacity", setFillOpacity, float)
+DEFINE_LAYER_SETTER(FillLayerNAPI, mln::style::FillLayer, SetFillOpacity, setPaintProperty, "fill-opacity", setFillOpacity, float)
 
-DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillOutlineColor, setPaintProperty, "fill-outline-color", setFillOutlineColor, mbgl::Color)
+DEFINE_LAYER_SETTER(FillLayerNAPI, mln::style::FillLayer, SetFillOutlineColor, setPaintProperty, "fill-outline-color", setFillOutlineColor, mln::Color)
 
-DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillPattern, setPaintProperty, "fill-pattern", setFillPattern, mbgl::style::expression::Image)
+DEFINE_LAYER_SETTER(FillLayerNAPI, mln::style::FillLayer, SetFillPattern, setPaintProperty, "fill-pattern", setFillPattern, mln::style::expression::Image)
 
-DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillAntialias, setPaintProperty, "fill-antialias", setFillAntialias, bool)
+DEFINE_LAYER_SETTER(FillLayerNAPI, mln::style::FillLayer, SetFillAntialias, setPaintProperty, "fill-antialias", setFillAntialias, bool)
 
-DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillTranslate, setPaintProperty, "fill-translate", setFillTranslate, std::array<float,2>)
+DEFINE_LAYER_SETTER(FillLayerNAPI, mln::style::FillLayer, SetFillTranslate, setPaintProperty, "fill-translate", setFillTranslate, std::array<float,2>)
 
 // ============================================================================
 // Property Getters (return constants or Expressions)
 // ============================================================================
 
-DEFINE_LAYER_GETTER(FillLayerNAPI, mbgl::style::FillLayer, GetFillColor, getFillColor, mbgl::Color)
+DEFINE_LAYER_GETTER(FillLayerNAPI, mln::style::FillLayer, GetFillColor, getFillColor, mln::Color)
 
-DEFINE_LAYER_GETTER(FillLayerNAPI, mbgl::style::FillLayer, GetFillOpacity, getFillOpacity, float)
+DEFINE_LAYER_GETTER(FillLayerNAPI, mln::style::FillLayer, GetFillOpacity, getFillOpacity, float)
 
 // ============================================================================
 // Base Layer Methods
@@ -183,23 +183,23 @@ napi_value FillLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
 // New Properties
 // ============================================================================
 
-DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillTranslateAnchor, setPaintProperty, "fill-translate-anchor", setFillTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_LAYER_SETTER(FillLayerNAPI, mln::style::FillLayer, SetFillTranslateAnchor, setPaintProperty, "fill-translate-anchor", setFillTranslateAnchor, mln::style::TranslateAnchorType)
 
-DEFINE_LAYER_GETTER(FillLayerNAPI, mbgl::style::FillLayer, GetFillTranslateAnchor, getFillTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_LAYER_GETTER(FillLayerNAPI, mln::style::FillLayer, GetFillTranslateAnchor, getFillTranslateAnchor, mln::style::TranslateAnchorType)
 
-DEFINE_LAYER_SETTER(FillLayerNAPI, mbgl::style::FillLayer, SetFillSortKey, setLayoutProperty, "fill-sort-key", setFillSortKey, float)
+DEFINE_LAYER_SETTER(FillLayerNAPI, mln::style::FillLayer, SetFillSortKey, setLayoutProperty, "fill-sort-key", setFillSortKey, float)
 
-DEFINE_LAYER_GETTER(FillLayerNAPI, mbgl::style::FillLayer, GetFillSortKey, getFillSortKey, float)
+DEFINE_LAYER_GETTER(FillLayerNAPI, mln::style::FillLayer, GetFillSortKey, getFillSortKey, float)
 
 // ==================== Generic Property Methods ====================
 
 napi_value FillLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
-    return SetPropertyImpl<FillLayerNAPI, mbgl::style::FillLayer>(env, info);
+    return SetPropertyImpl<FillLayerNAPI, mln::style::FillLayer>(env, info);
 }
 
 napi_value FillLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
-    return SetPropertiesImpl<FillLayerNAPI, mbgl::style::FillLayer>(env, info);
+    return SetPropertiesImpl<FillLayerNAPI, mln::style::FillLayer>(env, info);
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

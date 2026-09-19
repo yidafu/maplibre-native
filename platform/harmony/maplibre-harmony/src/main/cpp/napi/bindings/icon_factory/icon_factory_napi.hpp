@@ -3,7 +3,7 @@
 #include <napi/native_api.h>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -104,5 +104,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

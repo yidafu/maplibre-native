@@ -1,12 +1,12 @@
 #ifndef MAPLIBRE_HARMONY_MAPLIBRE_SETTINGS_HPP
 #define MAPLIBRE_HARMONY_MAPLIBRE_SETTINGS_HPP
 
-#include <mbgl/storage/resource_options.hpp>
-#include <mbgl/util/tile_server_options.hpp>
+#include <mln/storage/resource_options.hpp>
+#include <mln/util/tile_server_options.hpp>
 #include <string>
 #include <mutex>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -38,13 +38,13 @@ public:
      * Set the tile server options.
      * @param options TileServerOptions configuration
      */
-    void setTileServerOptions(const mbgl::TileServerOptions& options);
+    void setTileServerOptions(const mln::TileServerOptions& options);
     
     /**
      * Obtain the current tile server options.
      * @return A copy of TileServerOptions
      */
-    mbgl::TileServerOptions getTileServerOptions() const;
+    mln::TileServerOptions getTileServerOptions() const;
     
     /**
      * Apply Mapbox configuration (requires an access token).
@@ -103,7 +103,7 @@ public:
      * @param options ResourceOptions to update
      * @return Updated ResourceOptions
      */
-    mbgl::ResourceOptions applyToResourceOptions(mbgl::ResourceOptions options) const;
+    mln::ResourceOptions applyToResourceOptions(mln::ResourceOptions options) const;
 
 private:
     MapLibreSettings();
@@ -114,12 +114,12 @@ private:
     MapLibreSettings& operator=(const MapLibreSettings&) = delete;
     
     mutable std::mutex mutex_;
-    mbgl::TileServerOptions tileServerOptions_;
+    mln::TileServerOptions tileServerOptions_;
     std::string apiKey_;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBRE_HARMONY_MAPLIBRE_SETTINGS_HPP
 

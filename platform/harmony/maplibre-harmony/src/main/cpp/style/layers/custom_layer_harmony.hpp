@@ -1,12 +1,12 @@
 #pragma once
 
-#include <mbgl/style/layers/custom_layer.hpp>
-#include <mbgl/style/layers/custom_layer_render_parameters.hpp>
+#include <mln/style/layers/custom_layer.hpp>
+#include <mln/style/layers/custom_layer_render_parameters.hpp>
 #include <GLES3/gl3.h>
 #include <memory>
 #include <mutex>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -17,14 +17,14 @@ namespace harmony {
  * This implementation draws a color-filled quad covering the entire viewport and
  * allows the color to be adjusted dynamically.
  */
-class ExampleCustomLayerHost : public mbgl::style::CustomLayerHost {
+class ExampleCustomLayerHost : public mln::style::CustomLayerHost {
 public:
     ExampleCustomLayerHost();
     ~ExampleCustomLayerHost() override;
 
     // CustomLayerHost interface implementation
-    void initialize(const mbgl::style::CustomLayerInitParameters&) override;
-    void render(const mbgl::style::CustomLayerRenderParameters& parameters) override;
+    void initialize(const mln::style::CustomLayerInitParameters&) override;
+    void render(const mln::style::CustomLayerRenderParameters& parameters) override;
     void contextLost() override;
     void deinitialize() override;
 
@@ -92,5 +92,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

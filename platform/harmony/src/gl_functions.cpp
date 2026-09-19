@@ -1,6 +1,6 @@
-#include <mbgl/platform/gl_functions.hpp>
-#include <mbgl/util/logging.hpp>
-#include <mbgl/gl/extension.hpp>
+#include <mln/platform/gl_functions.hpp>
+#include <mln/util/logging.hpp>
+#include <mln/gl/extension.hpp>
 
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
@@ -10,7 +10,7 @@
 #include <string>
 #include <sstream>
 
-namespace mbgl {
+namespace mln {
 namespace platform {
 /* OpenGL ES 2.0 */
 
@@ -289,7 +289,7 @@ gl::ProcAddress GetProcAddress(const char* name) {
     if (!address) {
         std::stringstream message;
         message << "Failed to load OpenGL function: " << name;
-        Log::Warning(Event::OpenGL, message.str());
+        Log::Warning(Event::GraphicsBackend, message.str());
     }
     return address;
 }
@@ -298,11 +298,11 @@ gl::ProcAddress GetProcAddress(const char* name) {
 // #ifndef NDEBUG
 // void glCheckError(const char* cmd, const char* file, int line) {
 //     if (GLenum err = glGetError()) {
-//         Log::Warning(Event::OpenGL,
+//         Log::Warning(Event::GraphicsBackend,
 //                      "Error" + std::to_string(err) + ": " + cmd + " - " + file + ":" + std::to_string(line));
 //     }
 // }
 // #endif
 
 } // namespace platform
-} // namespace mbgl
+} // namespace mln

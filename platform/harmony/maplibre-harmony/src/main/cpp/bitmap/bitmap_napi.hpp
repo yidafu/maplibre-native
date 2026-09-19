@@ -1,11 +1,11 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/util/image.hpp>
+#include <mln/util/image.hpp>
 #include <memory>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -16,7 +16,7 @@ namespace harmony {
  */
 class BitmapNAPI {
 public:
-    BitmapNAPI(std::shared_ptr<mbgl::PremultipliedImage> image);
+    BitmapNAPI(std::shared_ptr<mln::PremultipliedImage> image);
     ~BitmapNAPI();
     
     // NAPI registration
@@ -40,10 +40,10 @@ public:
     // Create from PremultipliedImage
     static napi_value CreateFromImage(napi_env env, 
                                      const std::string& id,
-                                     std::shared_ptr<mbgl::PremultipliedImage> image);
+                                     std::shared_ptr<mln::PremultipliedImage> image);
     
     // Internal methods
-    std::shared_ptr<mbgl::PremultipliedImage> getImage() const { return image; }
+    std::shared_ptr<mln::PremultipliedImage> getImage() const { return image; }
     
     // Helper to check if a napi_value is a Bitmap object
     static bool IsBitmapObject(napi_env env, napi_value value);
@@ -55,10 +55,10 @@ public:
     static napi_ref constructor;
     
 private:
-    std::shared_ptr<mbgl::PremultipliedImage> image;
+    std::shared_ptr<mln::PremultipliedImage> image;
     std::string id;
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

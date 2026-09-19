@@ -1,16 +1,16 @@
 #include "constant.hpp"
 #include "utils/logger.h"
-#include <mbgl/style/conversion/stringify.hpp>
-#include <mbgl/style/types.hpp>
-#include <mbgl/util/string.hpp>
-#include <mbgl/util/enum.hpp>
-#include <mbgl/util/font_stack.hpp>
+#include <mln/style/conversion/stringify.hpp>
+#include <mln/style/types.hpp>
+#include <mln/util/string.hpp>
+#include <mln/util/enum.hpp>
+#include <mln/util/font_stack.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace conversion {
 
-using Logger = mbgl::harmony::Logger;
+using Logger = mln::harmony::Logger;
 
 Result<napi_value> convertToNapi(napi_env env, bool value) {
     napi_value result;
@@ -115,7 +115,7 @@ Result<napi_value> convertToNapi(napi_env env, const VariableAnchorOffsetCollect
         auto anchorOffsetPair = value[i];
         
         // Add anchor type as string
-        std::string anchorStr = mbgl::Enum<style::SymbolAnchorType>::toString(anchorOffsetPair.anchorType);
+        std::string anchorStr = mln::Enum<style::SymbolAnchorType>::toString(anchorOffsetPair.anchorType);
         napi_value anchorValue;
         napi_create_string_utf8(env, anchorStr.c_str(), NAPI_AUTO_LENGTH, &anchorValue);
         napi_set_element(env, result, static_cast<uint32_t>(i * 2), anchorValue);
@@ -164,7 +164,7 @@ Result<napi_value> convertToNapi(napi_env env, const style::expression::Formatte
 
         // fontStack (optional FontStack=vector<string> -> string or null)
         if (section.fontStack && !section.fontStack->empty()) {
-            std::string fontStackStr = mbgl::fontStackToString(*section.fontStack);
+            std::string fontStackStr = mln::fontStackToString(*section.fontStack);
             napi_value fontVal;
             napi_create_string_utf8(env, fontStackStr.c_str(), NAPI_AUTO_LENGTH, &fontVal);
             napi_set_named_property(env, sectionObj, "fontStack", fontVal);
@@ -311,7 +311,7 @@ template Result<napi_value> convertToNapi(napi_env, const std::array<double, 4>&
 template <typename T>
 Result<napi_value> convertToNapi(napi_env env, T value, typename std::enable_if<std::is_enum<T>::value>::type*) {
     napi_value result;
-    std::string str = mbgl::Enum<T>::toString(value);
+    std::string str = mln::Enum<T>::toString(value);
     napi_status status = napi_create_string_utf8(env, str.c_str(), NAPI_AUTO_LENGTH, &result);
     if (status != napi_ok) {
         Logger::error("Converter", "Failed to convert enum to napi_value");
@@ -321,23 +321,23 @@ Result<napi_value> convertToNapi(napi_env env, T value, typename std::enable_if<
 }
 
 // Explicit instantiations for common enum types
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::SymbolAnchorType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::LineCapType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::LineJoinType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::HillshadeIlluminationAnchorType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::SymbolAnchorType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::LineCapType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::LineJoinType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::HillshadeIlluminationAnchorType, void*);
 
 // Explicit instantiations for new enum types (Expression support)
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::TranslateAnchorType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::CirclePitchScaleType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::AlignmentType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::RasterResamplingType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::IconTextFitType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::TextJustifyType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::TextTransformType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::SymbolPlacementType, void*);
-template Result<napi_value> convertToNapi(napi_env, mbgl::style::SymbolZOrderType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::TranslateAnchorType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::CirclePitchScaleType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::AlignmentType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::RasterResamplingType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::IconTextFitType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::TextJustifyType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::TextTransformType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::SymbolPlacementType, void*);
+template Result<napi_value> convertToNapi(napi_env, mln::style::SymbolZOrderType, void*);
 
 } // namespace conversion
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

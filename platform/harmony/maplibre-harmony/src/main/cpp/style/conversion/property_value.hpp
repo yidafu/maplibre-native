@@ -5,15 +5,15 @@
 #include "../value_conversion.hpp"
 #include "utils/logger.h"
 
-#include <mbgl/style/property_value.hpp>
-#include <mbgl/style/color_ramp_property_value.hpp>
+#include <mln/style/property_value.hpp>
+#include <mln/style/color_ramp_property_value.hpp>
 #include <napi/native_api.h>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace conversion {
 
-using Logger = mbgl::harmony::Logger;
+using Logger = mln::harmony::Logger;
 
 /**
  * PropertyValueEvaluator - Converts PropertyValue<T> to napi_value
@@ -28,7 +28,7 @@ class PropertyValueEvaluator {
 public:
     PropertyValueEvaluator(napi_env _env) : env(_env) {}
 
-    napi_value operator()(const mbgl::style::Undefined&) const {
+    napi_value operator()(const mln::style::Undefined&) const {
         napi_value result;
         napi_get_null(env, &result);
         return result;
@@ -47,7 +47,7 @@ public:
         }
     }
 
-    napi_value operator()(const mbgl::style::PropertyExpression<T>& expression) const {
+    napi_value operator()(const mln::style::PropertyExpression<T>& expression) const {
         // Convert expression to NAPI array
         auto result = propertyExpressionToNapi(env, expression);
         if (result) {
@@ -72,7 +72,7 @@ private:
 template <class T>
 Result<napi_value> propertyValueToNapi(
     napi_env env, 
-    const mbgl::style::PropertyValue<T>& value
+    const mln::style::PropertyValue<T>& value
 ) {
     PropertyValueEvaluator<T> evaluator(env);
     return value.evaluate(evaluator);
@@ -83,7 +83,7 @@ Result<napi_value> propertyValueToNapi(
  */
 inline Result<napi_value> colorRampPropertyValueToNapi(
     napi_env env,
-    const mbgl::style::ColorRampPropertyValue& value
+    const mln::style::ColorRampPropertyValue& value
 ) {
     if (value.isUndefined()) {
         napi_value result;
@@ -92,7 +92,7 @@ inline Result<napi_value> colorRampPropertyValueToNapi(
     }
     
     // Serialize the expression
-    mbgl::Value serialized = value.getExpression().serialize();
+    mln::Value serialized = value.getExpression().serialize();
     
     // Convert to NAPI value
     return mbglValueToNapiValue(env, serialized);
@@ -100,5 +100,5 @@ inline Result<napi_value> colorRampPropertyValueToNapi(
 
 } // namespace conversion
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

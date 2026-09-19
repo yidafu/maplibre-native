@@ -7,11 +7,11 @@
 #include <rawfile/raw_file_manager.h>
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
 namespace {
 
@@ -114,7 +114,7 @@ napi_value IconFactoryNAPI::FromArrayBuffer(napi_env env, napi_callback_info inf
     try {
         // Decode in C++ (no intermediate JS PixelMap); decodeImage copies the
         // pixels, so the JS-owned ArrayBuffer only needs to stay alive here.
-        auto image = mbgl::harmony::IconFactory::createFromRawData(
+        auto image = mln::harmony::IconFactory::createFromRawData(
             static_cast<uint8_t*>(data), byteLength);
 
         // Create Icon NAPI object with scale
@@ -166,7 +166,7 @@ napi_value IconFactoryNAPI::FromResourceData(napi_env env, napi_callback_info in
     try {
         // Decode in C++ directly from the typed array's backing store; no
         // ArrayBuffer copy is needed since decodeImage copies the pixels.
-        auto image = mbgl::harmony::IconFactory::createFromRawData(
+        auto image = mln::harmony::IconFactory::createFromRawData(
             static_cast<uint8_t*>(data), byteLength);
 
         // Create Icon NAPI object with scale
@@ -219,7 +219,7 @@ napi_value IconFactoryNAPI::FromRawfile(napi_env env, napi_callback_info info) {
                      fileName.c_str(), iconId.c_str(), scale);
 
         // Read + decode entirely in C++
-        auto image = mbgl::harmony::IconFactory::createFromRawfile(resourceMgr.mgr, fileName);
+        auto image = mln::harmony::IconFactory::createFromRawfile(resourceMgr.mgr, fileName);
 
         // Create Icon NAPI object
         return IconNAPI::CreateFromImage(env, iconId, image, scale);
@@ -258,7 +258,7 @@ napi_value IconFactoryNAPI::FromFilePath(napi_env env, napi_callback_info info) 
 
     try {
         // Read + decode entirely in C++
-        auto image = mbgl::harmony::IconFactory::createFromFilePath(path);
+        auto image = mln::harmony::IconFactory::createFromFilePath(path);
 
         // Create Icon NAPI object with scale
         return IconNAPI::CreateFromImage(env, iconId, image, scale);
@@ -286,7 +286,7 @@ napi_value IconFactoryNAPI::CreateDefaultMarker(napi_env env, napi_callback_info
 
     try {
         // Generate a programmatic red pin-shaped icon
-        auto image = mbgl::harmony::IconFactory::createDefaultMarker(size);
+        auto image = mln::harmony::IconFactory::createDefaultMarker(size);
 
         // Create Icon NAPI object with scale 1.0
         return IconNAPI::CreateFromImage(env, iconId, image, 1.0f);
@@ -298,4 +298,4 @@ napi_value IconFactoryNAPI::CreateDefaultMarker(napi_env env, napi_callback_info
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

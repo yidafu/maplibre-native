@@ -3,29 +3,29 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
-#include <mbgl/util/tileset.hpp>
-#include <mbgl/util/range.hpp>
+#include <mln/util/tileset.hpp>
+#include <mln/util/range.hpp>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "source_napi_utils.hpp"
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::napi::NapiArgs;
 namespace harmony {
 
 // Static member initialization
 napi_ref RasterSourceNAPI::constructor = nullptr;
 napi_env RasterSourceNAPI::constructorEnv = nullptr;
 
-RasterSourceNAPI::RasterSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::RasterSource> source)
+RasterSourceNAPI::RasterSourceNAPI(const std::string& id, std::unique_ptr<mln::style::RasterSource> source)
     : SourceNapiBase(id, std::move(source)) {
     Logger::info("RasterSourceNAPI", "RasterSource instance created: %s", id.c_str());
 }
 
-RasterSourceNAPI::RasterSourceNAPI(mbgl::style::RasterSource* sourcePtr)
+RasterSourceNAPI::RasterSourceNAPI(mln::style::RasterSource* sourcePtr)
     : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
         Logger::info("RasterSourceNAPI", "RasterSource created from existing source (WeakPtr): %s", id.c_str());
@@ -84,7 +84,7 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
         // Prefer the tiles array; fall back to the URL when tiles are absent
         auto urlOrTileset = MakeUrlOrTileset(cacheOptions, "RasterSourceNAPI", "RasterSource");
 
-        auto source = std::make_unique<mbgl::style::RasterSource>(
+        auto source = std::make_unique<mln::style::RasterSource>(
             sourceId,
             std::move(urlOrTileset),
             cacheOptions.tileSize
@@ -113,7 +113,7 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-DEFINE_SOURCE_CREATE_INSTANCE(RasterSourceNAPI, "RasterSource", mbgl::style::RasterSource)
+DEFINE_SOURCE_CREATE_INSTANCE(RasterSourceNAPI, "RasterSource", mln::style::RasterSource)
 
 DEFINE_SOURCE_GET_ID(RasterSourceNAPI)
 
@@ -144,8 +144,8 @@ napi_value RasterSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     const uint16_t tileSize = ownedSource->getTileSize();
     
     try {
-        mbgl::variant<std::string, mbgl::Tileset> urlOrTileset = url;
-        auto newSource = std::make_unique<mbgl::style::RasterSource>(
+        mln::variant<std::string, mln::Tileset> urlOrTileset = url;
+        auto newSource = std::make_unique<mln::style::RasterSource>(
             sourceNapi->id,
             std::move(urlOrTileset),
             tileSize
@@ -164,5 +164,5 @@ napi_value RasterSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
 DEFINE_SOURCE_SET_TILE_SIZE_UNSUPPORTED(RasterSourceNAPI)
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

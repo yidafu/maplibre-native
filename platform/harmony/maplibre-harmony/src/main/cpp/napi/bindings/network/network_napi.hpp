@@ -2,7 +2,7 @@
 
 #include "napi/native_api.h"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -55,5 +55,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

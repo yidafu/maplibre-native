@@ -1,9 +1,9 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/style/sources/geojson_source.hpp>
-#include <mbgl/util/geojson.hpp>
-#include <mbgl/renderer/query.hpp>
+#include <mln/style/sources/geojson_source.hpp>
+#include <mln/util/geojson.hpp>
+#include <mln/renderer/query.hpp>
 #include <string>
 #include <memory>
 #include <functional>
@@ -13,23 +13,23 @@
 
 #include "source_napi_base.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
  * GeoJsonSourceNAPI - NAPI wrapper for GeoJSON sources.
  *
- * Wraps mbgl::style::GeoJSONSource to provide an object-oriented interface,
+ * Wraps mln::style::GeoJSONSource to provide an object-oriented interface,
  * similar to the Android GeoJsonSource class.
  *
  * Ownership state and the shared accessors live in SourceNapiBase; getSource()
  * and attachToStyle() are the one deliberate exception (see below).
  */
-class GeoJsonSourceNAPI : public SourceNapiBase<GeoJsonSourceNAPI, mbgl::style::GeoJSONSource> {
+class GeoJsonSourceNAPI : public SourceNapiBase<GeoJsonSourceNAPI, mln::style::GeoJSONSource> {
 public:
-    GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::GeoJSONSource> source);
+    GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mln::style::GeoJSONSource> source);
     // Construct from an existing source (uses WeakPtr, does not take ownership)
-    GeoJsonSourceNAPI(mbgl::style::GeoJSONSource* sourcePtr);
+    GeoJsonSourceNAPI(mln::style::GeoJSONSource* sourcePtr);
     
     ~GeoJsonSourceNAPI();
     
@@ -40,7 +40,7 @@ public:
     static napi_value New(napi_env env, napi_callback_info info);
     
     // Create a NAPI instance from an existing native object
-    static napi_value CreateInstance(napi_env env, mbgl::style::GeoJSONSource* sourcePtr);
+    static napi_value CreateInstance(napi_env env, mln::style::GeoJSONSource* sourcePtr);
     
     // Destructor callback
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
@@ -67,16 +67,16 @@ public:
     // pointer): with multiple map instances a later instance replaces the
     // hooks, and clearing is owner-checked so destroying one map can never
     // disable (or leave dangling) another map's hooks.
-    using QueryFeatureExtensionsFn = std::function<mbgl::FeatureExtensionValue(
+    using QueryFeatureExtensionsFn = std::function<mln::FeatureExtensionValue(
         const std::string& sourceID,
-        const mbgl::Feature& feature,
+        const mln::Feature& feature,
         const std::string& extension,
         const std::string& extensionField,
-        const std::optional<std::map<std::string, mbgl::Value>>& args)>;
+        const std::optional<std::map<std::string, mln::Value>>& args)>;
 
-    using QuerySourceFeaturesFn = std::function<std::vector<mbgl::Feature>(
+    using QuerySourceFeaturesFn = std::function<std::vector<mln::Feature>(
         const std::string& sourceID,
-        const mbgl::SourceQueryOptions& options)>;
+        const mln::SourceQueryOptions& options)>;
 
     static void setQueryFeatureExtensionsFn(QueryFeatureExtensionsFn fn, void* owner);
     static void setQuerySourceFeaturesFn(QuerySourceFeaturesFn fn, void* owner);
@@ -95,10 +95,10 @@ public:
     // access was disabled when the WeakPtr initialisation failed, which the
     // shared implementation stays silent about. Their return semantics -
     // nullptr once the source is gone - are identical to the base's.
-    mbgl::style::GeoJSONSource* getSource() const;
+    mln::style::GeoJSONSource* getSource() const;
 
     // Create the WeakPtr after addSource (mirrors the iOS approach)
-    void attachToStyle(mbgl::style::GeoJSONSource* sourcePtr);
+    void attachToStyle(mln::style::GeoJSONSource* sourcePtr);
 
     // Constructor reference
     static napi_ref constructor;
@@ -106,5 +106,5 @@ public:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

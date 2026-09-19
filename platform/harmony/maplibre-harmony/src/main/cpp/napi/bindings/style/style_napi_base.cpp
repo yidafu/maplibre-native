@@ -3,9 +3,9 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
-#include <mbgl/style/style.hpp>
-#include <mbgl/style/source.hpp>
-#include <mbgl/style/layer.hpp>
+#include <mln/style/style.hpp>
+#include <mln/style/source.hpp>
+#include <mln/style/layer.hpp>
 #include <chrono>
 #include <future>
 #include <memory>
@@ -19,25 +19,25 @@
 #include "sources/custom_geometry_source_napi.hpp"
 #include "sources/video_source_napi.hpp"
 
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Static member initialization
 napi_ref StyleNAPI::constructor = nullptr;
 napi_env StyleNAPI::constructorEnv = nullptr;
 
-StyleNAPI::StyleNAPI(mbgl::Map *map) : map(map), fullyLoaded(false) {
+StyleNAPI::StyleNAPI(mln::Map *map) : map(map), fullyLoaded(false) {
     // Resolve the liveness token + render-thread dispatcher published by
     // NativeMapView::attachMapRegistry(). When missing (unregistered map),
     // acquireMap()/runOnMap() fall back to direct access — the pre-registry
     // behavior.
     if (map) {
-        token_ = mbgl::harmony::MapRegistry::resolveToken(
+        token_ = mln::harmony::MapRegistry::resolveToken(
             reinterpret_cast<uintptr_t>(map));
-        dispatcher_ = mbgl::harmony::MapRegistry::resolveDispatcher(
+        dispatcher_ = mln::harmony::MapRegistry::resolveDispatcher(
             reinterpret_cast<uintptr_t>(map));
     }
     Logger::info("StyleNAPI", "StyleNAPI instance created (registry %s)",
@@ -46,7 +46,7 @@ StyleNAPI::StyleNAPI(mbgl::Map *map) : map(map), fullyLoaded(false) {
 
 StyleNAPI::~StyleNAPI() { Logger::info("StyleNAPI", "StyleNAPI instance destroyed"); }
 
-mbgl::Map *StyleNAPI::acquireMap() const {
+mln::Map *StyleNAPI::acquireMap() const {
     if (token_) {
         if (!token_->valid.load(std::memory_order_acquire)) {
             return nullptr;
@@ -56,8 +56,8 @@ mbgl::Map *StyleNAPI::acquireMap() const {
     return map;
 }
 
-bool StyleNAPI::runOnMap(const std::function<void(mbgl::Map &)> &op) {
-    mbgl::Map *target = acquireMap();
+bool StyleNAPI::runOnMap(const std::function<void(mln::Map &)> &op) {
+    mln::Map *target = acquireMap();
     if (!target) {
         return false;
     }
@@ -70,7 +70,7 @@ bool StyleNAPI::runOnMap(const std::function<void(mbgl::Map &)> &op) {
         auto promise = std::make_shared<std::promise<void>>();
         auto future = promise->get_future();
         auto ownedOp = op;
-        dispatcher_([ownedOp, promise](mbgl::Map *m) {
+        dispatcher_([ownedOp, promise](mln::Map *m) {
             try {
                 if (m) {
                     ownedOp(*m);
@@ -154,7 +154,7 @@ napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("StyleNAPI", "Style class defined successfully");
 
     // Create the constructor reference
-    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
+    status = mln::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("StyleNAPI", "Failed to create constructor reference, status=%d", status);
         return nullptr;
@@ -209,7 +209,7 @@ napi_value StyleNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    mbgl::Map *map = reinterpret_cast<mbgl::Map *>(mapPtr);
+    mln::Map *map = reinterpret_cast<mln::Map *>(mapPtr);
     if (!map) {
         napi_throw_error(env, nullptr, "Invalid mapPtr");
         return nullptr;
@@ -247,7 +247,7 @@ napi_value StyleNAPI::GetUri(napi_env env, napi_callback_info info) {
 
     try {
         std::string uri;
-        style->runOnMap([&](mbgl::Map &m) { uri = m.getStyle().getURL(); });
+        style->runOnMap([&](mln::Map &m) { uri = m.getStyle().getURL(); });
         return CreateStringValue(env, uri);
     } catch (const std::exception &e) {
         Logger::error("StyleNAPI", "GetUri failed: %s", e.what());
@@ -271,7 +271,7 @@ napi_value StyleNAPI::GetJson(napi_env env, napi_callback_info info) {
 
     try {
         std::string json;
-        style->runOnMap([&](mbgl::Map &m) { json = m.getStyle().getJSON(); });
+        style->runOnMap([&](mln::Map &m) { json = m.getStyle().getJSON(); });
         return CreateStringValue(env, json);
     } catch (const std::exception &e) {
         Logger::error("StyleNAPI", "GetJson failed: %s", e.what());
@@ -353,12 +353,12 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->runOnMap([&](mbgl::Map &m) {
+                style->runOnMap([&](mln::Map &m) {
                     m.getStyle().addSource(std::move(source));
                     // After adding to the style, let the wrapper store the live source pointer
                     auto *styleSource = m.getStyle().getSource(sourceId);
-                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::GeoJSON) {
-                        geoJsonSource->attachToStyle(static_cast<mbgl::style::GeoJSONSource *>(styleSource));
+                    if (styleSource && styleSource->getType() == mln::style::SourceType::GeoJSON) {
+                        geoJsonSource->attachToStyle(static_cast<mln::style::GeoJSONSource *>(styleSource));
                     }
                 });
                 style->sources[sourceId] = true;
@@ -386,12 +386,12 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->runOnMap([&](mbgl::Map &m) {
+                style->runOnMap([&](mln::Map &m) {
                     m.getStyle().addSource(std::move(source));
                     // After adding to the style, let the wrapper store the live source pointer
                     auto *styleSource = m.getStyle().getSource(sourceId);
-                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::Vector) {
-                        vectorSource->attachToStyle(static_cast<mbgl::style::VectorSource *>(styleSource));
+                    if (styleSource && styleSource->getType() == mln::style::SourceType::Vector) {
+                        vectorSource->attachToStyle(static_cast<mln::style::VectorSource *>(styleSource));
                     }
                 });
                 style->sources[sourceId] = true;
@@ -419,12 +419,12 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->runOnMap([&](mbgl::Map &m) {
+                style->runOnMap([&](mln::Map &m) {
                     m.getStyle().addSource(std::move(source));
                     // After adding to the style, let the wrapper store the live source pointer
                     auto *styleSource = m.getStyle().getSource(sourceId);
-                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::Raster) {
-                        rasterSource->attachToStyle(static_cast<mbgl::style::RasterSource *>(styleSource));
+                    if (styleSource && styleSource->getType() == mln::style::SourceType::Raster) {
+                        rasterSource->attachToStyle(static_cast<mln::style::RasterSource *>(styleSource));
                     }
                 });
                 style->sources[sourceId] = true;
@@ -452,12 +452,12 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->runOnMap([&](mbgl::Map &m) {
+                style->runOnMap([&](mln::Map &m) {
                     m.getStyle().addSource(std::move(source));
                     // After adding to the style, let the wrapper store the live source pointer
                     auto *styleSource = m.getStyle().getSource(sourceId);
-                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::RasterDEM) {
-                        rasterDemSource->attachToStyle(static_cast<mbgl::style::RasterDEMSource *>(styleSource));
+                    if (styleSource && styleSource->getType() == mln::style::SourceType::RasterDEM) {
+                        rasterDemSource->attachToStyle(static_cast<mln::style::RasterDEMSource *>(styleSource));
                     }
                 });
                 style->sources[sourceId] = true;
@@ -485,12 +485,12 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->runOnMap([&](mbgl::Map &m) {
+                style->runOnMap([&](mln::Map &m) {
                     m.getStyle().addSource(std::move(source));
                     // After adding to the style, let the wrapper store the live source pointer
                     auto *styleSource = m.getStyle().getSource(sourceId);
-                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::Image) {
-                        imageSource->attachToStyle(static_cast<mbgl::style::ImageSource *>(styleSource));
+                    if (styleSource && styleSource->getType() == mln::style::SourceType::Image) {
+                        imageSource->attachToStyle(static_cast<mln::style::ImageSource *>(styleSource));
                     }
                 });
                 style->sources[sourceId] = true;
@@ -518,13 +518,13 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->runOnMap([&](mbgl::Map &m) {
+                style->runOnMap([&](mln::Map &m) {
                     m.getStyle().addSource(std::move(source));
                     // After adding to the style, let the wrapper store the live source pointer
                     auto *styleSource = m.getStyle().getSource(sourceId);
-                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::CustomVector) {
+                    if (styleSource && styleSource->getType() == mln::style::SourceType::CustomVector) {
                         customGeometrySource->attachToStyle(
-                            static_cast<mbgl::style::CustomGeometrySource *>(styleSource));
+                            static_cast<mln::style::CustomGeometrySource *>(styleSource));
                     }
                 });
                 style->sources[sourceId] = true;
@@ -552,11 +552,11 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->runOnMap([&](mbgl::Map &m) {
+                style->runOnMap([&](mln::Map &m) {
                     m.getStyle().addSource(std::move(source));
                     auto *styleSource = m.getStyle().getSource(sourceId);
-                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::Image) {
-                        videoSource->attachToStyle(static_cast<mbgl::style::ImageSource *>(styleSource));
+                    if (styleSource && styleSource->getType() == mln::style::SourceType::Image) {
+                        videoSource->attachToStyle(static_cast<mln::style::ImageSource *>(styleSource));
                     }
                 });
                 style->sources[sourceId] = true;
@@ -583,4 +583,4 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

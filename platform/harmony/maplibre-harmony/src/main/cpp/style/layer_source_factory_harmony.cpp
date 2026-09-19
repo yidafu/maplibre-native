@@ -24,36 +24,36 @@
 #include "sources/custom_geometry_source_napi.hpp"
 
 // Core types
-#include <mbgl/style/layers/background_layer.hpp>
-#include <mbgl/style/layers/circle_layer.hpp>
-#include <mbgl/style/layers/fill_layer.hpp>
-#include <mbgl/style/layers/fill_extrusion_layer.hpp>
-#include <mbgl/style/layers/heatmap_layer.hpp>
-#include <mbgl/style/layers/hillshade_layer.hpp>
-#include <mbgl/style/layers/line_layer.hpp>
-#include <mbgl/style/layers/raster_layer.hpp>
-#include <mbgl/style/layers/symbol_layer.hpp>
-#include <mbgl/style/layers/color_relief_layer.hpp>
-#include <mbgl/style/layers/location_indicator_layer.hpp>
-#include <mbgl/style/layers/custom_drawable_layer.hpp>
+#include <mln/style/layers/background_layer.hpp>
+#include <mln/style/layers/circle_layer.hpp>
+#include <mln/style/layers/fill_layer.hpp>
+#include <mln/style/layers/fill_extrusion_layer.hpp>
+#include <mln/style/layers/heatmap_layer.hpp>
+#include <mln/style/layers/hillshade_layer.hpp>
+#include <mln/style/layers/line_layer.hpp>
+#include <mln/style/layers/raster_layer.hpp>
+#include <mln/style/layers/symbol_layer.hpp>
+#include <mln/style/layers/color_relief_layer.hpp>
+#include <mln/style/layers/location_indicator_layer.hpp>
+#include <mln/style/layers/custom_drawable_layer.hpp>
 
-#include <mbgl/style/sources/geojson_source.hpp>
-#include <mbgl/style/sources/vector_source.hpp>
-#include <mbgl/style/sources/raster_source.hpp>
-#include <mbgl/style/sources/raster_dem_source.hpp>
-#include <mbgl/style/sources/image_source.hpp>
-#include <mbgl/style/sources/custom_geometry_source.hpp>
+#include <mln/style/sources/geojson_source.hpp>
+#include <mln/style/sources/vector_source.hpp>
+#include <mln/style/sources/raster_source.hpp>
+#include <mln/style/sources/raster_dem_source.hpp>
+#include <mln/style/sources/image_source.hpp>
+#include <mln/style/sources/custom_geometry_source.hpp>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 namespace {
 
 // Fallback for layer types without a full NAPI wrapper (custom, unknown):
 // a plain info object with id/type/visibility/zoom bounds.
-napi_value createLayerInfoObject(napi_env env, mbgl::style::Layer* layer) {
+napi_value createLayerInfoObject(napi_env env, mln::style::Layer* layer) {
     napi_value layerObj;
     napi_create_object(env, &layerObj);
 
@@ -67,7 +67,7 @@ napi_value createLayerInfoObject(napi_env env, mbgl::style::Layer* layer) {
 
     auto visibility = layer->getVisibility();
     napi_value visValue;
-    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
+    const char* visStr = (visibility == mln::style::VisibilityType::Visible) ? "visible" : "none";
     napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &visValue);
     napi_set_named_property(env, layerObj, "visibility", visValue);
 
@@ -81,7 +81,7 @@ napi_value createLayerInfoObject(napi_env env, mbgl::style::Layer* layer) {
 }
 
 // Fallback for source types without a full NAPI wrapper: a plain info object.
-napi_value createSourceInfoObject(napi_env env, mbgl::style::Source* source, const std::string& typeStr) {
+napi_value createSourceInfoObject(napi_env env, mln::style::Source* source, const std::string& typeStr) {
     napi_value sourceObj;
     napi_create_object(env, &sourceObj);
 
@@ -98,19 +98,19 @@ napi_value createSourceInfoObject(napi_env env, mbgl::style::Source* source, con
 
 } // namespace
 
-std::string LayerSourceFactory::SourceTypeToString(mbgl::style::SourceType type) {
+std::string LayerSourceFactory::SourceTypeToString(mln::style::SourceType type) {
     switch (type) {
-        case mbgl::style::SourceType::Vector:
+        case mln::style::SourceType::Vector:
             return "vector";
-        case mbgl::style::SourceType::Raster:
+        case mln::style::SourceType::Raster:
             return "raster";
-        case mbgl::style::SourceType::RasterDEM:
+        case mln::style::SourceType::RasterDEM:
             return "raster-dem";
-        case mbgl::style::SourceType::GeoJSON:
+        case mln::style::SourceType::GeoJSON:
             return "geojson";
-        case mbgl::style::SourceType::Image:
+        case mln::style::SourceType::Image:
             return "image";
-        case mbgl::style::SourceType::CustomVector:
+        case mln::style::SourceType::CustomVector:
             return "custom-vector";
         default:
             return "unknown";
@@ -128,7 +128,7 @@ napi_value createNullValue(napi_env env) {
 
 } // namespace
 
-napi_value LayerSourceFactory::createLayerWrapper(napi_env env, mbgl::style::Layer* layer,
+napi_value LayerSourceFactory::createLayerWrapper(napi_env env, mln::style::Layer* layer,
                                                   WrapperFallback fallback) {
     if (!layer) {
         Logger::warn("LayerSourceFactory", "createLayerWrapper: null layer pointer");
@@ -141,35 +141,35 @@ napi_value LayerSourceFactory::createLayerWrapper(napi_env env, mbgl::style::Lay
 
     // Full NAPI wrapper per layer type (consistent with StyleNAPI::GetLayer)
     if (layerType == "fill") {
-        return mbgl::harmony::FillLayerNAPI::CreateInstance(env, static_cast<mbgl::style::FillLayer*>(layer));
+        return mln::harmony::FillLayerNAPI::CreateInstance(env, static_cast<mln::style::FillLayer*>(layer));
     } else if (layerType == "line") {
-        return mbgl::harmony::LineLayerNAPI::CreateInstance(env, static_cast<mbgl::style::LineLayer*>(layer));
+        return mln::harmony::LineLayerNAPI::CreateInstance(env, static_cast<mln::style::LineLayer*>(layer));
     } else if (layerType == "circle") {
-        return mbgl::harmony::CircleLayerNAPI::CreateInstance(env, static_cast<mbgl::style::CircleLayer*>(layer));
+        return mln::harmony::CircleLayerNAPI::CreateInstance(env, static_cast<mln::style::CircleLayer*>(layer));
     } else if (layerType == "symbol") {
-        return mbgl::harmony::SymbolLayerNAPI::CreateInstance(env, static_cast<mbgl::style::SymbolLayer*>(layer));
+        return mln::harmony::SymbolLayerNAPI::CreateInstance(env, static_cast<mln::style::SymbolLayer*>(layer));
     } else if (layerType == "raster") {
-        return mbgl::harmony::RasterLayerNAPI::CreateInstance(env, static_cast<mbgl::style::RasterLayer*>(layer));
+        return mln::harmony::RasterLayerNAPI::CreateInstance(env, static_cast<mln::style::RasterLayer*>(layer));
     } else if (layerType == "background") {
-        return mbgl::harmony::BackgroundLayerNAPI::CreateInstance(env,
-                                                                  static_cast<mbgl::style::BackgroundLayer*>(layer));
+        return mln::harmony::BackgroundLayerNAPI::CreateInstance(env,
+                                                                  static_cast<mln::style::BackgroundLayer*>(layer));
     } else if (layerType == "heatmap") {
-        return mbgl::harmony::HeatmapLayerNAPI::CreateInstance(env, static_cast<mbgl::style::HeatmapLayer*>(layer));
+        return mln::harmony::HeatmapLayerNAPI::CreateInstance(env, static_cast<mln::style::HeatmapLayer*>(layer));
     } else if (layerType == "hillshade") {
-        return mbgl::harmony::HillshadeLayerNAPI::CreateInstance(env,
-                                                                 static_cast<mbgl::style::HillshadeLayer*>(layer));
+        return mln::harmony::HillshadeLayerNAPI::CreateInstance(env,
+                                                                 static_cast<mln::style::HillshadeLayer*>(layer));
     } else if (layerType == "fill-extrusion") {
-        return mbgl::harmony::FillExtrusionLayerNAPI::CreateInstance(
-            env, static_cast<mbgl::style::FillExtrusionLayer*>(layer));
+        return mln::harmony::FillExtrusionLayerNAPI::CreateInstance(
+            env, static_cast<mln::style::FillExtrusionLayer*>(layer));
     } else if (layerType == "color-relief") {
-        return mbgl::harmony::ColorReliefLayerNAPI::CreateInstance(env,
-                                                                   static_cast<mbgl::style::ColorReliefLayer*>(layer));
+        return mln::harmony::ColorReliefLayerNAPI::CreateInstance(env,
+                                                                   static_cast<mln::style::ColorReliefLayer*>(layer));
     } else if (layerType == "location-indicator") {
-        return mbgl::harmony::LocationIndicatorLayerNAPI::CreateInstance(
-            env, static_cast<mbgl::style::LocationIndicatorLayer*>(layer));
+        return mln::harmony::LocationIndicatorLayerNAPI::CreateInstance(
+            env, static_cast<mln::style::LocationIndicatorLayer*>(layer));
     } else if (layerType == "custom-drawable") {
-        return mbgl::harmony::CustomDrawableLayerNAPI::CreateInstance(
-            env, static_cast<mbgl::style::CustomDrawableLayer*>(layer));
+        return mln::harmony::CustomDrawableLayerNAPI::CreateInstance(
+            env, static_cast<mln::style::CustomDrawableLayer*>(layer));
     }
 
     if (fallback == WrapperFallback::Null) {
@@ -181,7 +181,7 @@ napi_value LayerSourceFactory::createLayerWrapper(napi_env env, mbgl::style::Lay
     return createLayerInfoObject(env, layer);
 }
 
-napi_value LayerSourceFactory::createSourceWrapper(napi_env env, mbgl::style::Source* source,
+napi_value LayerSourceFactory::createSourceWrapper(napi_env env, mln::style::Source* source,
                                                   WrapperFallback fallback) {
     if (!source) {
         Logger::warn("LayerSourceFactory", "createSourceWrapper: null source pointer");
@@ -194,24 +194,24 @@ napi_value LayerSourceFactory::createSourceWrapper(napi_env env, mbgl::style::So
 
     // Full NAPI wrapper per source type (consistent with StyleNAPI::GetSource)
     switch (sourceType) {
-        case mbgl::style::SourceType::GeoJSON:
-            return mbgl::harmony::GeoJsonSourceNAPI::CreateInstance(
-                env, static_cast<mbgl::style::GeoJSONSource*>(source));
-        case mbgl::style::SourceType::Vector:
-            return mbgl::harmony::VectorSourceNAPI::CreateInstance(
-                env, static_cast<mbgl::style::VectorSource*>(source));
-        case mbgl::style::SourceType::Raster:
-            return mbgl::harmony::RasterSourceNAPI::CreateInstance(
-                env, static_cast<mbgl::style::RasterSource*>(source));
-        case mbgl::style::SourceType::RasterDEM:
-            return mbgl::harmony::RasterDemSourceNAPI::CreateInstance(
-                env, static_cast<mbgl::style::RasterDEMSource*>(source));
-        case mbgl::style::SourceType::Image:
-            return mbgl::harmony::ImageSourceNAPI::CreateInstance(
-                env, static_cast<mbgl::style::ImageSource*>(source));
-        case mbgl::style::SourceType::CustomVector:
-            return mbgl::harmony::CustomGeometrySourceNAPI::CreateInstance(
-                env, static_cast<mbgl::style::CustomGeometrySource*>(source));
+        case mln::style::SourceType::GeoJSON:
+            return mln::harmony::GeoJsonSourceNAPI::CreateInstance(
+                env, static_cast<mln::style::GeoJSONSource*>(source));
+        case mln::style::SourceType::Vector:
+            return mln::harmony::VectorSourceNAPI::CreateInstance(
+                env, static_cast<mln::style::VectorSource*>(source));
+        case mln::style::SourceType::Raster:
+            return mln::harmony::RasterSourceNAPI::CreateInstance(
+                env, static_cast<mln::style::RasterSource*>(source));
+        case mln::style::SourceType::RasterDEM:
+            return mln::harmony::RasterDemSourceNAPI::CreateInstance(
+                env, static_cast<mln::style::RasterDEMSource*>(source));
+        case mln::style::SourceType::Image:
+            return mln::harmony::ImageSourceNAPI::CreateInstance(
+                env, static_cast<mln::style::ImageSource*>(source));
+        case mln::style::SourceType::CustomVector:
+            return mln::harmony::CustomGeometrySourceNAPI::CreateInstance(
+                env, static_cast<mln::style::CustomGeometrySource*>(source));
         default:
             break;
     }
@@ -226,4 +226,4 @@ napi_value LayerSourceFactory::createSourceWrapper(napi_env env, mbgl::style::So
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

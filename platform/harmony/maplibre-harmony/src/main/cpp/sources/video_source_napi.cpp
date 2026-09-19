@@ -5,18 +5,18 @@
 #include "utils/logger.h"
 #include "napi/bindings/image/image_napi.hpp"
 #include "bitmap/bitmap_napi.hpp"
-#include <mbgl/util/geo.hpp>
+#include <mln/util/geo.hpp>
 #include <array>
 #include "napi/core/napi_wrap_instance.hpp"
 
 #include "source_napi_utils.hpp"
 #include "image_payload_napi.hpp"
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::napi::NapiArgs;
 namespace harmony {
 
 // Static member initialization
@@ -58,12 +58,12 @@ napi_value updateImageImpl(napi_env env, napi_callback_info info) {
 
 } // namespace
 
-VideoSourceNAPI::VideoSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::ImageSource> source)
+VideoSourceNAPI::VideoSourceNAPI(const std::string& id, std::unique_ptr<mln::style::ImageSource> source)
     : SourceNapiBase(id, std::move(source)) {
     Logger::info("VideoSourceNAPI", "VideoSource instance created: %s", id.c_str());
 }
 
-VideoSourceNAPI::VideoSourceNAPI(mbgl::style::ImageSource* sourcePtr)
+VideoSourceNAPI::VideoSourceNAPI(mln::style::ImageSource* sourcePtr)
     : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
         Logger::info("VideoSourceNAPI", "VideoSource created from existing source (WeakPtr): %s", id.c_str());
@@ -109,7 +109,7 @@ napi_value VideoSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 
     try {
-        std::array<mbgl::LatLng, 4> coords = DefaultLatLngQuad();
+        std::array<mln::LatLng, 4> coords = DefaultLatLngQuad();
 
         if (args.Count() >= 2) {
             napi_value coordsValue = args.GetValue(1);
@@ -119,7 +119,7 @@ napi_value VideoSourceNAPI::New(napi_env env, napi_callback_info info) {
             }
         }
 
-        auto source = std::make_unique<mbgl::style::ImageSource>(sourceId, coords);
+        auto source = std::make_unique<mln::style::ImageSource>(sourceId, coords);
 
         VideoSourceNAPI* sourceNapi = new VideoSourceNAPI(sourceId, std::move(source));
 
@@ -144,7 +144,7 @@ napi_value VideoSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-DEFINE_SOURCE_CREATE_INSTANCE(VideoSourceNAPI, "VideoSource", mbgl::style::ImageSource)
+DEFINE_SOURCE_CREATE_INSTANCE(VideoSourceNAPI, "VideoSource", mln::style::ImageSource)
 
 DEFINE_SOURCE_GET_ID(VideoSourceNAPI)
 
@@ -193,7 +193,7 @@ napi_value VideoSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
     }
 
     napi_value coordsValue = args.GetValue(0);
-    std::array<mbgl::LatLng, 4> coords;
+    std::array<mln::LatLng, 4> coords;
     if (!ParseLatLngQuad(env, coordsValue, coords)) {
         napi_throw_error(env, nullptr, "Coordinates must be an array of 4 [lng, lat] corners");
         return nullptr;
@@ -238,4 +238,4 @@ napi_value VideoSourceNAPI::UpdateImage(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

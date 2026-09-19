@@ -5,14 +5,14 @@
 #include "bitmap/bitmap_napi.hpp"
 #include "rendering/harmony_renderer.hpp"
 #include <arkui/native_node_napi.h>
-#include <mbgl/gfx/shader_registry.hpp>
-#include <mbgl/style/style.hpp>
+#include <mln/gfx/shader_registry.hpp>
+#include <mln/style/style.hpp>
 #include <tuple>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // ✅ Architecture fix: helper methods to ensure thread safety
@@ -391,7 +391,7 @@ void NativeMapView::onDidFinishLoadingStyle() {
     // MapLibre already handles rendering internally, no additional request is required
     // Remove requestRender() here to avoid redundant rendering
 }
-void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
+void NativeMapView::onSourceChanged(mln::style::Source& source) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     
     // ✅ Architecture fix: ensure callbacks execute on the render thread
@@ -468,8 +468,8 @@ napi_value NativeMapView::getImage(napi_env env, napi_callback_info info) {
         // mutated on the render thread, so touching them from the JS thread
         // is the documented data-race pattern (see style_napi.hpp).
         auto optionalImage = instance->invokeOnMapThreadSync(
-            [imageId](mbgl::Map* map) { return map->getStyle().getImage(imageId); },
-            std::optional<mbgl::style::Image>{});
+            [imageId](mln::Map* map) { return map->getStyle().getImage(imageId); },
+            std::optional<mln::style::Image>{});
 
         if (!optionalImage) {
             Logger::warn("NativeMapView", "getImage: Image '%s' not found", imageId.c_str());
@@ -477,7 +477,7 @@ napi_value NativeMapView::getImage(napi_env env, napi_callback_info info) {
         }
         
         // Copy image data
-        auto image = std::make_shared<mbgl::PremultipliedImage>(optionalImage->getImage().clone());
+        auto image = std::make_shared<mln::PremultipliedImage>(optionalImage->getImage().clone());
         
         // Create Bitmap NAPI wrapper
         napi_value bitmapObj = BitmapNAPI::CreateFromImage(env, imageId, image);
@@ -533,7 +533,7 @@ napi_value NativeMapView::SetMapScalarProperty(napi_env env, napi_callback_info 
     }
 
     try {
-        instance->invokeOnMapThread([apply, value](mbgl::Map* m) { apply(m, value); });
+        instance->invokeOnMapThread([apply, value](mln::Map* m) { apply(m, value); });
         LogScalarSet(label, value);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "%s: Failed - %s", label, e.what());
@@ -555,7 +555,7 @@ napi_value NativeMapView::GetMapScalarProperty(napi_env env, napi_callback_info 
     }
 
     try {
-        V value = instance->invokeOnMapThreadSync([&](mbgl::Map* m) { return read(m); }, defaultValue);
+        V value = instance->invokeOnMapThreadSync([&](mln::Map* m) { return read(m); }, defaultValue);
         CreateScalarValue(env, value, &result);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "%s: Failed - %s", label, e.what());
@@ -567,24 +567,24 @@ napi_value NativeMapView::GetMapScalarProperty(napi_env env, napi_callback_info 
 napi_value NativeMapView::setPrefetchTiles(napi_env env, napi_callback_info info) {
     // Align with Android: set the default zoom delta when enabled; otherwise set it to 0
     return SetMapScalarProperty<bool>(env, info, "setPrefetchTiles", "enable",
-        [](mbgl::Map* m, bool enable) {
-            m->setPrefetchZoomDelta(enable ? mbgl::util::DEFAULT_PREFETCH_ZOOM_DELTA : uint8_t(0));
+        [](mln::Map* m, bool enable) {
+            m->setPrefetchZoomDelta(enable ? mln::util::DEFAULT_PREFETCH_ZOOM_DELTA : uint8_t(0));
         });
 }
 
 napi_value NativeMapView::getPrefetchTiles(napi_env env, napi_callback_info info) {
     return GetMapScalarProperty<bool>(env, info, "getPrefetchTiles", false,
-        [](mbgl::Map* m) { return m->getPrefetchZoomDelta() > 0; });
+        [](mln::Map* m) { return m->getPrefetchZoomDelta() > 0; });
 }
 
 napi_value NativeMapView::setPrefetchZoomDelta(napi_env env, napi_callback_info info) {
     return SetMapScalarProperty<int32_t>(env, info, "setPrefetchZoomDelta", "delta",
-        [](mbgl::Map* m, int32_t delta) { m->setPrefetchZoomDelta(static_cast<uint8_t>(delta)); });
+        [](mln::Map* m, int32_t delta) { m->setPrefetchZoomDelta(static_cast<uint8_t>(delta)); });
 }
 
 napi_value NativeMapView::getPrefetchZoomDelta(napi_env env, napi_callback_info info) {
     return GetMapScalarProperty<int32_t>(env, info, "getPrefetchZoomDelta", int32_t(0),
-        [](mbgl::Map* m) { return static_cast<int32_t>(m->getPrefetchZoomDelta()); });
+        [](mln::Map* m) { return static_cast<int32_t>(m->getPrefetchZoomDelta()); });
 }
 
 
@@ -652,42 +652,42 @@ napi_value NativeMapView::getTileCacheEnabled(napi_env env, napi_callback_info i
 
 napi_value NativeMapView::setTileLodMinRadius(napi_env env, napi_callback_info info) {
     return SetMapScalarProperty<double>(env, info, "setTileLodMinRadius", "radius",
-        [](mbgl::Map* m, double radius) { m->setTileLodMinRadius(radius); });
+        [](mln::Map* m, double radius) { m->setTileLodMinRadius(radius); });
 }
 
 napi_value NativeMapView::getTileLodMinRadius(napi_env env, napi_callback_info info) {
     return GetMapScalarProperty<double>(env, info, "getTileLodMinRadius", 0.0,
-        [](mbgl::Map* m) { return m->getTileLodMinRadius(); });
+        [](mln::Map* m) { return m->getTileLodMinRadius(); });
 }
 
 napi_value NativeMapView::setTileLodScale(napi_env env, napi_callback_info info) {
     return SetMapScalarProperty<double>(env, info, "setTileLodScale", "scale",
-        [](mbgl::Map* m, double scale) { m->setTileLodScale(scale); });
+        [](mln::Map* m, double scale) { m->setTileLodScale(scale); });
 }
 
 napi_value NativeMapView::getTileLodScale(napi_env env, napi_callback_info info) {
     return GetMapScalarProperty<double>(env, info, "getTileLodScale", 0.0,
-        [](mbgl::Map* m) { return m->getTileLodScale(); });
+        [](mln::Map* m) { return m->getTileLodScale(); });
 }
 
 napi_value NativeMapView::setTileLodPitchThreshold(napi_env env, napi_callback_info info) {
     return SetMapScalarProperty<double>(env, info, "setTileLodPitchThreshold", "threshold",
-        [](mbgl::Map* m, double threshold) { m->setTileLodPitchThreshold(threshold); });
+        [](mln::Map* m, double threshold) { m->setTileLodPitchThreshold(threshold); });
 }
 
 napi_value NativeMapView::getTileLodPitchThreshold(napi_env env, napi_callback_info info) {
     return GetMapScalarProperty<double>(env, info, "getTileLodPitchThreshold", 0.0,
-        [](mbgl::Map* m) { return m->getTileLodPitchThreshold(); });
+        [](mln::Map* m) { return m->getTileLodPitchThreshold(); });
 }
 
 napi_value NativeMapView::setTileLodZoomShift(napi_env env, napi_callback_info info) {
     return SetMapScalarProperty<double>(env, info, "setTileLodZoomShift", "shift",
-        [](mbgl::Map* m, double shift) { m->setTileLodZoomShift(shift); });
+        [](mln::Map* m, double shift) { m->setTileLodZoomShift(shift); });
 }
 
 napi_value NativeMapView::getTileLodZoomShift(napi_env env, napi_callback_info info) {
     return GetMapScalarProperty<double>(env, info, "getTileLodZoomShift", 0.0,
-        [](mbgl::Map* m) { return m->getTileLodZoomShift(); });
+        [](mln::Map* m) { return m->getTileLodZoomShift(); });
 }
 
 
@@ -743,7 +743,7 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
         return undefined;
     }
 
-    int64_t surfaceId = mbgl::harmony::napi::ParseSurfaceId(env, info);
+    int64_t surfaceId = mln::harmony::napi::ParseSurfaceId(env, info);
     Logger::info("NativeMapView", "Surface ID: %ld", (long)surfaceId);
 
     // Obtain the NativeMapView instance
@@ -790,12 +790,12 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
 
 napi_value NativeMapView::isRenderingStatsViewEnabled(napi_env env, napi_callback_info info) {
     return GetMapScalarProperty<bool>(env, info, "isRenderingStatsViewEnabled", false,
-        [](mbgl::Map* m) { return m->isRenderingStatsViewEnabled(); });
+        [](mln::Map* m) { return m->isRenderingStatsViewEnabled(); });
 }
 
 napi_value NativeMapView::enableRenderingStatsView(napi_env env, napi_callback_info info) {
     return SetMapScalarProperty<bool>(env, info, "enableRenderingStatsView", "enable",
-        [](mbgl::Map* m, bool enable) { m->enableRenderingStatsView(enable); });
+        [](mln::Map* m, bool enable) { m->enableRenderingStatsView(enable); });
 }
 
 // NAPI method to set the native window with size
@@ -825,7 +825,7 @@ napi_value NativeMapView::setNativeWindowWithSize(napi_env env, napi_callback_in
     }
 
     // Parse arguments
-    int64_t surfaceId = mbgl::harmony::napi::ParseSurfaceId(env, info);
+    int64_t surfaceId = mln::harmony::napi::ParseSurfaceId(env, info);
     int32_t width, height;
     
     if (napi_get_value_int32(env, args[1], &width) != napi_ok ||
@@ -910,7 +910,7 @@ napi_value NativeMapView::setupNativeGestures(napi_env env, napi_callback_info i
     }
 
     // Initialize gesture manager with a render-thread dispatcher
-    // Gesture callbacks arrive on the UI thread, but mbgl::Map operations
+    // Gesture callbacks arrive on the UI thread, but mln::Map operations
     // must run on the render thread to avoid data races and bad_function_call.
     auto renderThreadDispatcher = [instance](std::function<void()> task) {
         if (instance->harmonyRenderer) {
@@ -961,7 +961,7 @@ IMPLEMENT_ADD_LISTENER(addOnMapLongClickListener, "onMapLongClick")
 IMPLEMENT_REMOVE_LISTENER(removeOnMapLongClickListener, "onMapLongClick")
 
 // Other method implementations
-mbgl::Map& NativeMapView::getMap() {
+mln::Map& NativeMapView::getMap() {
     // Return the actual map object; throw if map is null
     if (map) {
         return *map;
@@ -972,7 +972,7 @@ mbgl::Map& NativeMapView::getMap() {
 }
 
 // Shader compilation
-void NativeMapView::onRegisterShaders(mbgl::gfx::ShaderRegistry&) {
+void NativeMapView::onRegisterShaders(mln::gfx::ShaderRegistry&) {
     Logger::info("NativeMapView", "onRegisterShaders called");
 }
 
@@ -991,7 +991,7 @@ std::vector<napi_value> MakeShaderEventArgs(napi_env env, int shaderId, int back
 
 } // anonymous namespace
 
-void NativeMapView::onPreCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
+void NativeMapView::onPreCompileShader(mln::shaders::BuiltIn shader, mln::gfx::Backend::Type backend, const std::string& source) {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
     if (callbackManager_) {
@@ -1005,7 +1005,7 @@ void NativeMapView::onPreCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx:
     }
 }
 
-void NativeMapView::onPostCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
+void NativeMapView::onPostCompileShader(mln::shaders::BuiltIn shader, mln::gfx::Backend::Type backend, const std::string& source) {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
     if (callbackManager_) {
@@ -1019,7 +1019,7 @@ void NativeMapView::onPostCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx
     }
 }
 
-void NativeMapView::onShaderCompileFailed(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
+void NativeMapView::onShaderCompileFailed(mln::shaders::BuiltIn shader, mln::gfx::Backend::Type backend, const std::string& source) {
     Logger::error("NativeMapView", "onShaderCompileFailed: shader=%d, backend=%d, source_length=%zu",
                   static_cast<int>(shader), static_cast<int>(backend), source.length());
 
@@ -1040,7 +1040,7 @@ void NativeMapView::onShaderCompileFailed(mbgl::shaders::BuiltIn shader, mbgl::g
 namespace {
 // The three glyph events are identical apart from the event name: a font
 // stack array plus the glyph range bounds (three JS arguments).
-void invokeGlyphEvent(const std::shared_ptr<mbgl::harmony::CallbackManager>& callbackManager,
+void invokeGlyphEvent(const std::shared_ptr<mln::harmony::CallbackManager>& callbackManager,
                       const char* event,
                       const std::vector<std::string>& fontStack,
                       int rangeStart, int rangeEnd) {
@@ -1063,7 +1063,7 @@ void invokeGlyphEvent(const std::shared_ptr<mbgl::harmony::CallbackManager>& cal
 
 // The three sprite events are identical apart from the event name: the
 // sprite id and URL (two JS arguments).
-void invokeSpriteEvent(const std::shared_ptr<mbgl::harmony::CallbackManager>& callbackManager,
+void invokeSpriteEvent(const std::shared_ptr<mln::harmony::CallbackManager>& callbackManager,
                        const char* event,
                        const std::string& spriteId,
                        const std::string& url) {
@@ -1076,7 +1076,7 @@ void invokeSpriteEvent(const std::shared_ptr<mbgl::harmony::CallbackManager>& ca
 }
 } // anonymous namespace
 
-void NativeMapView::onGlyphsLoaded(const mbgl::FontStack& stack, const mbgl::GlyphRange& range) {
+void NativeMapView::onGlyphsLoaded(const mln::FontStack& stack, const mln::GlyphRange& range) {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
     if (callbackManager_) {
@@ -1087,7 +1087,7 @@ void NativeMapView::onGlyphsLoaded(const mbgl::FontStack& stack, const mbgl::Gly
     }
 }
 
-void NativeMapView::onGlyphsError(const mbgl::FontStack& stack, const mbgl::GlyphRange& range, std::exception_ptr) {
+void NativeMapView::onGlyphsError(const mln::FontStack& stack, const mln::GlyphRange& range, std::exception_ptr) {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
     if (callbackManager_) {
@@ -1097,7 +1097,7 @@ void NativeMapView::onGlyphsError(const mbgl::FontStack& stack, const mbgl::Glyp
     }
 }
 
-void NativeMapView::onGlyphsRequested(const mbgl::FontStack& stack, const mbgl::GlyphRange& range) {
+void NativeMapView::onGlyphsRequested(const mln::FontStack& stack, const mln::GlyphRange& range) {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
     if (callbackManager_) {
@@ -1108,7 +1108,7 @@ void NativeMapView::onGlyphsRequested(const mbgl::FontStack& stack, const mbgl::
 }
 
 // Tile requests
-void NativeMapView::onTileAction(mbgl::TileOperation op, const mbgl::OverscaledTileID& tileID, const std::string& sourceID) {
+void NativeMapView::onTileAction(mln::TileOperation op, const mln::OverscaledTileID& tileID, const std::string& sourceID) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     
     if (callbackManager_) {
@@ -1135,7 +1135,7 @@ void NativeMapView::onTileAction(mbgl::TileOperation op, const mbgl::OverscaledT
 }
 
 // Sprite requests
-void NativeMapView::onSpriteLoaded(const std::optional<mbgl::style::Sprite>& sprite) {
+void NativeMapView::onSpriteLoaded(const std::optional<mln::style::Sprite>& sprite) {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
     if (callbackManager_ && sprite) {
@@ -1143,7 +1143,7 @@ void NativeMapView::onSpriteLoaded(const std::optional<mbgl::style::Sprite>& spr
     }
 }
 
-void NativeMapView::onSpriteError(const std::optional<mbgl::style::Sprite>& sprite, std::exception_ptr) {
+void NativeMapView::onSpriteError(const std::optional<mln::style::Sprite>& sprite, std::exception_ptr) {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
     if (callbackManager_ && sprite) {
@@ -1151,7 +1151,7 @@ void NativeMapView::onSpriteError(const std::optional<mbgl::style::Sprite>& spri
     }
 }
 
-void NativeMapView::onSpriteRequested(const std::optional<mbgl::style::Sprite>& sprite) {
+void NativeMapView::onSpriteRequested(const std::optional<mln::style::Sprite>& sprite) {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
     if (callbackManager_ && sprite) {
@@ -1350,7 +1350,7 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
 //
 // This function invokes the JS "onStyleLoaded" callback asynchronously on the main
 // (UI) thread via CallbackManager. The callback runs on the main thread, where it
-// may call StyleNAPI::AddLayer() / AddSource() which DIRECTLY mutates core mbgl::Style
+// may call StyleNAPI::AddLayer() / AddSource() which DIRECTLY mutates core mln::Style
 // internal state (layers, sources collections).
 //
 // Meanwhile, the render thread (which called this function) continues to read the
@@ -1484,4 +1484,4 @@ IMPLEMENT_REMOVE_LISTENER(removeOnDidFinishRenderingFrameWithStatsListener, "onD
 #undef IMPLEMENT_REMOVE_LISTENER
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

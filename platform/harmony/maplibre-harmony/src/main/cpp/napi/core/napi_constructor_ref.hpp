@@ -4,7 +4,7 @@
 #include "napi/native_api.h"
 #include "utils/logger.h"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Re-registering a NAPI class constructor (multi-env / module reload) must
@@ -69,6 +69,6 @@ inline napi_value RegisterNapiClass(napi_env env, napi_value exports,
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBREHARMONY_NAPI_CONSTRUCTOR_REF_HPP

@@ -19,8 +19,8 @@
  * - HarmonyOS libuv API: https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V5/libuv-V5
  */
 
-#include <mbgl/util/async_task.hpp>
-#include <mbgl/util/run_loop.hpp>
+#include <mln/util/async_task.hpp>
+#include <mln/util/run_loop.hpp>
 
 #include "loop_guard.hpp"
 
@@ -35,7 +35,7 @@
 // Use platform logger
 #include "../maplibre-harmony/src/main/cpp/utils/logger.h"
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
 namespace {
 
@@ -45,7 +45,7 @@ const char* uvErrorString(int errorCode) {
 
 } // namespace
 
-namespace mbgl {
+namespace mln {
 namespace util {
 
 /**
@@ -266,4 +266,4 @@ void AsyncTask::send() {
 }
 
 } // namespace util
-} // namespace mbgl
+} // namespace mln

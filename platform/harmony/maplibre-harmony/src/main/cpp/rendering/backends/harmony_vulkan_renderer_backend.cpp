@@ -1,9 +1,9 @@
 #include "harmony_vulkan_renderer_backend.hpp"
 
-#include <mbgl/gfx/backend_scope.hpp>
-#include <mbgl/vulkan/context.hpp>
-#include <mbgl/vulkan/renderable_resource.hpp>
-#include <mbgl/util/logging.hpp>
+#include <mln/gfx/backend_scope.hpp>
+#include <mln/vulkan/context.hpp>
+#include <mln/vulkan/renderable_resource.hpp>
+#include <mln/util/logging.hpp>
 
 #include <cassert>
 #include <string>
@@ -13,7 +13,7 @@
 // VK_OHOS_SURFACE_EXTENSION_NAME) come from the vendored Vulkan-Headers'
 // <vulkan/vulkan_ohos.h>, pulled in via <vulkan/vulkan.hpp> in 1.4.352+.
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -22,7 +22,7 @@ namespace harmony {
  * This class handles the creation and management of Vulkan surfaces
  * and swapchains for HarmonyOS native windows.
  */
-class HarmonyVulkanRenderableResource final : public mbgl::vulkan::SurfaceRenderableResource {
+class HarmonyVulkanRenderableResource final : public mln::vulkan::SurfaceRenderableResource {
 public:
     explicit HarmonyVulkanRenderableResource(HarmonyVulkanRendererBackend& backend_)
         : SurfaceRenderableResource(backend_) {
@@ -86,7 +86,7 @@ public:
 
         surface = vk::UniqueSurfaceKHR(
             vk::SurfaceKHR(rawSurface),
-            mbgl::vulkan::ObjectDestroy<vk::Instance>(
+            mln::vulkan::ObjectDestroy<vk::Instance>(
                 *backendImpl.getInstance(),
                 nullptr,
                 dispatcher)
@@ -195,7 +195,7 @@ void HarmonyVulkanRendererBackend::setNativeWindow(OHNativeWindow* window_) {
 
 std::vector<const char*> HarmonyVulkanRendererBackend::getInstanceExtensions() {
     // Get base extensions from parent class
-    auto extensions = mbgl::vulkan::RendererBackend::getInstanceExtensions();
+    auto extensions = mln::vulkan::RendererBackend::getInstanceExtensions();
 
     // Add Vulkan surface extension (standard WSI extension)
     extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
@@ -281,4 +281,4 @@ std::string HarmonyVulkanRendererBackend::getRendererInfo() {
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

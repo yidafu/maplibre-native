@@ -1,15 +1,15 @@
 #pragma once
 
 #include <ace/xcomponent/native_interface_xcomponent.h>
-#include <mbgl/gfx/backend.hpp>
-#include <mbgl/gfx/renderer_backend.hpp>
-#include <mbgl/gfx/renderable.hpp>
-#include <mbgl/util/image.hpp>
+#include <mln/gfx/backend.hpp>
+#include <mln/gfx/renderer_backend.hpp>
+#include <mln/gfx/renderable.hpp>
+#include <mln/util/image.hpp>
 #include <native_window/external_window.h>
 #include <string>
 
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 class HarmonyRendererBackend : public gfx::Backend {
@@ -20,9 +20,9 @@ public:
     virtual ~HarmonyRendererBackend() = default;
 
     static std::unique_ptr<HarmonyRendererBackend> Create(OHNativeWindow* window) {
-        return mbgl::gfx::Backend::Create<HarmonyRendererBackend, OHNativeWindow*>(window);
+        return mln::gfx::Backend::Create<HarmonyRendererBackend, OHNativeWindow*>(window);
     }
-    virtual mbgl::gfx::RendererBackend& getImpl() = 0;
+    virtual mln::gfx::RendererBackend& getImpl() = 0;
 
     virtual void updateViewPort();
 
@@ -69,4 +69,4 @@ protected:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

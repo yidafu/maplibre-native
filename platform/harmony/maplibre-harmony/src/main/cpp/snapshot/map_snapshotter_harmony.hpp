@@ -1,17 +1,17 @@
 /**
  * MapSnapshotter for HarmonyOS
  * 
- * Wraps mbgl::MapSnapshotter to provide snapshot functionality on HarmonyOS.
+ * Wraps mln::MapSnapshotter to provide snapshot functionality on HarmonyOS.
  */
 
 #pragma once
 
-#include <mbgl/map/camera.hpp>
-#include <mbgl/map/map_snapshotter.hpp>
-#include <mbgl/util/geo.hpp>
-#include <mbgl/util/image.hpp>
-#include <mbgl/storage/resource_options.hpp>
-#include <mbgl/util/client_options.hpp>
+#include <mln/map/camera.hpp>
+#include <mln/map/map_snapshotter.hpp>
+#include <mln/util/geo.hpp>
+#include <mln/util/image.hpp>
+#include <mln/storage/resource_options.hpp>
+#include <mln/util/client_options.hpp>
 #include <napi/native_api.h>
 
 #include <memory>
@@ -19,7 +19,7 @@
 #include <functional>
 #include <optional>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -27,7 +27,7 @@ namespace harmony {
  *
  * Matches Android's MapSnapshotter and iOS's MLNMapSnapshotter.
  */
-class MapSnapshotterHarmony final : public mbgl::MapSnapshotterObserver {
+class MapSnapshotterHarmony final : public mln::MapSnapshotterObserver {
 public:
     /**
      * Snapshot options.
@@ -38,8 +38,8 @@ public:
         float pixelRatio;
         std::string styleURL;
         std::optional<std::string> styleJSON;
-        std::optional<mbgl::CameraOptions> camera;
-        std::optional<mbgl::LatLngBounds> region;
+        std::optional<mln::CameraOptions> camera;
+        std::optional<mln::LatLngBounds> region;
         bool showLogo;
         std::string localFontFamily;
     };
@@ -56,10 +56,10 @@ public:
      */
     using SnapshotCallback = std::function<void(
         std::exception_ptr,
-        mbgl::PremultipliedImage,
+        mln::PremultipliedImage,
         std::vector<std::string>,
-        mbgl::MapSnapshotter::PointForFn,
-        mbgl::MapSnapshotter::LatLngForFn
+        mln::MapSnapshotter::PointForFn,
+        mln::MapSnapshotter::LatLngForFn
     )>;
 
     /**
@@ -71,8 +71,8 @@ public:
      */
     MapSnapshotterHarmony(
         const SnapshotOptions& options,
-        const mbgl::ResourceOptions& resourceOptions,
-        const mbgl::ClientOptions& clientOptions = mbgl::ClientOptions()
+        const mln::ResourceOptions& resourceOptions,
+        const mln::ClientOptions& clientOptions = mln::ClientOptions()
     );
 
     ~MapSnapshotterHarmony();
@@ -100,12 +100,12 @@ public:
     /**
      * Set the snapshot size.
      */
-    void setSize(const mbgl::Size& size);
+    void setSize(const mln::Size& size);
     
     /**
      * Get the snapshot size.
      */
-    mbgl::Size getSize() const;
+    mln::Size getSize() const;
 
     /**
      * Get the pixel ratio configured for this snapshotter.
@@ -115,28 +115,28 @@ public:
     /**
      * Set camera options.
      */
-    void setCameraOptions(const mbgl::CameraOptions& camera);
+    void setCameraOptions(const mln::CameraOptions& camera);
     
     /**
      * Get camera options.
      */
-    mbgl::CameraOptions getCameraOptions() const;
+    mln::CameraOptions getCameraOptions() const;
 
     /**
      * Set the geographic bounds.
      */
-    void setRegion(const mbgl::LatLngBounds& bounds);
+    void setRegion(const mln::LatLngBounds& bounds);
     
     /**
      * Get the geographic bounds.
      */
-    mbgl::LatLngBounds getRegion() const;
+    mln::LatLngBounds getRegion() const;
 
     /**
      * Access the underlying style object.
      */
-    mbgl::style::Style& getStyle();
-    const mbgl::style::Style& getStyle() const;
+    mln::style::Style& getStyle();
+    const mln::style::Style& getStyle() const;
 
     /**
      * Start snapshot generation.
@@ -162,7 +162,7 @@ public:
     void setObserverCallback(ObserverCallback callback);
 
 private:
-    std::unique_ptr<mbgl::MapSnapshotter> snapshotter_;
+    std::unique_ptr<mln::MapSnapshotter> snapshotter_;
     float pixelRatio_;
     bool showLogo_;
     SnapshotOptions options_;
@@ -170,5 +170,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

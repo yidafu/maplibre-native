@@ -2,12 +2,12 @@
 #include "geometry/lat_lng_harmony.hpp"
 #include "utils/logger.h"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using Logger = mbgl::harmony::Logger;
+using Logger = mln::harmony::Logger;
 
-napi_value CameraPositionHarmony::CreateCameraPositionObject(napi_env env, const mbgl::CameraOptions& options, float pixelRatio) {
+napi_value CameraPositionHarmony::CreateCameraPositionObject(napi_env env, const mln::CameraOptions& options, float pixelRatio) {
     napi_value obj;
     napi_status status = napi_create_object(env, &obj);
     if (status != napi_ok) {
@@ -44,7 +44,7 @@ napi_value CameraPositionHarmony::CreateCameraPositionObject(napi_env env, const
     napi_set_named_property(env, obj, "tilt", tiltValue);
     
     // Create padding (EdgeInsets)
-    auto insets = options.padding.value_or(mbgl::EdgeInsets{0, 0, 0, 0});
+    auto insets = options.padding.value_or(mln::EdgeInsets{0, 0, 0, 0});
     napi_value paddingObj;
     napi_create_object(env, &paddingObj);
     
@@ -64,7 +64,7 @@ napi_value CameraPositionHarmony::CreateCameraPositionObject(napi_env env, const
     return obj;
 }
 
-bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, float pixelRatio, mbgl::CameraOptions& outOptions) {
+bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, float pixelRatio, mln::CameraOptions& outOptions) {
     // Ensure value is an object
     napi_valuetype type;
     napi_status status = napi_typeof(env, value, &type);
@@ -77,7 +77,7 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
     napi_value targetValue;
     status = napi_get_named_property(env, value, "target", &targetValue);
     if (status == napi_ok) {
-        mbgl::LatLng center;
+        mln::LatLng center;
         if (LatLngHarmony::ParseLatLng(env, targetValue, center)) {
             outOptions.center = center;
         }
@@ -134,7 +134,7 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
                     napi_get_value_double(env, bottomVal, &bottom) == napi_ok) {
                     
                     // Divide by pixelRatio to convert back to logical pixels
-                    outOptions.padding = mbgl::EdgeInsets{
+                    outOptions.padding = mln::EdgeInsets{
                         top / pixelRatio,
                         left / pixelRatio,
                         bottom / pixelRatio,
@@ -149,5 +149,5 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

@@ -6,7 +6,7 @@
 #include <condition_variable>
 #include <mutex>
 
-namespace mbgl {
+namespace mln {
 
 namespace util {
 class RunLoop;
@@ -109,5 +109,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

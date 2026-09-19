@@ -1,19 +1,19 @@
 #pragma once
 
-#include <mbgl/map/map.hpp>
-#include <mbgl/util/noncopyable.hpp>
-#include <mbgl/actor/scheduler.hpp>
-#include <mbgl/util/identity.hpp>
-#include <mbgl/util/geo.hpp>
-#include <mbgl/util/feature.hpp>
-#include <mbgl/util/geojson.hpp>
-#include <mbgl/renderer/query.hpp>
+#include <mln/map/map.hpp>
+#include <mln/util/noncopyable.hpp>
+#include <mln/actor/scheduler.hpp>
+#include <mln/util/identity.hpp>
+#include <mln/util/geo.hpp>
+#include <mln/util/feature.hpp>
+#include <mln/util/geojson.hpp>
+#include <mln/renderer/query.hpp>
 #include <native_window/external_window.h>
 #include <memory>
 #include <functional>
-#include <mbgl/util/image.hpp>
+#include <mln/util/image.hpp>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Forward declarations - use the appropriate backend based on build configuration
@@ -28,7 +28,7 @@ using HarmonyRendererBackendImpl = HarmonyGLRendererBackend;
 class HarmonyMapRenderThread;
 class NativeMapView;  // Forward declaration
 
-class HarmonyRenderer : public mbgl::util::noncopyable, public mbgl::Scheduler, public mbgl::MapObserver {
+class HarmonyRenderer : public mln::util::noncopyable, public mln::Scheduler, public mln::MapObserver {
 public:
     HarmonyRenderer();
     ~HarmonyRenderer();
@@ -147,7 +147,7 @@ public:
     void setOnFpsChangedCallback(std::function<void(double)> callback);
     void enableFpsMeasurement(bool enable);
     
-    using SnapshotSuccessCallback = std::function<void(mbgl::PremultipliedImage&&, float)>;
+    using SnapshotSuccessCallback = std::function<void(mln::PremultipliedImage&&, float)>;
     using SnapshotErrorCallback = std::function<void(const std::string&)>;
     void requestSnapshot(SnapshotSuccessCallback success, SnapshotErrorCallback error);
     
@@ -183,6 +183,6 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 

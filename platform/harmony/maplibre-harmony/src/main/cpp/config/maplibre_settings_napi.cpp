@@ -5,10 +5,10 @@
 
 #include <string>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::napi::NapiArgs;
 
 void MapLibreSettingsNAPI::Init(napi_env env, napi_value exports) {
     // Define the methods to export
@@ -130,5 +130,5 @@ napi_value MapLibreSettingsNAPI::GetApiBaseURL(napi_env env, napi_callback_info 
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

@@ -1,4 +1,4 @@
-#include <mbgl/i18n/number_format.hpp>
+#include <mln/i18n/number_format.hpp>
 
 #include <string>
 
@@ -12,7 +12,7 @@
     HarmonyOS native APIs in the future.
 */
 
-namespace mbgl {
+namespace mln {
 namespace platform {
 
 std::string formatNumber(double number,
@@ -24,5 +24,5 @@ std::string formatNumber(double number,
 }
 
 } // namespace platform
-} // namespace mbgl
+} // namespace mln
 

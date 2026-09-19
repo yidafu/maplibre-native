@@ -7,7 +7,7 @@
 #include "napi/native_api.h"
 #include "utils/logger.h"
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Shared implementation for the geometry Create*/Parse* converters
@@ -62,6 +62,6 @@ inline bool ParseDoubleProps(napi_env env, napi_value value, const char* logTag,
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
 #endif // MAPLIBREHARMONY_NAPI_DOUBLE_PROPS_HPP

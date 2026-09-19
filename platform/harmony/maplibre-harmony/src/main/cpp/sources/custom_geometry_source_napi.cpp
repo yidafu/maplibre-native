@@ -9,9 +9,9 @@
 #include "geojson/util.hpp"
 #include "style/filter_conversion.hpp"
 #include "style/conversion/harmony_conversion.hpp"
-#include <mbgl/style/conversion/custom_geometry_source_options.hpp>
-#include <mbgl/style/conversion/json.hpp>
-#include <mbgl/util/geo.hpp>
+#include <mln/style/conversion/custom_geometry_source_options.hpp>
+#include <mln/style/conversion/json.hpp>
+#include <mln/util/geo.hpp>
 
 #include <mutex>
 #include "napi/core/napi_wrap_instance.hpp"
@@ -19,16 +19,16 @@
 #include "source_napi_utils.hpp"
 #include "query_source_features.hpp"
 #include "geojson/napi_geojson_value.hpp"
-using namespace mbgl::harmony::napi;
-using mbgl::harmony::Logger;
-using ThreadSafeCallback = mbgl::harmony::ThreadSafeCallback;
+using namespace mln::harmony::napi;
+using mln::harmony::Logger;
+using ThreadSafeCallback = mln::harmony::ThreadSafeCallback;
 
-namespace mbgl {
+namespace mln {
 
-using mbgl::harmony::napi::NapiArgs;
+using mln::harmony::napi::NapiArgs;
 namespace harmony {
 
-using namespace mbgl::harmony::geojson;
+using namespace mln::harmony::geojson;
 
 namespace {
 
@@ -81,12 +81,12 @@ CustomGeometrySourceNAPI::QuerySourceFeaturesFn CustomGeometrySourceNAPI::queryS
 }
 
 CustomGeometrySourceNAPI::CustomGeometrySourceNAPI(const std::string& id,
-                                                   std::unique_ptr<mbgl::style::CustomGeometrySource> source)
+                                                   std::unique_ptr<mln::style::CustomGeometrySource> source)
     : SourceNapiBase(id, std::move(source)) {
     Logger::info("CustomGeometrySourceNAPI", "CustomGeometrySource instance created: %s", id.c_str());
 }
 
-CustomGeometrySourceNAPI::CustomGeometrySourceNAPI(mbgl::style::CustomGeometrySource* sourcePtr)
+CustomGeometrySourceNAPI::CustomGeometrySourceNAPI(mln::style::CustomGeometrySource* sourcePtr)
     : SourceNapiBase(sourcePtr) {
     if (sourcePtr) {
         Logger::info("CustomGeometrySourceNAPI", "CustomGeometrySource created from existing source (WeakPtr): %s",
@@ -132,17 +132,17 @@ napi_value CustomGeometrySourceNAPI::New(napi_env env, napi_callback_info info) 
     }
 
     try {
-        mbgl::style::CustomGeometrySource::Options options;
+        mln::style::CustomGeometrySource::Options options;
 
         if (args.Count() >= 2) {
             napi_value optionsObj = args.GetObject(1, "options");
             if (!args.HasError() && optionsObj) {
                 // Convert minzoom/maxzoom/buffer/tolerance/wrap/clip through the
                 // core converter (same keys as Android CustomGeometrySourceOptions)
-                mbgl::style::conversion::Error error;
-                mbgl::style::conversion::Convertible convertible(mbgl::harmony::NapiValue(env, optionsObj));
+                mln::style::conversion::Error error;
+                mln::style::conversion::Convertible convertible(mln::harmony::NapiValue(env, optionsObj));
                 auto converted =
-                    mbgl::style::conversion::convert<mbgl::style::CustomGeometrySource::Options>(convertible, error);
+                    mln::style::conversion::convert<mln::style::CustomGeometrySource::Options>(convertible, error);
                 if (converted) {
                     options = std::move(*converted);
                 } else {
@@ -159,7 +159,7 @@ napi_value CustomGeometrySourceNAPI::New(napi_env env, napi_callback_info info) 
                     auto cb = ThreadSafeCallback::Create(env, fetchFn, "CustomGeometrySource.fetchTile");
                     if (cb) {
                         auto sharedCb = std::shared_ptr<ThreadSafeCallback>(cb.release());
-                        options.fetchTileFunction = [sharedCb](const mbgl::CanonicalTileID& tileID) {
+                        options.fetchTileFunction = [sharedCb](const mln::CanonicalTileID& tileID) {
                             const uint32_t z = tileID.z, x = tileID.x, y = tileID.y;
                             sharedCb->Call([z, x, y](napi_env env) -> napi_value {
                                 return MakeTileIDObject(env, z, x, y);
@@ -176,7 +176,7 @@ napi_value CustomGeometrySourceNAPI::New(napi_env env, napi_callback_info info) 
                     auto cb = ThreadSafeCallback::Create(env, cancelFn, "CustomGeometrySource.cancelTile");
                     if (cb) {
                         auto sharedCb = std::shared_ptr<ThreadSafeCallback>(cb.release());
-                        options.cancelTileFunction = [sharedCb](const mbgl::CanonicalTileID& tileID) {
+                        options.cancelTileFunction = [sharedCb](const mln::CanonicalTileID& tileID) {
                             const uint32_t z = tileID.z, x = tileID.x, y = tileID.y;
                             sharedCb->Call([z, x, y](napi_env env) -> napi_value {
                                 return MakeTileIDObject(env, z, x, y);
@@ -187,7 +187,7 @@ napi_value CustomGeometrySourceNAPI::New(napi_env env, napi_callback_info info) 
             }
         }
 
-        auto source = std::make_unique<mbgl::style::CustomGeometrySource>(sourceId, std::move(options));
+        auto source = std::make_unique<mln::style::CustomGeometrySource>(sourceId, std::move(options));
 
         CustomGeometrySourceNAPI* sourceNapi = new CustomGeometrySourceNAPI(sourceId, std::move(source));
 
@@ -212,7 +212,7 @@ napi_value CustomGeometrySourceNAPI::New(napi_env env, napi_callback_info info) 
     }
 }
 
-DEFINE_SOURCE_CREATE_INSTANCE(CustomGeometrySourceNAPI, "CustomGeometrySource", mbgl::style::CustomGeometrySource)
+DEFINE_SOURCE_CREATE_INSTANCE(CustomGeometrySourceNAPI, "CustomGeometrySource", mln::style::CustomGeometrySource)
 
 DEFINE_SOURCE_GET_ID(CustomGeometrySourceNAPI)
 
@@ -239,9 +239,9 @@ napi_value CustomGeometrySourceNAPI::SetTileData(napi_env env, napi_callback_inf
         if (!NapiValueToGeoJSON(env, dataValue, conversion, "Tile data must be a GeoJSON string or object")) {
             return nullptr;
         }
-        mbgl::GeoJSON geoJson = std::move(conversion.value);
+        mln::GeoJSON geoJson = std::move(conversion.value);
 
-        source->setTileData(mbgl::CanonicalTileID(static_cast<uint8_t>(z),
+        source->setTileData(mln::CanonicalTileID(static_cast<uint8_t>(z),
                                                   static_cast<uint32_t>(x),
                                                   static_cast<uint32_t>(y)),
                             geoJson);
@@ -271,7 +271,7 @@ napi_value CustomGeometrySourceNAPI::InvalidateTile(napi_env env, napi_callback_
     if (args.HasError()) return nullptr;
 
     try {
-        source->invalidateTile(mbgl::CanonicalTileID(static_cast<uint8_t>(z),
+        source->invalidateTile(mln::CanonicalTileID(static_cast<uint8_t>(z),
                                                      static_cast<uint32_t>(x),
                                                      static_cast<uint32_t>(y)));
     } catch (const std::exception& e) {
@@ -296,8 +296,8 @@ napi_value CustomGeometrySourceNAPI::InvalidateRegion(napi_env env, napi_callbac
     napi_value boundsObj = args.GetObject(0, "bounds");
     if (args.HasError()) return nullptr;
 
-    mbgl::LatLngBounds bounds;
-    if (!mbgl::harmony::LatLngBoundsHarmony::ParseLatLngBounds(env, boundsObj, bounds)) {
+    mln::LatLngBounds bounds;
+    if (!mln::harmony::LatLngBoundsHarmony::ParseLatLngBounds(env, boundsObj, bounds)) {
         napi_throw_error(env, nullptr, "Failed to parse LatLngBounds");
         return nullptr;
     }
@@ -335,4 +335,4 @@ napi_value CustomGeometrySourceNAPI::QuerySourceFeatures(napi_env env, napi_call
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

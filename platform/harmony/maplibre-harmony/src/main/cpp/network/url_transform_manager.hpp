@@ -1,12 +1,12 @@
 #pragma once
 
-#include <mbgl/storage/resource.hpp>
+#include <mln/storage/resource.hpp>
 #include <string>
 #include <functional>
 #include <mutex>
 #include <memory>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
@@ -39,7 +39,7 @@ public:
      * @param url Original URL
      * @return Transformed URL; returning an empty string keeps the original URL
      */
-    using TransformCallback = std::function<std::string(mbgl::Resource::Kind kind, const std::string& url)>;
+    using TransformCallback = std::function<std::string(mln::Resource::Kind kind, const std::string& url)>;
 
     /**
      * Retrieve the singleton instance.
@@ -84,7 +84,7 @@ public:
      * @note Thread-safe; may be called from any thread.
      * @note If the callback returns an empty string or throws, the original URL is used.
      */
-    std::string transform(mbgl::Resource::Kind kind, const std::string& url);
+    std::string transform(mln::Resource::Kind kind, const std::string& url);
 
     // Disable copying and assignment
     URLTransformManager(const URLTransformManager&) = delete;
@@ -99,5 +99,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

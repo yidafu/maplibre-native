@@ -1,67 +1,67 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/util/variant.hpp>
-#include <mbgl/style/conversion.hpp>
+#include <mln/util/variant.hpp>
+#include <mln/style/conversion.hpp>
 #include <mapbox/feature.hpp>
 #include <string>
 #include <vector>
 #include <unordered_map>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
-// Alias for mbgl::Value
+// Alias for mln::Value
 using Value = mapbox::feature::value;
 
 /**
  * Value conversion utilities.
  *
- * Provides bidirectional conversion between NAPI values and mbgl::Value,
+ * Provides bidirectional conversion between NAPI values and mln::Value,
  * supporting recursive transformation of all JavaScript types.
  */
 
 /**
- * Convert NAPI value to mbgl::Value recursively
+ * Convert NAPI value to mln::Value recursively
  * 
  * Supports:
  * - null -> NullValue
  * - boolean -> bool
  * - number -> double (int64 for integers, double for floats)
  * - string -> std::string
- * - array -> std::vector<mbgl::Value>
- * - object -> std::unordered_map<std::string, mbgl::Value>
+ * - array -> std::vector<mln::Value>
+ * - object -> std::unordered_map<std::string, mln::Value>
  * 
  * @param env NAPI environment
  * @param value NAPI value to convert
- * @return mbgl::Value
+ * @return mln::Value
  */
 Value napiValueToMbglValue(napi_env env, napi_value value);
 
 /**
- * Convert mbgl::Value to NAPI value recursively
+ * Convert mln::Value to NAPI value recursively
  * 
  * @param env NAPI environment
- * @param value mbgl::Value to convert
+ * @param value mln::Value to convert
  * @return NAPI value
  */
 napi_value mbglValueToNapiValue(napi_env env, const Value& value);
 
 /**
- * Convert NAPI array to std::vector<mbgl::Value>
+ * Convert NAPI array to std::vector<mln::Value>
  * 
  * @param env NAPI environment
  * @param array NAPI array
- * @return vector of mbgl::Value
+ * @return vector of mln::Value
  */
 std::vector<Value> napiArrayToValueVector(napi_env env, napi_value array);
 
 /**
- * Convert NAPI object to std::unordered_map<std::string, mbgl::Value>
+ * Convert NAPI object to std::unordered_map<std::string, mln::Value>
  * 
  * @param env NAPI environment
  * @param object NAPI object
- * @return map of string to mbgl::Value
+ * @return map of string to mln::Value
  */
 std::unordered_map<std::string, Value> napiObjectToValueMap(
     napi_env env, 
@@ -69,10 +69,10 @@ std::unordered_map<std::string, Value> napiObjectToValueMap(
 );
 
 /**
- * Convert std::vector<mbgl::Value> to NAPI array
+ * Convert std::vector<mln::Value> to NAPI array
  * 
  * @param env NAPI environment
- * @param vec vector of mbgl::Value
+ * @param vec vector of mln::Value
  * @return NAPI array
  */
 napi_value valueVectorToNapiArray(
@@ -84,7 +84,7 @@ napi_value valueVectorToNapiArray(
  * Convert std::unordered_map to NAPI object
  * 
  * @param env NAPI environment
- * @param map map of string to mbgl::Value
+ * @param map map of string to mln::Value
  * @return NAPI object
  */
 napi_value valueMapToNapiObject(
@@ -93,5 +93,5 @@ napi_value valueMapToNapiObject(
 );
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

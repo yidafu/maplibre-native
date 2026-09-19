@@ -29,14 +29,14 @@ typedef struct uv_async_s uv_async_t;
 typedef int uv_file;
 typedef uv_file curl_socket_t;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 /**
  * Dedicated CURL event-loop manager.
  *
  * Handles CURL network requests using an independent libuv loop, fully decoupled
- * from mbgl::RunLoop to avoid lifecycle conflicts.
+ * from mln::RunLoop to avoid lifecycle conflicts.
  *
  * Design principles:
  * 1. Independent thread and event loop
@@ -206,4 +206,4 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

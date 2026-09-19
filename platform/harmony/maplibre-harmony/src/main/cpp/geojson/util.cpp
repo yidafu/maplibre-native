@@ -3,9 +3,9 @@
 #include <cstring>
 #include <optional>
 
-using mbgl::harmony::Logger;
+using mln::harmony::Logger;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 namespace geojson {
 
@@ -59,37 +59,37 @@ std::vector<double> NapiArrayToDoubleVector(napi_env env, napi_value array) {
     });
 }
 
-std::vector<mbgl::Point<double>> NapiArrayToPointVector(napi_env env, napi_value array) {
-    return MapNapiArray<mbgl::Point<double>>(
-        env, array, [env](napi_value element) -> std::optional<mbgl::Point<double>> {
+std::vector<mln::Point<double>> NapiArrayToPointVector(napi_env env, napi_value array) {
+    return MapNapiArray<mln::Point<double>>(
+        env, array, [env](napi_value element) -> std::optional<mln::Point<double>> {
             // Each element should be a [lng, lat] array
             auto coords = NapiArrayToDoubleVector(env, element);
             if (coords.size() >= 2) {
-                return mbgl::Point<double>{coords[0], coords[1]};
+                return mln::Point<double>{coords[0], coords[1]};
             }
             return std::nullopt;
         });
 }
 
-std::vector<mbgl::LineString<double>> NapiArrayToLineStringVector(napi_env env, napi_value array) {
-    return MapNapiArray<mbgl::LineString<double>>(
-        env, array, [env](napi_value element) -> std::optional<mbgl::LineString<double>> {
+std::vector<mln::LineString<double>> NapiArrayToLineStringVector(napi_env env, napi_value array) {
+    return MapNapiArray<mln::LineString<double>>(
+        env, array, [env](napi_value element) -> std::optional<mln::LineString<double>> {
             // Each element is a coordinate array
             return NapiArrayToPointVector(env, element);
         });
 }
 
-std::vector<mbgl::LinearRing<double>> NapiArrayToLinearRingVector(napi_env env, napi_value array) {
-    return MapNapiArray<mbgl::LinearRing<double>>(
-        env, array, [env](napi_value element) -> std::optional<mbgl::LinearRing<double>> {
+std::vector<mln::LinearRing<double>> NapiArrayToLinearRingVector(napi_env env, napi_value array) {
+    return MapNapiArray<mln::LinearRing<double>>(
+        env, array, [env](napi_value element) -> std::optional<mln::LinearRing<double>> {
             // Each element is a coordinate array (LinearRing is a vector<Point>)
             return NapiArrayToPointVector(env, element);
         });
 }
 
-std::vector<mbgl::Polygon<double>> NapiArrayToPolygonVector(napi_env env, napi_value array) {
-    return MapNapiArray<mbgl::Polygon<double>>(
-        env, array, [env](napi_value element) -> std::optional<mbgl::Polygon<double>> {
+std::vector<mln::Polygon<double>> NapiArrayToPolygonVector(napi_env env, napi_value array) {
+    return MapNapiArray<mln::Polygon<double>>(
+        env, array, [env](napi_value element) -> std::optional<mln::Polygon<double>> {
             // Each element is a LinearRing array (Polygon is a vector<LinearRing>)
             return NapiArrayToLinearRingVector(env, element);
         });
@@ -103,8 +103,8 @@ napi_value DoubleVectorToNapiArray(napi_env env, const std::vector<double>& vec)
     });
 }
 
-napi_value PointVectorToNapiArray(napi_env env, const std::vector<mbgl::Point<double>>& points) {
-    return MapVectorToNapiArray(env, points, [env](const mbgl::Point<double>& point) {
+napi_value PointVectorToNapiArray(napi_env env, const std::vector<mln::Point<double>>& points) {
+    return MapVectorToNapiArray(env, points, [env](const mln::Point<double>& point) {
         napi_value coordArray = nullptr;
         napi_create_array_with_length(env, 2, &coordArray);
 
@@ -119,21 +119,21 @@ napi_value PointVectorToNapiArray(napi_env env, const std::vector<mbgl::Point<do
     });
 }
 
-napi_value LineStringVectorToNapiArray(napi_env env, const std::vector<mbgl::LineString<double>>& lineStrings) {
-    return MapVectorToNapiArray(env, lineStrings, [env](const mbgl::LineString<double>& lineString) {
+napi_value LineStringVectorToNapiArray(napi_env env, const std::vector<mln::LineString<double>>& lineStrings) {
+    return MapVectorToNapiArray(env, lineStrings, [env](const mln::LineString<double>& lineString) {
         return PointVectorToNapiArray(env, lineString);
     });
 }
 
-napi_value LinearRingVectorToNapiArray(napi_env env, const std::vector<mbgl::LinearRing<double>>& rings) {
-    return MapVectorToNapiArray(env, rings, [env](const mbgl::LinearRing<double>& ring) {
+napi_value LinearRingVectorToNapiArray(napi_env env, const std::vector<mln::LinearRing<double>>& rings) {
+    return MapVectorToNapiArray(env, rings, [env](const mln::LinearRing<double>& ring) {
         // LinearRing is essentially a vector<Point>, same as LineString
         return PointVectorToNapiArray(env, ring);
     });
 }
 
-napi_value PolygonVectorToNapiArray(napi_env env, const std::vector<mbgl::Polygon<double>>& polygons) {
-    return MapVectorToNapiArray(env, polygons, [env](const mbgl::Polygon<double>& polygon) {
+napi_value PolygonVectorToNapiArray(napi_env env, const std::vector<mln::Polygon<double>>& polygons) {
+    return MapVectorToNapiArray(env, polygons, [env](const mln::Polygon<double>& polygon) {
         // Polygon is a vector<LinearRing>
         return LinearRingVectorToNapiArray(env, polygon);
     });
@@ -224,5 +224,5 @@ bool IsUndefined(napi_env env, napi_value value) {
 
 } // namespace geojson
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 

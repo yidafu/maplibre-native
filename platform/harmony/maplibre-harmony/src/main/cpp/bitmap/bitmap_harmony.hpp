@@ -1,11 +1,11 @@
 #pragma once
 
 #include <napi/native_api.h>
-#include <mbgl/util/image.hpp>
+#include <mln/util/image.hpp>
 #include <multimedia/image_framework/image_pixel_map_napi.h>
 #include <cstdint>
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 // Forward declaration
@@ -181,5 +181,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln
 
