@@ -654,6 +654,31 @@ export class MarkerManager {
   }
 
   /**
+   * Register a created marker: assign the layer feature id, bind the map,
+   * track the icon & InfoWindow style mappings and sync the view annotation.
+   *
+   * Shared by addMarker (single) and addMarkers (batch) so both paths stay
+   * in lockstep.
+   */
+  private registerMarker(marker: Marker, featureId: number, icon: Icon, options: MarkerOptions): void {
+    marker.setId(featureId);
+    marker.setMapLibreMap(this.mapLibreMap);
+    this.markerMap.set(featureId, marker);
+
+    // marker -> icon mapping (NAPI marker keeps only icon id)
+    this.markerIconMap.set(featureId, icon);
+
+    // Persist InfoWindow style
+    const infoWindowStyle = options.getInfoWindowStyle();
+    if (infoWindowStyle) {
+      this.markerInfoWindowStyleMap.set(featureId, infoWindowStyle);
+    }
+
+    // Create/update custom view annotation if delegate provides content
+    this.syncMarkerViewAnnotation(marker);
+  }
+
+  /**
    * Add a single marker
    *
    * @param options MarkerOptions instance
@@ -676,25 +701,9 @@ export class MarkerManager {
       // Register icon with IconManager (marker already references iconId)
       await this.iconManager.addIconToManager(icon);
 
-      // Add to MarkerLayerManager
+      // Add to MarkerLayerManager, then register id & metadata
       const featureId = this.markerLayerManager.addMarker(marker);
-
-      // Assign id and register
-      marker.setId(featureId);
-      marker.setMapLibreMap(this.mapLibreMap);
-      this.markerMap.set(featureId, marker);
-
-      // Store marker -> icon mapping (NAPI marker keeps only icon id)
-      this.markerIconMap.set(featureId, icon);
-
-      // Persist InfoWindow style
-      const infoWindowStyle = options.getInfoWindowStyle();
-      if (infoWindowStyle) {
-        this.markerInfoWindowStyleMap.set(featureId, infoWindowStyle);
-      }
-
-      // Create custom view annotation if delegate provides content
-      this.syncMarkerViewAnnotation(marker);
+      this.registerMarker(marker, featureId, icon, options);
 
       return marker;
     } catch (e) {
@@ -739,28 +748,9 @@ export class MarkerManager {
       // Add markers to layer in bulk
       const featureIds = this.markerLayerManager.addMarkers(markers);
 
-      // Assign ids and register metadata
+      // Register ids and metadata (shared with the single-add path)
       for (let i = 0; i < markers.length; i++) {
-        const marker = markers[i];
-        const featureId = featureIds[i];
-        const icon = icons[i];
-        const options = optionsList[i];
-
-        marker.setId(featureId);
-        marker.setMapLibreMap(this.mapLibreMap);
-        this.markerMap.set(featureId, marker);
-
-        // Track marker -> icon mapping
-        this.markerIconMap.set(featureId, icon);
-
-        // Store InfoWindow style
-        const infoWindowStyle = options.getInfoWindowStyle();
-        if (infoWindowStyle) {
-          this.markerInfoWindowStyleMap.set(featureId, infoWindowStyle);
-        }
-
-        // Create/update custom view annotations in sync
-        this.syncMarkerViewAnnotation(marker);
+        this.registerMarker(markers[i], featureIds[i], icons[i], optionsList[i]);
       }
 
       return markers;
