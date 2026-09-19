@@ -31,6 +31,8 @@ export class LocationComponentOptions {
   // Layer placement configuration
   layerAbove?: string;
   layerBelow?: string;
+  /** Whether the bearing icon renders above the foreground icon (default true). */
+  bearingOnTop: boolean = true;
   // Animation configuration
   trackingAnimationDurationMultiplier: number = 1.1;
   compassAnimationEnabled: boolean = true;
@@ -73,6 +75,7 @@ export class LocationComponentOptions {
       this.minZoomIconScale = builder.minZoomIconScale ?? this.minZoomIconScale;
       this.layerAbove = builder.layerAbove;
       this.layerBelow = builder.layerBelow;
+      this.bearingOnTop = builder.bearingOnTop ?? this.bearingOnTop;
       this.trackingAnimationDurationMultiplier =
         builder.trackingAnimationDurationMultiplier ?? this.trackingAnimationDurationMultiplier;
       this.compassAnimationEnabled = builder.compassAnimationEnabled ?? this.compassAnimationEnabled;
@@ -123,6 +126,7 @@ export class LocationComponentOptions {
     builder.minZoomIconScale = this.minZoomIconScale;
     builder.layerAbove = this.layerAbove;
     builder.layerBelow = this.layerBelow;
+    builder.bearingOnTop = this.bearingOnTop;
     builder.trackingAnimationDurationMultiplier = this.trackingAnimationDurationMultiplier;
     builder.compassAnimationEnabled = this.compassAnimationEnabled;
     builder.accuracyAnimationEnabled = this.accuracyAnimationEnabled;
@@ -164,6 +168,7 @@ export class LocationComponentOptionsBuilder {
   minZoomIconScale?: number;
   layerAbove?: string;
   layerBelow?: string;
+  bearingOnTop?: boolean;
   trackingAnimationDurationMultiplier?: number;
   compassAnimationEnabled?: boolean;
   accuracyAnimationEnabled?: boolean;
@@ -274,6 +279,16 @@ export class LocationComponentOptionsBuilder {
 
   setLayerBelow(layerId: string): LocationComponentOptionsBuilder {
     this.layerBelow = layerId;
+    return this;
+  }
+
+  /**
+   * Whether the bearing icon is rendered on top of the foreground icon in the
+   * location layer stack. Set to false to move the bearing icon below the
+   * background icon (default true).
+   */
+  setBearingOnTop(onTop: boolean): LocationComponentOptionsBuilder {
+    this.bearingOnTop = onTop;
     return this;
   }
 

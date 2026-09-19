@@ -171,24 +171,29 @@ export class LocationLayerController {
       this.style.addLayer(accuracyLayer);
 
       // Add the three icon layers (white circle background, blue dot
-      // foreground, blue arrow bearing indicator)
-      const iconLayers: IconLayerSpec[] = [
-        {
-          layerId: LocationComponentConstants.BACKGROUND_LAYER,
-          iconName: LocationComponentConstants.BACKGROUND_ICON,
-          iconSize: 0.5 // Largest (white circle)
-        },
-        {
-          layerId: LocationComponentConstants.FOREGROUND_LAYER,
-          iconName: LocationComponentConstants.FOREGROUND_ICON,
-          iconSize: 0.35 // Smaller than the background
-        },
-        {
-          layerId: LocationComponentConstants.BEARING_LAYER,
-          iconName: LocationComponentConstants.BEARING_ICON,
-          iconSize: 0.4 // Arrow size
-        }
-      ];
+      // foreground, blue arrow bearing indicator). Each addLayer() places the
+      // layer above the previous one, so the array order is bottom-to-top.
+      // By default the bearing arrow sits on top (bearingOnTop = true); when
+      // the option is disabled the bearing icon moves to the bottom of the
+      // icon stack, mirroring the Android bearingOnTop behavior.
+      const backgroundSpec: IconLayerSpec = {
+        layerId: LocationComponentConstants.BACKGROUND_LAYER,
+        iconName: LocationComponentConstants.BACKGROUND_ICON,
+        iconSize: 0.5 // Largest (white circle)
+      };
+      const foregroundSpec: IconLayerSpec = {
+        layerId: LocationComponentConstants.FOREGROUND_LAYER,
+        iconName: LocationComponentConstants.FOREGROUND_ICON,
+        iconSize: 0.35 // Smaller than the background
+      };
+      const bearingSpec: IconLayerSpec = {
+        layerId: LocationComponentConstants.BEARING_LAYER,
+        iconName: LocationComponentConstants.BEARING_ICON,
+        iconSize: 0.4 // Arrow size
+      };
+      const iconLayers: IconLayerSpec[] = this.options.bearingOnTop
+        ? [backgroundSpec, foregroundSpec, bearingSpec]
+        : [bearingSpec, backgroundSpec, foregroundSpec];
       for (const spec of iconLayers) {
         const iconLayer = new SymbolLayer(spec.layerId, LocationComponentConstants.LOCATION_SOURCE);
         iconLayer.setIconImage(spec.iconName);
@@ -385,7 +390,23 @@ export class LocationLayerController {
    * Apply styling options.
    */
   applyStyle(options: LocationComponentOptions): void {
+    // Layer order is fixed when the layers are added; a bearingOnTop change
+    // requires rebuilding the stack (mirrors the Android positionManager
+    // update() -> remove/add cycle).
+    const needsRestack = this.layersAdded && this.options.bearingOnTop !== options.bearingOnTop;
     this.options = options;
+    if (needsRestack) {
+      this.removeLayers();
+      this.addLayers();
+      if (this.isHidden) {
+        // The recreated layers start visible; re-apply the hidden state
+        // directly (hide() early-returns while isHidden is already true).
+        this.setAccuracyVisible(false);
+        this.setSymbolVisible(LocationComponentConstants.BACKGROUND_LAYER, false);
+        this.setSymbolVisible(LocationComponentConstants.FOREGROUND_LAYER, false);
+        this.setSymbolVisible(LocationComponentConstants.BEARING_LAYER, false);
+      }
+    }
     this.styleAccuracy();
     this.updateIconStyles();
   }
