@@ -1,6 +1,6 @@
 {
   "name": "maplibre-harmony",
-  "version": "0.2.0-alpha.4",
+  "version": "0.2.0-alpha.5",
   "description": "MapLibre Native for HarmonyOS - OpenGL-based vector map rendering library",
   "main": "index.ets",
   "scripts": {
