@@ -1,94 +1,124 @@
-#include <mbgl/util/timer.hpp>
-#include <mbgl/util/logging.hpp>
-#include <mbgl/util/run_loop.hpp>
+#include <mln/util/timer.hpp>
+#include <mln/util/logging.hpp>
+#include <mln/util/run_loop.hpp>
 
-#include <cassert>
-#include <chrono>
-#include <thread>
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <thread>
 
-
-namespace mbgl {
+namespace mln {
 namespace util {
+
+// Timer driven by a joinable worker thread with an interruptible wait.
+//
+// The previous implementation detached its thread: after the owning map was
+// torn down, that thread could wake up and call RunLoop::invoke() through a
+// raw RunLoop pointer that was already freed (SIGSEGV in pthread_mutex_lock
+// on the OnlineFileSource thread). Two invariants close that hole here:
+//
+// 1. The worker is never detached. stop() joins it, and ~Impl runs stop(),
+//    so the worker cannot outlive the Timer and touch freed members.
+// 2. RunLoop callbacks capture a weak lifetime token instead of relying on
+//    `this` alone. A queued-but-unexecuted callback becomes a no-op once the
+//    Timer is gone; while the Timer is alive it cannot be destroyed
+//    concurrently with its own callback, because both destruction and
+//    callback execution happen on the Timer's RunLoop thread.
+//
+// The wait is a condition-variable wait_for, so joining on teardown happens
+// immediately instead of after the remaining sleep.
 
 class Timer::Impl {
 public:
-    Impl() : running(false) {}
-
     ~Impl() {
         stop();
     }
 
     void start(Duration timeout, Duration repeatInterval, std::function<void()>&& cb) {
-        if (running) {
-            stop();
+        stop();
+
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            callback = std::move(cb);
+            initialDelay = timeout;
+            repeat = repeatInterval;
+            running = true;
+            generation++;
         }
 
-        delay = timeout;
-        this->repeat = repeatInterval;
-        callback = std::move(cb);
-        running = true;
-        
-        // Get the RunLoop from the calling thread (where Timer was created)
-        // This ensures callbacks are dispatched to the correct thread
-        runLoop = RunLoop::Get();
-
-        thread = std::thread([this]() {
-            bool hasFired = false;
+        worker = std::thread([this]() {
+            std::unique_lock<std::mutex> lock(mutex);
+            Duration currentDelay = initialDelay;
             while (running) {
-                std::this_thread::sleep_for(delay);
+                if (cv.wait_for(lock, currentDelay, [this] { return !running.load(); })) {
+                    return; // stopped while waiting
+                }
 
-                if (running && callback && runLoop) {
-                    // CRITICAL FIX: Invoke callback via RunLoop to ensure it runs on the correct thread
-                    // This prevents deadlocks from cross-thread Map access
-                    // RACE CONDITION FIX: Capture repeat count to decide stop inside lambda
-                    
-                    auto repeatCount = this->repeat.count();
-                    runLoop->invoke([this, repeatCount]() {
-                        if (running && callback) {
-                            callback();
-                            
-                            // Stop timer AFTER callback execution (if non-repeating)
-                            if (repeatCount == 0) {
-                                stop();
+                std::function<void()> fired = callback;
+                const bool repeating = repeat.count() > 0;
+                const uint64_t firedGeneration = generation;
+                RunLoop* loop = runLoop;
+                std::weak_ptr<void> token = lifetime;
+                lock.unlock();
+
+                if (fired && loop) {
+                    loop->invoke([this, token, fired = std::move(fired), repeating, firedGeneration]() {
+                        // A callback queued before destruction must be a no-op:
+                        // the token dies with the Timer, before `this` does.
+                        if (token.expired()) {
+                            return;
+                        }
+                        {
+                            // Only lock to validate; the callback itself may
+                            // call start()/stop() and must not run under the
+                            // mutex (same-thread lock → deadlock).
+                            std::unique_lock<std::mutex> lock(mutex);
+                            if (!running || generation != firedGeneration) {
+                                return;
                             }
                         }
+                        fired();
+                        if (!repeating) {
+                            stop();
+                        }
                     });
-                    
-                    hasFired = true;
                 }
 
-                // CRITICAL FIX: Don't break for non-repeating timers!
-                // Let the lambda execute and call stop(), which sets running=false.
-                // Then the while(running) loop will naturally exit on the next iteration.
-                // This prevents the race condition where we break before the lambda executes.
-                
-                if (running && this->repeat.count() > 0) {
-                    // For repeating timers, update delay for next iteration
-                    delay = this->repeat;
-                } else if (hasFired && this->repeat.count() == 0) {
-                    // For non-repeating timers that have already fired,
-                    // sleep briefly to give lambda time to execute and call stop()
-                    delay = std::chrono::milliseconds(10);
-                }
+                lock.lock();
+                currentDelay = repeating ? repeat : std::chrono::milliseconds(10);
             }
         });
-
-        thread.detach();
     }
 
     void stop() {
-        running = false;
-        // Don't wait for thread to finish since we use detach
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            running = false;
+        }
+        cv.notify_all();
+        // Never join from the worker itself (stop() may run inside a callback
+        // dispatched on the RunLoop thread — a different thread).
+        if (worker.joinable() && worker.get_id() != std::this_thread::get_id()) {
+            worker.join();
+        }
     }
 
 private:
-    std::atomic<bool> running;
-    Duration delay;
-    Duration repeat;
+    std::mutex mutex;
+    std::condition_variable cv;
+    std::atomic<bool> running{false};
     std::function<void()> callback;
-    std::thread thread;
-    RunLoop* runLoop = nullptr;  // Store the RunLoop pointer
+    Duration initialDelay;
+    Duration repeat;
+    uint64_t generation = 0;
+    RunLoop* runLoop = nullptr;
+    std::thread worker;
+
+    // Lives and dies with the Impl; weak copies guard queued callbacks.
+    std::shared_ptr<void> lifetime = std::make_shared<char>();
 };
 
 Timer::Timer() : impl(std::make_unique<Impl>()) {}
@@ -104,4 +134,4 @@ void Timer::stop() {
 }
 
 } // namespace util
-} // namespace mbgl
+} // namespace mln
