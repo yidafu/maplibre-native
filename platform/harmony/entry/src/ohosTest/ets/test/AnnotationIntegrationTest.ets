@@ -5,6 +5,7 @@
  * through a real NativeMapView using TestMapAccessor.
  */
 import { describe, beforeAll, afterAll, it, expect } from '@ohos/hypium';
+import { ensureAppFront, ensureAutomationPage } from '../common/UiTestHelpers';
 import { Driver, ON } from '@ohos.UiTest';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { MapLibreMap, LatLng, MarkerOptions, Marker, Polyline, Polygon } from 'maplibre-harmony';
@@ -22,11 +23,9 @@ export default function AnnotationIntegrationTest() {
 
     beforeAll(async () => {
       driver = Driver.create();
+      await ensureAppFront(driver);
       // Navigate to Auto Test page
-      try {
-        const item = await driver.findComponent(ON.text('Auto Test'));
-        if (item) { await item.click(); }
-      } catch (e) { /* ignore */ }
+      const opened = await ensureAutomationPage(driver);
       // Wait for map
       const start = Date.now();
       while (Date.now() - start < TIMEOUT) {
@@ -40,7 +39,6 @@ export default function AnnotationIntegrationTest() {
 
     afterAll(async () => {
       TestMapAccessor.clear();
-      try { await driver.pressBack(); } catch (e) { /* ignore */ }
     });
 
     // ==================== Marker ====================

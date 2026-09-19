@@ -5,6 +5,7 @@
  * jumpTo, cancelTransitions, and camera bounds.
  */
 import { describe, beforeAll, afterAll, it, expect } from '@ohos/hypium';
+import { ensureAppFront, ensureAutomationPage } from '../common/UiTestHelpers';
 import { Driver, ON } from '@ohos.UiTest';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { MapLibreMap, LatLng, LatLngBounds, CameraPosition } from 'maplibre-harmony';
@@ -21,10 +22,8 @@ export default function CameraAnimationTest() {
 
     beforeAll(async () => {
       driver = Driver.create();
-      try {
-        const item = await driver.findComponent(ON.text('Auto Test'));
-        if (item) { await item.click(); }
-      } catch (e) { /* ignore */ }
+      await ensureAppFront(driver);
+      const opened = await ensureAutomationPage(driver);
       const start = Date.now();
       while (Date.now() - start < TIMEOUT) {
         if (TestMapAccessor.isMapReady()) {
@@ -37,7 +36,6 @@ export default function CameraAnimationTest() {
 
     afterAll(async () => {
       TestMapAccessor.clear();
-      try { await driver.pressBack(); } catch (e) { /* ignore */ }
     });
 
     describe('camera operations', () => {

@@ -5,6 +5,7 @@
  * through a real NativeMapView using TestMapAccessor.
  */
 import { describe, beforeAll, afterAll, it, expect } from '@ohos/hypium';
+import { ensureAppFront, ensureAutomationPage } from '../common/UiTestHelpers';
 import { Driver, ON } from '@ohos.UiTest';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import {
@@ -25,10 +26,8 @@ export default function StyleIntegrationTest() {
 
     beforeAll(async () => {
       driver = Driver.create();
-      try {
-        const item = await driver.findComponent(ON.text('Auto Test'));
-        if (item) { await item.click(); }
-      } catch (e) { /* ignore */ }
+      await ensureAppFront(driver);
+      const opened = await ensureAutomationPage(driver);
       const start = Date.now();
       while (Date.now() - start < TIMEOUT) {
         if (TestMapAccessor.isMapReady()) {
@@ -43,7 +42,6 @@ export default function StyleIntegrationTest() {
 
     afterAll(async () => {
       TestMapAccessor.clear();
-      try { await driver.pressBack(); } catch (e) { /* ignore */ }
     });
 
     // ==================== Style URL ====================

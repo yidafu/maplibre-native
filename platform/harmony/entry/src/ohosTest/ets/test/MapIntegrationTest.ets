@@ -11,6 +11,7 @@
  * 4. Navigate back between tests
  */
 import { describe, beforeAll, beforeEach, afterEach, afterAll, it, expect } from '@ohos/hypium';
+import { ensureAppFront, ensureAutomationPage } from '../common/UiTestHelpers';
 import { Driver, ON } from '@ohos.UiTest';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { MapLibreMap, LatLng, CameraPosition } from 'maplibre-harmony';
@@ -30,19 +31,10 @@ export default function MapIntegrationTest() {
 
     beforeAll(async () => {
       driver = Driver.create();
+      await ensureAppFront(driver);
       hilog.info(DOMAIN, TAG, 'Starting MapLibreMap integration tests');
 
-      // Step 1: Navigate to the Auto Test page from Index
-      // Find the "Auto Test" text item and click it
-      try {
-        const autoTestItem = await driver.findComponent(ON.text('Auto Test'));
-        if (autoTestItem) {
-          await autoTestItem.click();
-          hilog.info(DOMAIN, TAG, 'Clicked Auto Test in navigation');
-        }
-      } catch (error) {
-        hilog.warn(DOMAIN, TAG, 'Auto Test navigation failed (may already be on page): ' + error);
-      }
+      const opened = await ensureAutomationPage(driver);
 
       // Step 2: Wait for the map to be ready
       const startTime = Date.now();
@@ -65,14 +57,9 @@ export default function MapIntegrationTest() {
     });
 
     afterAll(async () => {
-      // Navigate back to Index page
-      try {
-        TestMapAccessor.clear();
-        // Try to go back using system back
-        await driver.pressBack();
-      } catch (error) {
-        hilog.warn(DOMAIN, TAG, 'Cleanup error: ' + error);
-      }
+      // The shared AutomationTestPage stays open for the following suites;
+      // the page is popped later by the UiTest suites' ensureAppFront.
+      TestMapAccessor.clear();
     });
 
     // ==================== Lifecycle ====================

@@ -4,6 +4,7 @@
  * Tests queryRenderedFeatures and querySourceFeatures APIs.
  */
 import { describe, beforeAll, afterAll, it, expect } from '@ohos/hypium';
+import { ensureAppFront, ensureAutomationPage } from '../common/UiTestHelpers';
 import { Driver, ON } from '@ohos.UiTest';
 import { MapLibreMap } from 'maplibre-harmony';
 import { TestMapAccessor } from '../common/TestMapAccessor';
@@ -17,7 +18,8 @@ export default function FeatureQueryTest() {
 
     beforeAll(async () => {
       driver = Driver.create();
-      try { const item = await driver.findComponent(ON.text('Auto Test')); if (item) { await item.click(); } } catch (e) {}
+      await ensureAppFront(driver);
+      const opened = await ensureAutomationPage(driver);
       const start = Date.now();
       while (Date.now() - start < TIMEOUT) {
         if (TestMapAccessor.isMapReady()) {
@@ -28,7 +30,7 @@ export default function FeatureQueryTest() {
       }
     });
 
-    afterAll(async () => { TestMapAccessor.clear(); try { await driver.pressBack(); } catch (e) {} });
+    afterAll(async () => { TestMapAccessor.clear(); });
 
     it('should have a valid map instance', 0, () => { expect(map !== null && map !== undefined).assertTrue(); });
 

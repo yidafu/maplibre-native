@@ -15,6 +15,9 @@ import tileLodTest from './TileLodTest';
 import projectionTest from './ProjectionTest';
 import netStorageTest from './NetStorageTest';
 import featureQueryTest from './FeatureQueryTest';
+import indexUiTest from './IndexUiTest';
+import mapGestureUiTest from './MapGestureUiTest';
+import pageSmokeUiTest from './PageSmokeUiTest';
 
 export default function testsuite() {
   abilityTest();
@@ -29,4 +32,9 @@ export default function testsuite() {
   projectionTest();
   netStorageTest();
   featureQueryTest();
+  // UiTest-driven suites (pure UI, no direct API access). Run last so the
+  // API suites that assume a fresh Index start are not disturbed.
+  indexUiTest();
+  mapGestureUiTest();
+  pageSmokeUiTest();
 }
