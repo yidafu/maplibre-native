@@ -6,17 +6,18 @@
 #include "geometry/projected_meters_harmony.hpp"
 #include "geojson/geojson_converter.hpp"
 #include "style/filter_conversion.hpp"
+#include "style/value_conversion.hpp"
 #include "rendering/harmony_renderer.hpp"
-#include <mbgl/map/map.hpp>
-#include <mbgl/util/geo.hpp>
-#include <mbgl/style/filter.hpp>
-#include <mbgl/renderer/query.hpp>
+#include <mln/map/map.hpp>
+#include <mln/util/geo.hpp>
+#include <mln/style/filter.hpp>
+#include <mln/renderer/query.hpp>
 
-using mbgl::harmony::Logger;
-using mbgl::harmony::napi::NapiArgs;
-using mbgl::harmony::geojson::GeoJsonConverter;
+using mln::harmony::Logger;
+using mln::harmony::napi::NapiArgs;
+using mln::harmony::geojson::GeoJsonConverter;
 
-namespace mbgl {
+namespace mln {
 namespace harmony {
 
 namespace {
@@ -694,5 +695,148 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
     }
 }
 
+namespace {
+// Read an optional string argument: null/undefined maps to std::nullopt.
+std::optional<std::string> readOptionalString(napi_env env, napi_value value) {
+    napi_valuetype type = napi_undefined;
+    napi_typeof(env, value, &type);
+    if (type == napi_null || type == napi_undefined) {
+        return std::nullopt;
+    }
+    if (type != napi_string) {
+        return std::nullopt;
+    }
+    size_t len = 0;
+    napi_get_value_string_utf8(env, value, nullptr, 0, &len);
+    std::string result(len, '\0');
+    napi_get_value_string_utf8(env, value, result.data(), len + 1, nullptr);
+    return result;
+}
+} // namespace
+
+napi_value NativeMapView::setFeatureState(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value falseValue;
+    napi_get_boolean(env, false, &falseValue);
+
+    args.RequireMinArgs(4);
+    if (args.HasError()) {
+        return falseValue;
+    }
+
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance || instance->isDestroying.load() || !instance->harmonyRenderer) {
+        Logger::error("NativeMapView", "setFeatureState: Invalid instance or renderer not initialized");
+        return falseValue;
+    }
+
+    try {
+        std::string sourceId = args.GetString(0, "sourceId");
+        if (args.HasError()) {
+            return falseValue;
+        }
+
+        std::optional<std::string> sourceLayerId = readOptionalString(env, args.GetValue(1));
+        std::string featureId = args.GetString(2, "featureId");
+        if (args.HasError()) {
+            return falseValue;
+        }
+
+        napi_value stateValue = args.GetValue(3);
+        napi_valuetype stateType = napi_undefined;
+        napi_typeof(env, stateValue, &stateType);
+        if (stateType != napi_object) {
+            Logger::error("NativeMapView", "setFeatureState: state must be an object");
+            return falseValue;
+        }
+
+        mln::FeatureState state = mln::harmony::napiObjectToValueMap(env, stateValue);
+
+        instance->harmonyRenderer->setFeatureState(sourceId, sourceLayerId, featureId, state);
+        napi_value trueValue;
+        napi_get_boolean(env, true, &trueValue);
+        return trueValue;
+    } catch (const std::exception &e) {
+        Logger::error("NativeMapView", "setFeatureState: Exception - %s", e.what());
+        return falseValue;
+    }
+}
+
+napi_value NativeMapView::getFeatureState(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+
+    args.RequireMinArgs(3);
+    if (args.HasError()) {
+        return undefined;
+    }
+
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance || instance->isDestroying.load() || !instance->harmonyRenderer) {
+        Logger::error("NativeMapView", "getFeatureState: Invalid instance or renderer not initialized");
+        return undefined;
+    }
+
+    try {
+        std::string sourceId = args.GetString(0, "sourceId");
+        if (args.HasError()) {
+            return undefined;
+        }
+
+        std::optional<std::string> sourceLayerId = readOptionalString(env, args.GetValue(1));
+        std::string featureId = args.GetString(2, "featureId");
+        if (args.HasError()) {
+            return undefined;
+        }
+
+        mln::FeatureState state = instance->harmonyRenderer->getFeatureState(sourceId, sourceLayerId, featureId);
+        if (state.empty()) {
+            return undefined;
+        }
+
+        return mln::harmony::valueMapToNapiObject(env, state);
+    } catch (const std::exception &e) {
+        Logger::error("NativeMapView", "getFeatureState: Exception - %s", e.what());
+        return undefined;
+    }
+}
+
+napi_value NativeMapView::removeFeatureState(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value falseValue;
+    napi_get_boolean(env, false, &falseValue);
+
+    args.RequireMinArgs(4);
+    if (args.HasError()) {
+        return falseValue;
+    }
+
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance || instance->isDestroying.load() || !instance->harmonyRenderer) {
+        Logger::error("NativeMapView", "removeFeatureState: Invalid instance or renderer not initialized");
+        return falseValue;
+    }
+
+    try {
+        std::string sourceId = args.GetString(0, "sourceId");
+        if (args.HasError()) {
+            return falseValue;
+        }
+
+        std::optional<std::string> sourceLayerId = readOptionalString(env, args.GetValue(1));
+        std::optional<std::string> featureId = readOptionalString(env, args.GetValue(2));
+        std::optional<std::string> stateKey = readOptionalString(env, args.GetValue(3));
+
+        instance->harmonyRenderer->removeFeatureState(sourceId, sourceLayerId, featureId, stateKey);
+        napi_value trueValue;
+        napi_get_boolean(env, true, &trueValue);
+        return trueValue;
+    } catch (const std::exception &e) {
+        Logger::error("NativeMapView", "removeFeatureState: Exception - %s", e.what());
+        return falseValue;
+    }
+}
+
 } // namespace harmony
-} // namespace mbgl
+} // namespace mln

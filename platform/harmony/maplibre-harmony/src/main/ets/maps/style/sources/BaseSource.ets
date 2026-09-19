@@ -7,6 +7,24 @@
  * source-specific accessors.
  */
 
+import type { JSONValue } from 'libmaplibre.so';
+
+/**
+ * Feature-state surface a source wrapper needs from its host map.
+ *
+ * Implemented by MapLibreMap and declared here (instead of importing
+ * MapLibreMap) to avoid a circular module dependency: sources are loaded
+ * before the map that hosts them.
+ */
+export interface SourceFeatureStateHost {
+  setFeatureState(sourceId: string, sourceLayerId: string | undefined, featureId: string,
+    state: Record<string, JSONValue>): boolean;
+  getFeatureState(sourceId: string, sourceLayerId: string | undefined,
+    featureId: string): Record<string, JSONValue> | undefined;
+  removeFeatureState(sourceId: string, sourceLayerId: string | undefined, featureId?: string,
+    stateKey?: string): boolean;
+}
+
 /**
  * Construction tag for the dual-mode constructor pattern: fromNative() passes
  * SourceInternalTag.INSTANCE plus the wrapped native object, while user code
@@ -47,6 +65,9 @@ export interface NativeSourceCore {
 export abstract class BaseSource<T> {
   protected nativeInstance: T;
 
+  /** Host map set by MapLibreMap.addSource(); enables source-level feature state. */
+  private featureStateHost?: SourceFeatureStateHost;
+
   protected constructor(nativeInstance: T) {
     this.nativeInstance = nativeInstance;
   }
@@ -57,5 +78,22 @@ export abstract class BaseSource<T> {
 
   getId(): string {
     return (this.nativeInstance as Object as NativeSourceCore).getId();
+  }
+
+  /**
+   * Bind (or unbind with undefined) the host map.
+   * Called by MapLibreMap.addSource()/removeSource(); @internal
+   */
+  bindFeatureStateHost(host: SourceFeatureStateHost | undefined): void {
+    this.featureStateHost = host;
+  }
+
+  /**
+   * The host map when this source is attached to a map, undefined otherwise.
+   * Source-level feature state APIs report failure (false / undefined) when
+   * unbound, mirroring Android's detached-source behavior.
+   */
+  protected getFeatureStateHost(): SourceFeatureStateHost | undefined {
+    return this.featureStateHost;
   }
 }

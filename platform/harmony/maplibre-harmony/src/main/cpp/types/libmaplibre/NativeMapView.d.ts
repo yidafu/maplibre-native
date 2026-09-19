@@ -15,6 +15,7 @@ import type { Source } from './sources';
 import type { IFeature, Geometry } from './geojson';
 import type { ExpressionLiteral } from './ExpressionTypes';
 import type { LightSpecification, MapSnapshotterObserver } from './CommonTypes';
+import type { JSONValue } from './CommonTypes';
 import type { Light } from './light/Light';
 
 // ==================== Type Definitions ====================
@@ -219,7 +220,37 @@ export class NativeMapView {
    * @returns Array of IFeature.
    */
   querySourceFeatures(sourceId: string, sourceLayerIds: string[] | undefined, filter: ExpressionLiteral | undefined): IFeature[]
-  
+
+  /**
+   * Update the state map of a feature (mirrors Android NativeMap.setFeatureState).
+   * @param sourceId Source identifier.
+   * @param sourceLayerId Source layer identifier, or undefined for geometry sources.
+   * @param featureId Feature identifier.
+   * @param state State entries to merge into the feature state.
+   * @returns true on success.
+   */
+  setFeatureState(sourceId: string, sourceLayerId: string | undefined, featureId: string, state: Record<string, JSONValue>): boolean
+
+  /**
+   * Read the current state map of a feature (mirrors Android NativeMap.getFeatureState).
+   * @param sourceId Source identifier.
+   * @param sourceLayerId Source layer identifier, or undefined for geometry sources.
+   * @param featureId Feature identifier.
+   * @returns The feature state object, or undefined when the feature has no state.
+   */
+  getFeatureState(sourceId: string, sourceLayerId: string | undefined, featureId: string): Record<string, JSONValue> | undefined
+
+  /**
+   * Remove state entries of a feature (mirrors Android NativeMap.removeFeatureState).
+   * Null featureId removes state for all features; null stateKey removes all entries of the feature.
+   * @param sourceId Source identifier.
+   * @param sourceLayerId Source layer identifier, or undefined for geometry sources.
+   * @param featureId Feature identifier, or undefined to target all features.
+   * @param stateKey Specific state key to remove, or undefined to remove all entries.
+   * @returns true on success.
+   */
+  removeFeatureState(sourceId: string, sourceLayerId: string | undefined, featureId: string | undefined, stateKey: string | undefined): boolean
+
   /**
    * Create a NativeMapView instance.
    * @param cachePath Required application cache directory path. Suggested value: context.cacheDir + '/maplibre'.

@@ -775,6 +775,92 @@ std::vector<Feature> HarmonyMapRenderThread::querySourceFeatures(
     return future.get();
 }
 
+void HarmonyMapRenderThread::setFeatureState(const std::string& sourceID,
+                                             const std::optional<std::string>& sourceLayerID,
+                                             const std::string& featureID,
+                                             const FeatureState& state) {
+    invoke([this, sourceID, sourceLayerID, featureID, state]() {
+        if (destroying_.load() || shouldStop_ || !renderer_) {
+            return;
+        }
+        try {
+            renderer_->setFeatureState(sourceID, sourceLayerID, featureID, state);
+            if (map_) {
+                map_->triggerRepaint();
+            }
+        } catch (const std::exception& e) {
+            Logger::error("MapRenderThread", "setFeatureState failed on render thread: %s", e.what());
+        } catch (...) {
+            Logger::error("MapRenderThread", "setFeatureState failed with unknown exception");
+        }
+    });
+}
+
+FeatureState HarmonyMapRenderThread::getFeatureState(const std::string& sourceID,
+                                                     const std::optional<std::string>& sourceLayerID,
+                                                     const std::string& featureID) const {
+    if (destroying_.load() || shouldStop_) {
+        Logger::warn("MapRenderThread", "getFeatureState ignored: render thread is stopping");
+        return {};
+    }
+
+    if (!rendererMirror_.load(std::memory_order_acquire)) {
+        Logger::error("MapRenderThread", "getFeatureState: Renderer not initialized");
+        return {};
+    }
+
+    if (isOnThread()) {
+        return renderer_->getFeatureState(sourceID, sourceLayerID, featureID);
+    }
+
+    auto promise = std::make_shared<std::promise<FeatureState>>();
+    auto future = promise->get_future();
+
+    const_cast<HarmonyMapRenderThread*>(this)->invoke([this, promise, sourceID, sourceLayerID, featureID]() {
+        if (destroying_.load() || shouldStop_ || !renderer_) {
+            promise->set_value({});
+            return;
+        }
+        try {
+            promise->set_value(renderer_->getFeatureState(sourceID, sourceLayerID, featureID));
+        } catch (const std::exception& e) {
+            Logger::error("MapRenderThread", "getFeatureState failed on render thread: %s", e.what());
+            promise->set_value({});
+        } catch (...) {
+            Logger::error("MapRenderThread", "getFeatureState failed with unknown exception");
+            promise->set_value({});
+        }
+    });
+
+    if (future.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+        Logger::error("MapRenderThread", "getFeatureState timed out waiting for render thread");
+        return {};
+    }
+
+    return future.get();
+}
+
+void HarmonyMapRenderThread::removeFeatureState(const std::string& sourceID,
+                                                const std::optional<std::string>& sourceLayerID,
+                                                const std::optional<std::string>& featureID,
+                                                const std::optional<std::string>& stateKey) {
+    invoke([this, sourceID, sourceLayerID, featureID, stateKey]() {
+        if (destroying_.load() || shouldStop_ || !renderer_) {
+            return;
+        }
+        try {
+            renderer_->removeFeatureState(sourceID, sourceLayerID, featureID, stateKey);
+            if (map_) {
+                map_->triggerRepaint();
+            }
+        } catch (const std::exception& e) {
+            Logger::error("MapRenderThread", "removeFeatureState failed on render thread: %s", e.what());
+        } catch (...) {
+            Logger::error("MapRenderThread", "removeFeatureState failed with unknown exception");
+        }
+    });
+}
+
 FeatureExtensionValue HarmonyMapRenderThread::queryFeatureExtensions(
     const std::string& sourceID,
     const Feature& feature,

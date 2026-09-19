@@ -214,7 +214,12 @@ public:
     static napi_value queryRenderedFeaturesForPoint(napi_env env, napi_callback_info info);
     static napi_value queryRenderedFeaturesForBox(napi_env env, napi_callback_info info);
     static napi_value querySourceFeatures(napi_env env, napi_callback_info info);
-    
+
+    // Feature state management (mirrors Android NativeMap feature state API)
+    static napi_value setFeatureState(napi_env env, napi_callback_info info);
+    static napi_value getFeatureState(napi_env env, napi_callback_info info);
+    static napi_value removeFeatureState(napi_env env, napi_callback_info info);
+
     // Performance configuration APIs (aligned with Android MapRenderer)
     static napi_value setMaximumFps(napi_env env, napi_callback_info info);
     static napi_value setRenderingRefreshMode(napi_env env, napi_callback_info info);

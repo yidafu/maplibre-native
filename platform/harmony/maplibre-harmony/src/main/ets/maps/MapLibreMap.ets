@@ -1,6 +1,6 @@
 import maplibre, { EdgeInsets, MapViewSnapshotPayload, NativeMapView } from 'libmaplibre.so';
 import image from '@ohos.multimedia.image';
-import type { Icon, ExpressionLiteral as NapiExpressionLiteral, Geometry } from 'libmaplibre.so';
+import type { Icon, ExpressionLiteral as NapiExpressionLiteral, Geometry, JSONValue } from 'libmaplibre.so';
 import { MapLibreMapOptions } from './MapLibreMapOptions';
 import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
@@ -2041,26 +2041,36 @@ export class MapLibreMap {
   }
 
   // Source helpers — strong typed Source
-  public getSources(): Source[] {
-    if (this.destroyed) {
-      return [];
-    }
-    const style = this.getStyle();
-    if (style) {
-      return style.getSources();
-    }
-    return [];
-  }
-
   public getSource(sourceId: string): Source | null {
     if (this.destroyed) {
       return null;
     }
     const style = this.getStyle();
     if (style) {
-      return style.getSource(sourceId);
+      const source = style.getSource(sourceId);
+      if (source) {
+        // Wrappers are recreated per call; bind this map so source-level
+        // feature state sugar keeps working after retrieval.
+        source.bindFeatureStateHost(this);
+      }
+      return source;
     }
     return null;
+  }
+
+  public getSources(): Source[] {
+    if (this.destroyed) {
+      return [];
+    }
+    const style = this.getStyle();
+    if (style) {
+      const sources = style.getSources();
+      for (const source of sources) {
+        source.bindFeatureStateHost(this);
+      }
+      return sources;
+    }
+    return [];
   }
 
   public addSource(source: Source): void {
@@ -2069,6 +2079,9 @@ export class MapLibreMap {
     }
     const style = this.getStyle();
     if (style) {
+      // Bind this map as the feature-state host so source-level
+      // setFeatureState/getFeatureState/removeFeatureState can dispatch.
+      source.bindFeatureStateHost(this);
       style.addSource(source);
     }
   }
@@ -2080,6 +2093,9 @@ export class MapLibreMap {
     const style = this.getStyle();
     if (style) {
       const sourceId = typeof source === 'string' ? source : source.getId();
+      if (typeof source !== 'string') {
+        source.bindFeatureStateHost(undefined);
+      }
       return style.removeSource(sourceId);
     }
     return false;
@@ -4125,6 +4141,95 @@ export class MapLibreMap {
     } catch (error) {
       hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `querySourceFeatures failed: ${error}`);
       return [];
+    }
+  }
+
+  /**
+   * Update the state map of a feature. The feature stays visually unchanged
+   * unless the style's paint/layout properties reference `feature-state` data
+   * expressions, mirroring the Android setFeatureState API.
+   *
+   * @example
+   * ```ts
+   * map.setFeatureState('my-source', undefined, 'feature-1', { highlighted: true });
+   * ```
+   */
+  public setFeatureState(
+    sourceId: string,
+    sourceLayerId: string | undefined,
+    featureId: string,
+    state: Record<string, JSONValue>
+  ): boolean {
+    if (this.destroyed) {
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'setFeatureState: Map is destroyed');
+      return false;
+    }
+
+    try {
+      return this.nativeMapView.setFeatureState(sourceId, sourceLayerId, featureId, state);
+    } catch (error) {
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `setFeatureState failed: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Read the current state map of a feature, mirroring the Android getFeatureState API.
+   *
+   * @example
+   * ```ts
+   * const state = map.getFeatureState('my-source', undefined, 'feature-1');
+   * ```
+   */
+  public getFeatureState(
+    sourceId: string,
+    sourceLayerId: string | undefined,
+    featureId: string
+  ): Record<string, JSONValue> | undefined {
+    if (this.destroyed) {
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'getFeatureState: Map is destroyed');
+      return undefined;
+    }
+
+    try {
+      return this.nativeMapView.getFeatureState(sourceId, sourceLayerId, featureId);
+    } catch (error) {
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `getFeatureState failed: ${error}`);
+      return undefined;
+    }
+  }
+
+  /**
+   * Remove state entries of a feature, mirroring the Android removeFeatureState API.
+   * Passing undefined for featureId targets all features of the source (or of the
+   * given source layer); passing undefined for stateKey removes all entries.
+   *
+   * @example
+   * ```ts
+   * map.removeFeatureState('my-source', undefined, 'feature-1', 'highlighted');
+   * ```
+   */
+  public removeFeatureState(
+    sourceId: string,
+    sourceLayerId: string | undefined,
+    featureId?: string,
+    stateKey?: string
+  ): boolean {
+    if (this.destroyed) {
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'removeFeatureState: Map is destroyed');
+      return false;
+    }
+
+    try {
+      return this.nativeMapView.removeFeatureState(
+        sourceId,
+        sourceLayerId,
+        featureId || undefined,
+        stateKey || undefined
+      );
+    } catch (error) {
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `removeFeatureState failed: ${error}`);
+      return false;
     }
   }
 

@@ -57,7 +57,7 @@ HarmonyRenderer::~HarmonyRenderer() {
 void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, const std::string& cachePath,
                                  const std::optional<std::string>& localIdeographFontFamily) {
     if (initialized) {
-        Log::Warning(Event::OpenGL, "HarmonyRenderer already initialized");
+        Log::Warning(Event::GraphicsBackend, "HarmonyRenderer already initialized");
         return;
     }
     
@@ -110,12 +110,12 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, con
     mapRenderThread_->start();
     
     initialized = true;
-    Log::Info(Event::OpenGL, "HarmonyRenderer initialized successfully");
+    Log::Info(Event::GraphicsBackend, "HarmonyRenderer initialized successfully");
 }
 
 void HarmonyRenderer::setNativeWindow(OHNativeWindow* window) {
     if (!initialized) {
-        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
+        Log::Warning(Event::GraphicsBackend, "HarmonyRenderer not initialized");
         return;
     }
     
@@ -142,7 +142,7 @@ Map* HarmonyRenderer::getMap() {
 
 void HarmonyRenderer::resize(int width_, int height_) {
     if (!initialized) {
-        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
+        Log::Warning(Event::GraphicsBackend, "HarmonyRenderer not initialized");
         return;
     }
     
@@ -173,7 +173,7 @@ void HarmonyRenderer::resize(int width_, int height_) {
 
 void HarmonyRenderer::requestRender() {
     if (!initialized) {
-        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
+        Log::Warning(Event::GraphicsBackend, "HarmonyRenderer not initialized");
         return;
     }
     
@@ -187,7 +187,7 @@ void HarmonyRenderer::requestRender() {
 
 void HarmonyRenderer::setRenderingMode(MapObserver::RenderMode mode) {
     if (!initialized) {
-        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
+        Log::Warning(Event::GraphicsBackend, "HarmonyRenderer not initialized");
         return;
     }
     // Note: RenderMode handling may need to be implemented if needed
@@ -195,7 +195,7 @@ void HarmonyRenderer::setRenderingMode(MapObserver::RenderMode mode) {
 
 void HarmonyRenderer::setMaximumFps(int fps) {
     if (!initialized) {
-        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
+        Log::Warning(Event::GraphicsBackend, "HarmonyRenderer not initialized");
         return;
     }
     if (mapRenderThread_) {
@@ -205,7 +205,7 @@ void HarmonyRenderer::setMaximumFps(int fps) {
 
 void HarmonyRenderer::setRenderingRefreshMode(int refreshMode) {
     if (!initialized) {
-        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
+        Log::Warning(Event::GraphicsBackend, "HarmonyRenderer not initialized");
         return;
     }
     if (mapRenderThread_) {
@@ -215,7 +215,7 @@ void HarmonyRenderer::setRenderingRefreshMode(int refreshMode) {
 
 void HarmonyRenderer::pause() {
     if (!initialized) {
-        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
+        Log::Warning(Event::GraphicsBackend, "HarmonyRenderer not initialized");
         return;
     }
     if (mapRenderThread_) {
@@ -225,7 +225,7 @@ void HarmonyRenderer::pause() {
 
 void HarmonyRenderer::resume() {
     if (!initialized) {
-        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
+        Log::Warning(Event::GraphicsBackend, "HarmonyRenderer not initialized");
         return;
     }
     if (mapRenderThread_) {
@@ -549,13 +549,48 @@ std::vector<Feature> HarmonyRenderer::queryRenderedFeatures(
 std::vector<Feature> HarmonyRenderer::querySourceFeatures(
     const std::string& sourceId,
     const SourceQueryOptions& options) const {
-    
+
     if (!mapRenderThread_) {
         Logger::error("HarmonyRenderer", "querySourceFeatures: MapRenderThread not initialized");
         return {};
     }
-    
+
     return mapRenderThread_->querySourceFeatures(sourceId, options);
+}
+
+void HarmonyRenderer::setFeatureState(const std::string& sourceID,
+                                      const std::optional<std::string>& sourceLayerID,
+                                      const std::string& featureID,
+                                      const FeatureState& state) {
+    if (!mapRenderThread_) {
+        Logger::error("HarmonyRenderer", "setFeatureState: MapRenderThread not initialized");
+        return;
+    }
+
+    mapRenderThread_->setFeatureState(sourceID, sourceLayerID, featureID, state);
+}
+
+FeatureState HarmonyRenderer::getFeatureState(const std::string& sourceID,
+                                              const std::optional<std::string>& sourceLayerID,
+                                              const std::string& featureID) const {
+    if (!mapRenderThread_) {
+        Logger::error("HarmonyRenderer", "getFeatureState: MapRenderThread not initialized");
+        return {};
+    }
+
+    return mapRenderThread_->getFeatureState(sourceID, sourceLayerID, featureID);
+}
+
+void HarmonyRenderer::removeFeatureState(const std::string& sourceID,
+                                         const std::optional<std::string>& sourceLayerID,
+                                         const std::optional<std::string>& featureID,
+                                         const std::optional<std::string>& stateKey) {
+    if (!mapRenderThread_) {
+        Logger::error("HarmonyRenderer", "removeFeatureState: MapRenderThread not initialized");
+        return;
+    }
+
+    mapRenderThread_->removeFeatureState(sourceID, sourceLayerID, featureID, stateKey);
 }
 
 FeatureExtensionValue HarmonyRenderer::queryFeatureExtensions(

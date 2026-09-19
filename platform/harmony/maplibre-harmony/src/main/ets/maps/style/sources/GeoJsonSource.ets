@@ -8,7 +8,7 @@
  * - Clustering utilities
  */
 import maplibre from 'libmaplibre.so';
-import type { ExpressionLiteral } from 'libmaplibre.so';
+import type { ExpressionLiteral, JSONValue } from 'libmaplibre.so';
 import { Geometry, IFeature, IFeatureCollection } from '../../geojson';
 import { GeoJsonOptions } from './GeoJsonOptions';
 import type { Expression } from '../../style/expressions/Expression';
