@@ -1,5 +1,16 @@
 # MapLibre Native for HarmonyOS
 
+> ⛔ **DEPRECATED / 已废弃**
+>
+> This project is **deprecated and no longer maintained**. MapLibre now ships an
+> official OpenHarmony/HarmonyOS platform implementation in the upstream
+> repository:
+>
+> **👉 [maplibre/maplibre-native · platform/ohos](https://github.com/maplibre/maplibre-native/tree/main/platform/ohos)**
+>
+> MapLibre 官方已在上游仓库推进 OHOS（OpenHarmony/HarmonyOS）实现，请改用官方实现。
+> 本目录下的 `platform/harmony` 仅作为历史记录保留，不再接受新功能、bug 修复或 issue。
+
 OpenGL-based vector map rendering library for HarmonyOS platform.
 
 > 📦 **Package**: `maplibre-harmony` | 🔖 **Version**: 0.1.0-alpha.1 | 📄 **License**: BSD-2-Clause

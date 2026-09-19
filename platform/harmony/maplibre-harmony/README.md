@@ -1,5 +1,16 @@
 # MapLibre Native for HarmonyOS
 
+> ⛔ **DEPRECATED / 已废弃**
+>
+> This package is **deprecated and no longer maintained**. MapLibre now ships an
+> official OpenHarmony/HarmonyOS platform implementation in the upstream
+> repository:
+>
+> **👉 [maplibre/maplibre-native · platform/ohos](https://github.com/maplibre/maplibre-native/tree/main/platform/ohos)**
+>
+> MapLibre 官方已在上游仓库推进 OHOS（OpenHarmony/HarmonyOS）实现，请改用官方实现。
+> 本包仅作为历史记录保留，不再接受新功能、bug 修复或 issue。
+
 ![Development Status](https://img.shields.io/badge/Status-Alpha%20%2F%20Unstable-red)
 ![Production Ready](https://img.shields.io/badge/Production%20Ready-No-red)
 ![API Stability](https://img.shields.io/badge/API%20Stability-Unstable-orange)
