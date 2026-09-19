@@ -209,7 +209,10 @@ export class Style {
    * Remove a data source
    */
   removeSource(sourceId: string): boolean {
-    return this.nativeInstance.removeSource(sourceId);
+    // StyleNAPI::RemoveSource signals failure by throwing and returns
+    // undefined on success, so decide the boolean here.
+    this.nativeInstance.removeSource(sourceId);
+    return true;
   }
 
   /**
