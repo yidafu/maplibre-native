@@ -69,7 +69,14 @@ class NativeMapView : public MapObserver {
 public:
     static napi_value Init(napi_env env, napi_value exports);
     static napi_value New(napi_env env, napi_callback_info info);
-    
+
+    // 解包 NAPI 包装对象绑定的 NativeMapView 实例；不是包装对象时返回 nullptr
+    // （内部走 NapiArgs::Unwrap 的空检查契约，替代各方法手写的 napi_unwrap 样板）。
+    static NativeMapView* FromNapi(napi_env env, napi_value thisObj);
+
+    // 同上，this 直接取自 callback info。
+    static NativeMapView* FromInfo(napi_env env, napi_callback_info info);
+
     NativeMapView(napi_env env, napi_value wrapper, const std::string& cachePath);
     virtual ~NativeMapView();
     
@@ -415,6 +422,11 @@ private:
     void initializeRenderer();
     // Ensure resource subsystems are ready; attempt self-recovery if not
     void ensureResourcesReadyOrRecover(int timeoutMs = 500);
+
+    // 把 cluster/source 查询回调接到当前 harmonyRenderer 上，供
+    // GeoJsonSourceNAPI / CustomGeometrySourceNAPI 触达渲染器。初始化与
+    // 自愈重建两条路径都必须调用，避免一条加了新接线另一条漏掉。
+    void wireSourceQueryCallbacks();
     
     napi_env env_;
     napi_ref wrapper_ = nullptr;

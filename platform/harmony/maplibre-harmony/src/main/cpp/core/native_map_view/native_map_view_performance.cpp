@@ -21,10 +21,8 @@ napi_value NativeMapView::setMaximumFps(napi_env env, napi_callback_info info) {
     }
     
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance) {
         Logger::error("NativeMapView", "setMaximumFps: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -72,10 +70,8 @@ napi_value NativeMapView::setRenderingRefreshMode(napi_env env, napi_callback_in
     }
     
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance) {
         Logger::error("NativeMapView", "setRenderingRefreshMode: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -123,10 +119,8 @@ napi_value NativeMapView::getRenderingRefreshMode(napi_env env, napi_callback_in
     NapiArgs args(env, info);
     
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance) {
         Logger::error("NativeMapView", "getRenderingRefreshMode: Failed to unwrap instance");
         // Return default value WHEN_DIRTY (1)
         napi_value result;
@@ -170,10 +164,8 @@ napi_value NativeMapView::setOnFpsChangedListener(napi_env env, napi_callback_in
     }
     
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance) {
         Logger::error("NativeMapView", "setOnFpsChangedListener: Failed to unwrap instance");
         return args.Undefined();
     }

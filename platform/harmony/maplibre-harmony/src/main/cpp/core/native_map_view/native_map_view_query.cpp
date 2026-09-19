@@ -169,10 +169,8 @@ napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) 
     }
 
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView *instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void **>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "pixelForLatLng: Map not initialized");
         return args.Undefined();
     }
@@ -208,10 +206,8 @@ napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info
     }
 
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView *instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void **>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "pixelsForLatLngs: Map not initialized");
         return undefined;
     }
@@ -310,10 +306,8 @@ napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) 
     }
 
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView *instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void **>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "latLngForPixel: Map not initialized");
         return args.Undefined();
     }
@@ -348,10 +342,8 @@ napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info
     }
 
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView *instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void **>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "latLngsForPixels: Map not initialized");
         return undefined;
     }
@@ -431,10 +423,8 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
     }
 
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView *instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void **>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance) {
         Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: Failed to unwrap instance");
         return undefined;
     }
@@ -507,10 +497,8 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
     }
 
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView *instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void **>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance) {
         Logger::error("NativeMapView", "queryRenderedFeaturesForBox: Failed to unwrap instance");
         return undefined;
     }
@@ -585,10 +573,8 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
     }
 
     // Get NativeMapView instance
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView *instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void **>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance) {
         Logger::error("NativeMapView", "querySourceFeatures: Failed to unwrap instance");
         return undefined;
     }

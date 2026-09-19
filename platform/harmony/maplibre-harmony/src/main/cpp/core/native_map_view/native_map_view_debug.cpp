@@ -32,8 +32,8 @@ napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Unwrap instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "setDebug: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -74,8 +74,8 @@ napi_value NativeMapView::getDebug(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Unwrap instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "getDebug: Failed to unwrap instance");
         napi_value result;
         napi_create_int32(env, 0, &result);
@@ -119,8 +119,8 @@ napi_value NativeMapView::getRendererInfo(napi_env env, napi_callback_info info)
 
     std::string rendererInfo = HarmonyRendererBackend::backendTypeName();
 
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::warn("NativeMapView", "getRendererInfo: Failed to unwrap instance, returning compile-time backend only");
     } else if (instance->harmonyRenderer) {
         rendererInfo = instance->harmonyRenderer->getRendererInfo();
@@ -148,8 +148,8 @@ napi_value NativeMapView::setDebugActive(napi_env env, napi_callback_info info) 
     NapiArgs args(env, info);
     
     // Unwrap instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "setDebugActive: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -194,8 +194,8 @@ napi_value NativeMapView::isDebugActive(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Unwrap instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "isDebugActive: Failed to unwrap instance");
         napi_value result;
         napi_get_boolean(env, false, &result);

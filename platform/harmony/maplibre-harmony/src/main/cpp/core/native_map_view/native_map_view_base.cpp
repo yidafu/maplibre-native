@@ -420,6 +420,16 @@ void NativeMapView::Destructor(napi_env env, void* nativeObject, void* finalize_
     delete static_cast<NativeMapView*>(nativeObject);
 }
 
+NativeMapView* NativeMapView::FromNapi(napi_env env, napi_value thisObj) {
+    return napi::NapiArgs::Unwrap<NativeMapView>(env, thisObj);
+}
+
+NativeMapView* NativeMapView::FromInfo(napi_env env, napi_callback_info info) {
+    napi_value thisObj = nullptr;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    return FromNapi(env, thisObj);
+}
+
 
 napi_value NativeMapView::Init(napi_env env, napi_value exports) {
     napi_status status;
@@ -704,11 +714,8 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
 
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    napi_value thisVar;
-    size_t argc = 0;
-    napi_get_cb_info(env, info, &argc, nullptr, &thisVar, nullptr);
-    if (napi_unwrap(env, thisVar, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "hardReset: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -771,36 +778,7 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     }
     instance->attachMapRegistry();
 
-    // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
-    mbgl::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
-        [renderer = instance->harmonyRenderer.get()](
-            const std::string& sourceID,
-            const mbgl::Feature& feature,
-            const std::string& extension,
-            const std::string& extensionField,
-            const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
-            if (!renderer) return mbgl::FeatureCollection{};
-            return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
-        },
-        instance->harmonyRenderer.get());
-
-    // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
-        mbgl::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
-            [renderer = instance->harmonyRenderer.get()](
-                const std::string& sourceID,
-                const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
-                if (!renderer) return {};
-                return renderer->querySourceFeatures(sourceID, options);
-            },
-            instance->harmonyRenderer.get());
-        mbgl::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
-            [renderer = instance->harmonyRenderer.get()](
-                const std::string& sourceID,
-                const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
-                if (!renderer) return {};
-                return renderer->querySourceFeatures(sourceID, options);
-            },
-            instance->harmonyRenderer.get());
+    instance->wireSourceQueryCallbacks();
 
     // 6) Trigger the first frame
     if (instance->harmonyRenderer) {
@@ -873,6 +851,41 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
 }
 
 // MapObserver method implementations are defined in native_map_view_observers.cpp
+
+void NativeMapView::wireSourceQueryCallbacks() {
+    if (!harmonyRenderer) return;
+
+    // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
+    mbgl::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
+        [renderer = harmonyRenderer.get()](
+            const std::string& sourceID,
+            const mbgl::Feature& feature,
+            const std::string& extension,
+            const std::string& extensionField,
+            const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
+            if (!renderer) return mbgl::FeatureCollection{};
+            return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
+        },
+        harmonyRenderer.get());
+
+    // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
+    mbgl::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
+        [renderer = harmonyRenderer.get()](
+            const std::string& sourceID,
+            const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
+            if (!renderer) return {};
+            return renderer->querySourceFeatures(sourceID, options);
+        },
+        harmonyRenderer.get());
+    mbgl::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
+        [renderer = harmonyRenderer.get()](
+            const std::string& sourceID,
+            const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
+            if (!renderer) return {};
+            return renderer->querySourceFeatures(sourceID, options);
+        },
+        harmonyRenderer.get());
+}
 
 void NativeMapView::initializeRenderer() {
     // Set SQLite temp path for database operations (must be done before any database access)
@@ -952,36 +965,7 @@ void NativeMapView::initializeRenderer() {
         // At this point the C++ Map exists, allowing ArkTS to create MapLibreMap and register observers
         // Matches Android behavior: trigger before style loading so listeners can be registered
 
-        // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
-        mbgl::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
-            [renderer = harmonyRenderer.get()](
-                const std::string& sourceID,
-                const mbgl::Feature& feature,
-                const std::string& extension,
-                const std::string& extensionField,
-                const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
-                if (!renderer) return mbgl::FeatureCollection{};
-                return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
-            },
-            harmonyRenderer.get());
-
-        // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
-        mbgl::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
-            [renderer = harmonyRenderer.get()](
-                const std::string& sourceID,
-                const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
-                if (!renderer) return {};
-                return renderer->querySourceFeatures(sourceID, options);
-            },
-            harmonyRenderer.get());
-        mbgl::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
-            [renderer = harmonyRenderer.get()](
-                const std::string& sourceID,
-                const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
-                if (!renderer) return {};
-                return renderer->querySourceFeatures(sourceID, options);
-            },
-            harmonyRenderer.get());
+        wireSourceQueryCallbacks();
 
         if (callbackManager_) {
             callbackManager_->InvokeCallbackEmpty("onMapViewCreated");
@@ -1048,28 +1032,7 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
         gestureManager_->reattach(map);
     }
 
-    // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
-    mbgl::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
-        [renderer = harmonyRenderer.get()](
-            const std::string& sourceID,
-            const mbgl::Feature& feature,
-            const std::string& extension,
-            const std::string& extensionField,
-            const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
-            if (!renderer) return mbgl::FeatureCollection{};
-            return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
-        },
-        harmonyRenderer.get());
-
-    // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
-    mbgl::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
-        [renderer = harmonyRenderer.get()](
-            const std::string& sourceID,
-            const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
-            if (!renderer) return {};
-            return renderer->querySourceFeatures(sourceID, options);
-        },
-        harmonyRenderer.get());
+    wireSourceQueryCallbacks();
 
     // ✅ After self-healing, also trigger the onMapViewCreated callback
     if (map && callbackManager_) {
@@ -1097,8 +1060,8 @@ napi_value NativeMapView::setLocalIdeographFontFamily(napi_env env, napi_callbac
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "setLocalIdeographFontFamily: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -1186,8 +1149,8 @@ napi_value NativeMapView::getLocalIdeographFontFamily(napi_env env, napi_callbac
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "getLocalIdeographFontFamily: Failed to unwrap instance");
         return args.Null();
     }
@@ -1206,8 +1169,7 @@ napi_value NativeMapView::getLocalIdeographFontFamily(napi_env env, napi_callbac
 napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
 
-    NativeMapView* nativeMapView = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&nativeMapView));
+    NativeMapView* nativeMapView = NativeMapView::FromNapi(env, args.This());
 
     if (nativeMapView) {
         // Double-destroy protection lives in cleanupAllResources()
@@ -1237,8 +1199,7 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
 
-    NativeMapView* nativeMapView = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&nativeMapView));
+    NativeMapView* nativeMapView = NativeMapView::FromNapi(env, args.This());
 
     if (nativeMapView) {
         // ✅ Create a ThreadSafeCallback for cross-thread invocation
@@ -1287,8 +1248,8 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
     if (args.HasError()) return args.Undefined();
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "setContentPadding: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -1385,8 +1346,8 @@ napi_value NativeMapView::getContentPadding(napi_env env, napi_callback_info inf
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "getContentPadding: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -1413,8 +1374,8 @@ napi_value NativeMapView::getPixelRatio(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "getPixelRatio: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -1438,8 +1399,8 @@ napi_value NativeMapView::getDensityDependantRectangle(napi_env env, napi_callba
     if (args.HasError()) return args.Undefined();
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "getDensityDependantRectangle: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -1494,8 +1455,8 @@ napi_value NativeMapView::cancelAllRequests(napi_env env, napi_callback_info inf
     NapiArgs args(env, info);
 
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "cancelAllRequests: Failed to unwrap instance");
         return args.Undefined();
     }

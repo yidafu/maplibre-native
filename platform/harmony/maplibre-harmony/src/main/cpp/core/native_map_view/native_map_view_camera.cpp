@@ -145,8 +145,8 @@ napi_value NativeMapView::GetBoundsScalar(napi_env env, napi_callback_info info,
     NapiArgs args(env, info);
 
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "%s: Failed to get instance or map not initialized", label);
         return args.Undefined();
     }
@@ -186,8 +186,8 @@ napi_value NativeMapView::SetBoundsScalar(napi_env env, napi_callback_info info,
     }
 
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "%s: Failed to get instance or map not initialized", label);
         return args.Undefined();
     }
@@ -220,8 +220,8 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
     Logger::info("NativeMapView", "🔍 [DPI] resizeView called: %dx%d (logical)", newWidth, newHeight);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "Failed to unwrap instance");
         return args.Undefined();
     }
@@ -250,8 +250,8 @@ napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info inf
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "cancelTransitions: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -288,8 +288,8 @@ napi_value NativeMapView::setGestureInProgress(napi_env env, napi_callback_info 
     if (args.HasError()) return args.Undefined();
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "setGestureInProgress: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -323,8 +323,8 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
     }
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "moveBy: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -380,8 +380,8 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
                   angle, latitude, longitude, pitch, zoom);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "jumpTo: Failed to unwrap instance or instance is null");
         return args.Undefined();
     }
@@ -460,8 +460,8 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "easeTo: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -529,8 +529,8 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "flyTo: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -559,8 +559,8 @@ napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "getLatLng: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -584,8 +584,8 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
     }
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "setLatLng: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -636,8 +636,8 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
     }
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "getCameraForLatLngBounds: Map not initialized");
         return args.Undefined();
     }
@@ -682,8 +682,8 @@ napi_value NativeMapView::getCameraForGeometry(napi_env env, napi_callback_info 
     if (args.HasError()) return args.Undefined();
 
     // Obtain the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "getCameraForGeometry: Map not initialized");
         return args.Undefined();
     }
@@ -754,8 +754,8 @@ napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "resetPosition: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -781,8 +781,8 @@ napi_value NativeMapView::getPitch(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "getPitch: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -818,8 +818,8 @@ napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "setPitch: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -856,8 +856,8 @@ napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
     }
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "setZoom: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -897,8 +897,8 @@ napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "getZoom: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -925,8 +925,8 @@ napi_value NativeMapView::resetZoom(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "resetZoom: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -1009,8 +1009,8 @@ napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
     }
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "rotateBy: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -1049,8 +1049,8 @@ napi_value NativeMapView::setBearing(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "setBearing: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -1083,8 +1083,8 @@ napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
     }
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "setBearingXY: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -1115,8 +1115,8 @@ napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "getBearing: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -1139,8 +1139,8 @@ napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "resetNorth: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -1166,8 +1166,8 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
     }
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "setVisibleCoordinateBounds: Map not initialized");
         return args.Undefined();
     }
@@ -1261,8 +1261,8 @@ napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "getVisibleCoordinateBounds: Map not initialized");
         return args.Undefined();
     }
@@ -1282,8 +1282,8 @@ napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback
 napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "scheduleSnapshot: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -1379,8 +1379,8 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
     NapiArgs args(env, info);
     
     // Retrieve the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "getCameraPosition: Failed to get instance or map not initialized");
         return args.Undefined();
     }
@@ -1430,8 +1430,8 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
 napi_value NativeMapView::getCameraState(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
 
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance || !instance->map) {
         Logger::error("NativeMapView", "getCameraState: map not initialized");
         return args.Undefined();
     }

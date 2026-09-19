@@ -60,9 +60,8 @@ bool getNamedProperty(napi_env env, napi_value object, const char* name, napi_va
 // "Failed to unwrap NativeMapView instance" error and returning nullptr when the
 // wrapper is missing, so callers can simply `return nullptr;`.
 NativeMapView* UnwrapMapInstance(napi_env env, const NapiArgs& args) {
-    NativeMapView* instance = nullptr;
-    napi_value thisObj = args.This();
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
         return nullptr;
     }
@@ -499,8 +498,8 @@ napi_value NativeMapView::AddAnnotationsBatch(napi_env env, napi_callback_info i
         return undefined;
     }
 
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, thisObj);
+    if (!instance) {
         Logger::error("NativeMapView", "%s: Failed to unwrap instance", label);
         return undefined;
     }
@@ -538,8 +537,8 @@ napi_value NativeMapView::AddAnnotationsBatch(napi_env env, napi_callback_info i
             continue;
         }
 
-        NapiT* wrapper = nullptr;
-        if (napi_unwrap(env, elementObj, reinterpret_cast<void**>(&wrapper)) != napi_ok || !wrapper) {
+        NapiT* wrapper = NapiArgs::Unwrap<NapiT>(env, elementObj);
+        if (!wrapper) {
             Logger::error("NativeMapView", "%s: Failed to unwrap %s at index %u", label, wrapperName, i);
             continue;
         }
@@ -631,8 +630,8 @@ napi_value NativeMapView::UpdateAnnotationImpl(napi_env env, napi_callback_info 
         return undefined;
     }
 
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, thisObj);
+    if (!instance) {
         Logger::error("NativeMapView", "%s: Failed to unwrap NativeMapView instance", label);
         return undefined;
     }
@@ -642,8 +641,8 @@ napi_value NativeMapView::UpdateAnnotationImpl(napi_env env, napi_callback_info 
         return undefined;
     }
 
-    NapiT* wrapper = nullptr;
-    if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&wrapper)) != napi_ok || !wrapper) {
+    NapiT* wrapper = NapiArgs::Unwrap<NapiT>(env, args[0]);
+    if (!wrapper) {
         Logger::error("NativeMapView", "%s: Failed to unwrap %s object", label, wrapperName);
         return undefined;
     }
@@ -739,8 +738,8 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
     }
     
     // Obtain the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, thisObj);
+    if (!instance) {
         Logger::error("NativeMapView", "removeAnnotations: Failed to unwrap instance");
         return undefined;
     }
@@ -803,9 +802,8 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
     NapiArgs args(env, info);
     
     // Get NativeMapView instance
-    NativeMapView* instance = nullptr;
-    napi_value thisObj = args.This();
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, args.This());
+    if (!instance) {
         Logger::error("NativeMapView", "addAnnotationIcon: Failed to unwrap instance");
         return args.Undefined();
     }
@@ -827,8 +825,8 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
         }
         
         // Try to unwrap Icon object to get direct access to image data
-        IconNAPI* iconNapi = nullptr;
-        if (napi_unwrap(env, iconObj, reinterpret_cast<void**>(&iconNapi)) != napi_ok || !iconNapi) {
+        IconNAPI* iconNapi = NapiArgs::Unwrap<IconNAPI>(env, iconObj);
+        if (!iconNapi) {
             Logger::error("NativeMapView", "addAnnotationIcon: Argument is not a valid Icon object");
             return args.Undefined();
         }
@@ -938,8 +936,8 @@ napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info 
     }
     
     // Obtain the NativeMapView instance
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, thisObj);
+    if (!instance) {
         Logger::error("NativeMapView", "removeAnnotationIcon: Failed to unwrap instance");
         return undefined;
     }
@@ -983,8 +981,8 @@ napi_value NativeMapView::getTopOffsetPixelsForAnnotationSymbol(napi_env env, na
         return result;
     }
     
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    NativeMapView* instance = NativeMapView::FromNapi(env, thisObj);
+    if (!instance || !instance->map) {
         Logger::warn("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol: Map not initialized, returning 0.0");
         return result;
     }
