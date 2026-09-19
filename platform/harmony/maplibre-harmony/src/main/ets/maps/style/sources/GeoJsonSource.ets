@@ -282,6 +282,81 @@ export class GeoJsonSource extends BaseSource<maplibre.GeoJsonSource> {
     return this.nativeInstance.getUrl();
   }
 
+  /**
+   * Override the synchronous update flag at runtime.
+   *
+   * Equivalent to constructing the source with `synchronousUpdate` enabled in
+   * GeoJsonOptions, but applicable to existing sources loaded from a style
+   * JSON, mirroring the Android setOverrideSynchronousUpdate API.
+   *
+   * @param override Whether to force synchronous updates
+   */
+  setOverrideSynchronousUpdate(override: boolean): GeoJsonSource {
+    this.nativeInstance.setOverrideSynchronousUpdate(override);
+    return this;
+  }
+
+  // ==================== Feature state ====================
+
+  /**
+   * Set the state of a feature in this source.
+   *
+   * Feature state can be read in style expressions through
+   * `["feature-state", key]`. The target feature must already have an id in
+   * the underlying source data.
+   *
+   * @param featureId Id of the feature whose state to set
+   * @param state JSON object with the state key-value pairs to merge
+   * @returns true if the source is attached to a map and the update dispatched
+   */
+  setFeatureState(featureId: string, state: Record<string, JSONValue>): boolean {
+    const host = this.getFeatureStateHost();
+    if (!host) {
+      return false;
+    }
+    return host.setFeatureState(this.getId(), undefined, featureId, state);
+  }
+
+  /**
+   * Get the current state of a feature in this source.
+   *
+   * @param featureId Id of the feature whose state to get
+   * @returns The feature state, or undefined when the source is not attached
+   *   to a map or the feature has no state
+   */
+  getFeatureState(featureId: string): Record<string, JSONValue> | undefined {
+    const host = this.getFeatureStateHost();
+    if (!host) {
+      return undefined;
+    }
+    return host.getFeatureState(this.getId(), undefined, featureId);
+  }
+
+  /**
+   * Remove state from a feature in this source, or from all features when
+   * featureId is omitted.
+   *
+   * @param featureId Id of the feature, or undefined to target all features
+   * @param stateKey State key to remove, or undefined to remove all keys
+   * @returns true if the source is attached to a map and the update dispatched
+   */
+  removeFeatureState(featureId?: string, stateKey?: string): boolean {
+    const host = this.getFeatureStateHost();
+    if (!host) {
+      return false;
+    }
+    return host.removeFeatureState(this.getId(), undefined, featureId, stateKey);
+  }
+
+  /**
+   * Remove all feature state entries from this source.
+   *
+   * @returns true if the source is attached to a map and the update dispatched
+   */
+  resetFeatureStates(): boolean {
+    return this.removeFeatureState(undefined, undefined);
+  }
+
   // ==================== Query helpers ====================
 
   /**

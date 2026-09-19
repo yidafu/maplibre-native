@@ -193,6 +193,15 @@ export class GeoJsonSource {
   getUrl(): string;
 
   /**
+   * Override the synchronous update flag at runtime.
+   * Equivalent to constructing the source with synchronousUpdate enabled, but
+   * applicable to existing sources loaded from a style JSON.
+   * @param override Whether to force synchronous updates.
+   * @returns this (chainable).
+   */
+  setOverrideSynchronousUpdate(override: boolean): this;
+
+  /**
    * Query source features.
    * @param filter Optional filter expression.
    * @returns Array of IFeature.

@@ -53,6 +53,7 @@ public:
     static napi_value SetGeoJsonSync(napi_env env, napi_callback_info info);
     static napi_value SetUrl(napi_env env, napi_callback_info info);
     static napi_value GetUrl(napi_env env, napi_callback_info info);
+    static napi_value SetOverrideSynchronousUpdate(napi_env env, napi_callback_info info);
     
     // Query helpers
     static napi_value QuerySourceFeatures(napi_env env, napi_callback_info info);

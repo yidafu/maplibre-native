@@ -158,6 +158,7 @@ napi_value GeoJsonSourceNAPI::Init(napi_env env, napi_value exports) {
         { "setGeoJsonSync", nullptr, SetGeoJsonSync, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setUrl", nullptr, SetUrl, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getUrl", nullptr, GetUrl, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setOverrideSynchronousUpdate", nullptr, SetOverrideSynchronousUpdate, nullptr, nullptr, nullptr, napi_default, nullptr },
         
         // Query features
         { "querySourceFeatures", nullptr, QuerySourceFeatures, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -438,6 +439,35 @@ napi_value GeoJsonSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
 }
 
 DEFINE_SOURCE_GET_URL(GeoJsonSourceNAPI)
+
+napi_value GeoJsonSourceNAPI::SetOverrideSynchronousUpdate(napi_env env, napi_callback_info info) {
+    napi_value jsThis;
+    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+
+    GeoJsonSourceNAPI* sourceNapi = nullptr;
+    auto* source = ResolveSource(env, jsThis, &sourceNapi, true);
+    if (!source) {
+        return nullptr;
+    }
+
+    NapiArgs args(env, info);
+    bool overrideSync = args.GetBoolOr(0, false);
+
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    try {
+        source->setOverrideSynchronousUpdate(overrideSync);
+        Logger::info("GeoJsonSourceNAPI", "SetOverrideSynchronousUpdate: %s -> %d",
+                     sourceNapi->id.c_str(), overrideSync ? 1 : 0);
+    } catch (const std::exception& e) {
+        Logger::error("GeoJsonSourceNAPI", "SetOverrideSynchronousUpdate failed: %s", e.what());
+        napi_throw_error(env, nullptr, e.what());
+    }
+
+    return nullptr;
+}
 
 // ==================== Query features ====================
 
