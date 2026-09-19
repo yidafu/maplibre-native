@@ -8,6 +8,7 @@ import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.gson.JsonObject;
 import org.maplibre.geojson.Feature;
 import org.maplibre.geojson.Geometry;
 import org.maplibre.android.annotations.Marker;
@@ -189,6 +190,26 @@ interface NativeMap {
   List<Feature> queryRenderedFeatures(@NonNull RectF coordinates,
                                       @Nullable String[] layerIds,
                                       @Nullable Expression filter);
+
+  void setFeatureState(@NonNull String sourceId,
+                       @Nullable String sourceLayerId,
+                       @NonNull String featureId,
+                       @NonNull JsonObject state);
+
+  int getRenderedFeatureCount(@Nullable String featureId,
+                              @Nullable String layerId,
+                              @Nullable String sourceId);
+
+  // Feature State
+  @Nullable
+  JsonObject getFeatureState(@NonNull String sourceId,
+                             @Nullable String sourceLayerId,
+                             @NonNull String featureId);
+
+  void removeFeatureState(@NonNull String sourceId,
+                          @Nullable String sourceLayerId,
+                          @Nullable String featureId,
+                          @Nullable String stateKey);
 
   //
   // Projection API

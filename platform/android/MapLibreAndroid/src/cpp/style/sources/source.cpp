@@ -4,12 +4,12 @@
 
 #include <jni/jni.hpp>
 
-#include <mbgl/style/style.hpp>
-#include <mbgl/util/logging.hpp>
+#include <mln/style/style.hpp>
+#include <mln/util/logging.hpp>
 
 // Java -> C++ conversion
-#include <mbgl/style/conversion/source.hpp>
-#include <mbgl/style/conversion_impl.hpp>
+#include <mln/style/conversion/source.hpp>
+#include <mln/style/conversion_impl.hpp>
 
 // C++ -> Java conversion
 #include "../conversion/property_value.hpp"
@@ -17,10 +17,11 @@
 #include <string>
 
 // Core Sources
-#include <mbgl/style/sources/geojson_source.hpp>
-#include <mbgl/style/sources/image_source.hpp>
-#include <mbgl/style/sources/raster_source.hpp>
-#include <mbgl/style/sources/vector_source.hpp>
+#include <mln/style/sources/custom_vector_source.hpp>
+#include <mln/style/sources/geojson_source.hpp>
+#include <mln/style/sources/image_source.hpp>
+#include <mln/style/sources/raster_source.hpp>
+#include <mln/style/sources/vector_source.hpp>
 
 // Android Source peers
 #include "geojson_source.hpp"
@@ -29,37 +30,41 @@
 #include "unknown_source.hpp"
 #include "vector_source.hpp"
 #include "custom_geometry_source.hpp"
+#include "custom_vector_source.hpp"
 #include "raster_dem_source.hpp"
 
-namespace mbgl {
+namespace mln {
 namespace android {
 
 static std::unique_ptr<Source> createSourcePeer(jni::JNIEnv& env,
-                                                mbgl::style::Source& coreSource,
+                                                mln::style::Source& coreSource,
                                                 AndroidRendererFrontend* frontend) {
-    if (coreSource.is<mbgl::style::VectorSource>()) {
-        return std::make_unique<VectorSource>(env, *coreSource.as<mbgl::style::VectorSource>(), frontend);
-    } else if (coreSource.is<mbgl::style::RasterSource>()) {
-        return std::make_unique<RasterSource>(env, *coreSource.as<mbgl::style::RasterSource>(), frontend);
-    } else if (coreSource.is<mbgl::style::GeoJSONSource>()) {
-        return std::make_unique<GeoJSONSource>(env, *coreSource.as<mbgl::style::GeoJSONSource>(), frontend);
-    } else if (coreSource.is<mbgl::style::ImageSource>()) {
-        return std::make_unique<ImageSource>(env, *coreSource.as<mbgl::style::ImageSource>(), frontend);
+    if (coreSource.is<mln::style::VectorSource>()) {
+        return std::make_unique<VectorSource>(env, *coreSource.as<mln::style::VectorSource>(), frontend);
+    } else if (coreSource.is<mln::style::RasterSource>()) {
+        return std::make_unique<RasterSource>(env, *coreSource.as<mln::style::RasterSource>(), frontend);
+    } else if (coreSource.is<mln::style::GeoJSONSource>()) {
+        return std::make_unique<GeoJSONSource>(env, *coreSource.as<mln::style::GeoJSONSource>(), frontend);
+    } else if (coreSource.is<mln::style::ImageSource>()) {
+        return std::make_unique<ImageSource>(env, *coreSource.as<mln::style::ImageSource>(), frontend);
     } else {
         return std::make_unique<UnknownSource>(env, coreSource, frontend);
     }
 }
 
 const jni::Object<Source>& Source::peerForCoreSource(jni::JNIEnv& env,
-                                                     mbgl::style::Source& coreSource,
-                                                     AndroidRendererFrontend& frontend) {
+                                                     mln::style::Source& coreSource,
+                                                     AndroidRendererFrontend& frontend,
+                                                     mln::Map& map) {
     if (!coreSource.peer.has_value()) {
         coreSource.peer = createSourcePeer(env, coreSource, &frontend);
     }
-    return coreSource.peer.get<std::unique_ptr<Source>>()->javaPeer;
+    auto* peer = coreSource.peer.get<std::unique_ptr<Source>>().get();
+    peer->bindToMap(frontend, map);
+    return peer->javaPeer;
 }
 
-const jni::Object<Source>& Source::peerForCoreSource(jni::JNIEnv& env, mbgl::style::Source& coreSource) {
+const jni::Object<Source>& Source::peerForCoreSource(jni::JNIEnv& env, mln::style::Source& coreSource) {
     if (!coreSource.peer.has_value()) {
         coreSource.peer = createSourcePeer(env, coreSource, nullptr);
     }
@@ -67,14 +72,14 @@ const jni::Object<Source>& Source::peerForCoreSource(jni::JNIEnv& env, mbgl::sty
 }
 
 Source::Source(jni::JNIEnv& env,
-               mbgl::style::Source& coreSource,
+               mln::style::Source& coreSource,
                const jni::Object<Source>& obj,
                AndroidRendererFrontend* frontend)
     : source(coreSource),
       javaPeer(jni::NewGlobal(env, obj)),
       rendererFrontend(frontend) {}
 
-Source::Source(jni::JNIEnv&, std::unique_ptr<mbgl::style::Source> coreSource)
+Source::Source(jni::JNIEnv&, std::unique_ptr<mln::style::Source> coreSource)
     : ownedSource(std::move(coreSource)),
       source(*ownedSource) {}
 
@@ -142,7 +147,7 @@ jni::Local<jni::Integer> Source::getMaxOverscaleFactorForParentTiles(jni::JNIEnv
     return jni::Local<jni::Integer>(env, nullptr);
 }
 
-void Source::addToStyle(JNIEnv& env, const jni::Object<Source>& obj, mbgl::style::Style& style) {
+void Source::addToStyle(JNIEnv& env, const jni::Object<Source>& obj, mln::style::Style& style) {
     if (!ownedSource) {
         throw std::runtime_error("Cannot add source twice");
     }
@@ -157,7 +162,7 @@ void Source::addToStyle(JNIEnv& env, const jni::Object<Source>& obj, mbgl::style
     javaPeer = jni::NewGlobal(env, obj);
 }
 
-void Source::addToMap(JNIEnv& env, const jni::Object<Source>& obj, mbgl::Map& map, AndroidRendererFrontend& frontend) {
+void Source::addToMap(JNIEnv& env, const jni::Object<Source>& obj, mln::Map& map, AndroidRendererFrontend& frontend) {
     // Check to see if we own the source first
     if (!ownedSource) {
         throw std::runtime_error("Cannot add source twice");
@@ -172,10 +177,10 @@ void Source::addToMap(JNIEnv& env, const jni::Object<Source>& obj, mbgl::Map& ma
     // Add strong reference to java source
     javaPeer = jni::NewGlobal(env, obj);
 
-    rendererFrontend = &frontend;
+    bindToMap(frontend, map);
 }
 
-bool Source::removeFromMap(JNIEnv&, const jni::Object<Source>&, mbgl::Map& map) {
+bool Source::removeFromMap(JNIEnv&, const jni::Object<Source>&, mln::Map& map) {
     // Cannot remove if not attached yet
     if (ownedSource) {
         throw std::runtime_error("Cannot remove detached source");
@@ -204,6 +209,67 @@ jni::Local<jni::Long> Source::getMinimumTileUpdateInterval(JNIEnv& env) {
     return jni::Box(env, jni::jlong(source.getMinimumTileUpdateInterval().count() / 1000000));
 }
 
+jni::jboolean Source::setFeatureState(JNIEnv& env,
+                                      const jni::String& sourceLayerId,
+                                      const jni::String& featureId,
+                                      const jni::Object<gson::JsonObject>& state) {
+    if (!rendererFrontend || !featureId || !state) {
+        return jni::jni_false;
+    }
+
+    rendererFrontend->setFeatureState(
+        source.getID(),
+        sourceLayerId ? std::optional<std::string>(jni::Make<std::string>(env, sourceLayerId)) : std::nullopt,
+        jni::Make<std::string>(env, featureId),
+        gson::JsonObject::convert(env, state));
+    if (map) {
+        map->triggerRepaint();
+    }
+    return jni::jni_true;
+}
+
+jni::Local<jni::Object<gson::JsonObject>> Source::getFeatureState(JNIEnv& env,
+                                                                  const jni::String& sourceLayerId,
+                                                                  const jni::String& featureId) {
+    if (!rendererFrontend || !featureId) {
+        return jni::Local<jni::Object<gson::JsonObject>>();
+    }
+
+    const auto state = rendererFrontend->getFeatureState(
+        source.getID(),
+        sourceLayerId ? std::optional<std::string>(jni::Make<std::string>(env, sourceLayerId)) : std::nullopt,
+        jni::Make<std::string>(env, featureId));
+    if (state.empty()) {
+        return jni::Local<jni::Object<gson::JsonObject>>();
+    }
+
+    return gson::JsonObject::New(env, state);
+}
+
+jni::jboolean Source::removeFeatureState(JNIEnv& env,
+                                         const jni::String& sourceLayerId,
+                                         const jni::String& featureId,
+                                         const jni::String& stateKey) {
+    if (!rendererFrontend) {
+        return jni::jni_false;
+    }
+
+    rendererFrontend->removeFeatureState(
+        source.getID(),
+        sourceLayerId ? std::optional<std::string>(jni::Make<std::string>(env, sourceLayerId)) : std::nullopt,
+        featureId ? std::optional<std::string>(jni::Make<std::string>(env, featureId)) : std::nullopt,
+        stateKey ? std::optional<std::string>(jni::Make<std::string>(env, stateKey)) : std::nullopt);
+    if (map) {
+        map->triggerRepaint();
+    }
+    return jni::jni_true;
+}
+
+void Source::bindToMap(AndroidRendererFrontend& frontend, mln::Map& map) {
+    rendererFrontend = &frontend;
+    this->map = &map;
+}
+
 void Source::releaseJavaPeer() {
     // We can't release the peer if the source was not removed from the map
     if (!ownedSource) {
@@ -220,6 +286,7 @@ void Source::releaseJavaPeer() {
     javaPeer.reset();
 
     rendererFrontend = nullptr;
+    map = nullptr;
 }
 
 void Source::registerNative(jni::JNIEnv& env) {
@@ -242,7 +309,10 @@ void Source::registerNative(jni::JNIEnv& env) {
         METHOD(&Source::isVolatile, "nativeIsVolatile"),
         METHOD(&Source::setVolatile, "nativeSetVolatile"),
         METHOD(&Source::setMinimumTileUpdateInterval, "nativeSetMinimumTileUpdateInterval"),
-        METHOD(&Source::getMinimumTileUpdateInterval, "nativeGetMinimumTileUpdateInterval"));
+        METHOD(&Source::getMinimumTileUpdateInterval, "nativeGetMinimumTileUpdateInterval"),
+        METHOD(&Source::setFeatureState, "nativeSetFeatureState"),
+        METHOD(&Source::getFeatureState, "nativeGetFeatureState"),
+        METHOD(&Source::removeFeatureState, "nativeRemoveFeatureState"));
 
     // Register subclasses
     GeoJSONSource::registerNative(env);
@@ -251,7 +321,8 @@ void Source::registerNative(jni::JNIEnv& env) {
     UnknownSource::registerNative(env);
     VectorSource::registerNative(env);
     CustomGeometrySource::registerNative(env);
+    CustomVectorSource::registerNative(env);
     RasterDEMSource::registerNative(env);
 }
 } // namespace android
-} // namespace mbgl
+} // namespace mln

@@ -29,6 +29,12 @@
 ### 🐞 Bug fixes
 
 - *...Add new stuff here...*
+- [OpenGL] Fix invisible raster layers on Adreno 3xx by avoiding an in-place alpha assignment in the fragment shader.
+- [core] Draw numbers and short uppercase codes upright in vertical CJK line labels ([#4565](https://github.com/maplibre/maplibre-native/issues/4565)), compat to [maplibre-gl-js#8205](https://github.com/maplibre/maplibre-gl-js/pull/8205).
+- [core] Fix `ImageSource` not rendering across world copies ([#4508](https://github.com/maplibre/maplibre-native/issues/4508)).
+- [core] Repaint data-driven symbol paint properties after feature-state updates.
+- [core] Accept alpha values in legacy comma-separated `hsl()` colors ([#4434](https://github.com/maplibre/maplibre-native/issues/4434)).
+- [core] Fix thread-unsafe headless OpenGL display singleton initialization [#4332](https://github.com/maplibre/maplibre-native/pull/4332)
 - [macos] Fix `mlt-cpp` and `mbgl-vendor-icu` not being included in the amalgamation
 - [core] Fix memory access violation exception in vector_tile_data.cpp [#632](https://github.com/maplibre/maplibre-native/pull/632)
 - [iOS] Fix a bug where the compass was determined to be misplaced when hidden [#498](https://github.com/maplibre/maplibre-native/pull/498).
@@ -68,7 +74,7 @@
 
   Default minimum tile update interval value is `Duration::zero()`.
 
-- [core] Indroduce `distance` expression. ([#16397](https://github.com/mapbox/mapbox-gl-native/pull/16397))
+- [core] Introduce `distance` expression. ([#16397](https://github.com/mapbox/mapbox-gl-native/pull/16397))
 
   The `distance` expression returns the shortest distance between two geometries. The returned value can be consumed as an input into another expression for changing a paint or layout property or filtering features by distance.
 
@@ -84,7 +90,7 @@
 
 - [ios, macos] Allow specifying multiple fonts or font families for local font rendering ([#16253](https://github.com/mapbox/mapbox-gl-native/pull/16253))
 
-  By default, CJK characters are now set in the font specified by the `text-font` layout property. If the named font is not installed on the device or bundled with the application, the characters are set in one of the fallback fonts passed into the `localFontFamily` parameter of `mbgl::Renderer::Renderer()` and `mbgl::MapSnapshotter::MapSnapshotter()`. This parameter can now contain a list of font family names, font display names, and font PostScript names, each name separated by a newline.
+  By default, CJK characters are now set in the font specified by the `text-font` layout property. If the named font is not installed on the device or bundled with the application, the characters are set in one of the fallback fonts passed into the `localFontFamily` parameter of `mln::Renderer::Renderer()` and `mln::MapSnapshotter::MapSnapshotter()`. This parameter can now contain a list of font family names, font display names, and font PostScript names, each name separated by a newline.
 
 ### 🐞 Bug fixes
 
@@ -138,7 +144,7 @@
 
 - [core][tile mode] Fix variable placement for labels with the `icon-text-fit` property set ([#16382](https://github.com/mapbox/mapbox-gl-native/pull/16382))
 
-  The `symbolIntersectsTileEdges()` util in `mbgl::TilePlacement` now considers icon shift for the variable symbols with enabled icon-text-fit setting, thus providing more accurate results.
+  The `symbolIntersectsTileEdges()` util in `mln::TilePlacement` now considers icon shift for the variable symbols with enabled icon-text-fit setting, thus providing more accurate results.
 
 - [core] Correctly log a warning instead of crashing when a non-existent image is attempted to be removed. ([#16391](https://github.com/mapbox/mapbox-gl-native/pull/16391))
 
@@ -164,12 +170,12 @@
 
 - [core] Add Renderer::clearData() ([#16323](https://github.com/mapbox/mapbox-gl-native/pull/16323))
 
-  The newly added `Renderer::clearData()` method allows to clear render data and thus save memory and make sure outdated tiles are not shown. It clears data more agressively than `Renderer::reduceMemoryUse()` does, as it clears not only the cache but all orchestration data, including the data used by the currently rendered frame.
+  The newly added `Renderer::clearData()` method allows to clear render data and thus save memory and make sure outdated tiles are not shown. It clears data more aggressively than `Renderer::reduceMemoryUse()` does, as it clears not only the cache but all orchestration data, including the data used by the currently rendered frame.
 
 - [android] Add jni binding for styleable snapshotter ([#16286](https://github.com/mapbox/mapbox-gl-native/pull/16286))
 
 - [core] Ability to set generic layer properties using setProperty method ([#16324](https://github.com/mapbox/mapbox-gl-native/pull/16324))
-  This change enables the following new keys for the `mbgl::Layer::setProperty()` API:
+  This change enables the following new keys for the `mln::Layer::setProperty()` API:
   - "filter" invokes `setFilter()`
   - "minzoom" invokes `setMinZoom()`
   - "maxzoom" invokes `setMaxZoom()`
@@ -227,7 +233,7 @@
 
 - [android] Update toGeoJSON in android_conversion.hpp ([#16243](https://github.com/mapbox/mapbox-gl-native/pull/16243))
 
-  Before this chage, `toGeoJSON` method in `android_conversion.hpp` could not convert an Object (Map in android) to GeoJSON object.
+  Before this change, `toGeoJSON` method in `android_conversion.hpp` could not convert an Object (Map in android) to GeoJSON object.
 
   But `within` expression needs to accept an Object and then convert it to the GeoJSON object, now `toGeoJSON` method can convert both string and Object to GeoJSON.
 
@@ -251,7 +257,7 @@
 
  - Fixed using of the `in` expression as a layer filter ([#16272](https://github.com/mapbox/mapbox-gl-native/pull/16272))
 
-  The bug was caused by `mbgl::style::conversion::isExpression()` always returning `false` for the `in` expression.
+  The bug was caused by `mln::style::conversion::isExpression()` always returning `false` for the `in` expression.
 
 ### 🧩  Architectural changes
 
@@ -291,23 +297,23 @@
 
 - [offline] Offline tool does not hang on 404 error ([#16240](https://github.com/mapbox/mapbox-gl-native/pull/16240))
 
-  The missing resource gets skipped and teh offline region download continues.
+  The missing resource gets skipped and the offline region download continues.
 
 ##### ⚠️  Breaking changes
 
-- Changes to `mbgl::FileSourceManager::getFileSource()` ([#16238](https://github.com/mapbox/mapbox-gl-native/pull/16238))
+- Changes to `mln::FileSourceManager::getFileSource()` ([#16238](https://github.com/mapbox/mapbox-gl-native/pull/16238))
 
-  It returns now `mbgl::PassRefPtr<FileSource>` (previously was `std::shared_ptr<FileSource>`) in order to enforce keeping the strong reference to the returned object.
+  It returns now `mln::PassRefPtr<FileSource>` (previously was `std::shared_ptr<FileSource>`) in order to enforce keeping the strong reference to the returned object.
 
   Breaking code example:
   `auto fs = FileSourceManager::getFileSource(); fs->..`
 
-  Posible fix:
+  Possible fix:
   `std::shared_ptr<FileSource> fs = `;
 
-- The `mbgl::OnlineFileSource` class cannot be used directly ([#16238](https://github.com/mapbox/mapbox-gl-native/pull/16238))
+- The `mln::OnlineFileSource` class cannot be used directly ([#16238](https://github.com/mapbox/mapbox-gl-native/pull/16238))
 
-  Clients must use the parent `mbgl::FileSource` interface instead.
+  Clients must use the parent `mln::FileSource` interface instead.
 
   Breaking code example:
   `std::shared_ptr<OnlineFileSource> onlineSource = std::static_pointer_cast<OnlineFileSource>(FileSourceManager::get()->getFileSource(..));`
@@ -343,7 +349,7 @@
 
   The new `Source::setPrefetchZoomDelta(optional<uint8_t>)` method allows overriding default tile prefetch setting that is defined by the Map instance.
 
-- [core] Add support for `within expression`. Implement the use of `within expression` with paint propery and filter expression. ([#16157](https://github.com/mapbox/mapbox-gl-native/pull/16157))
+- [core] Add support for `within expression`. Implement the use of `within expression` with paint property and filter expression. ([#16157](https://github.com/mapbox/mapbox-gl-native/pull/16157))
 
   The `within expression` enables checking whether a feature is inside a pre-defined geometry set/boundary or not. This `within expression` returns a boolean value, `true` indicates that the feature being evaluated is inside the geometry set. The returned value can be then consumed as input by another expression or used directly by a paint/layer property.
 
@@ -363,7 +369,7 @@
 
 - [core] Don't provide multiple responses with the same data for 304 replies ([#16200](https://github.com/mapbox/mapbox-gl-native/pull/16200))
 
-  In cases when cached resource is useable, yet don't have an expiration timestamp, we provided data to the requester from the cache and the same data was returned once 304 response was received from the network.
+  In cases when cached resource is usable, yet don't have an expiration timestamp, we provided data to the requester from the cache and the same data was returned once 304 response was received from the network.
 
 - [core] Fix potential visual artifact for line-dasharray ([#16202](https://github.com/mapbox/mapbox-gl-native/pull/16202))
 
@@ -470,7 +476,7 @@
 
 - [core] Retain thread pool in GeoJSONSource ([#15992](https://github.com/mapbox/mapbox-gl-native/pull/15992))
 
-  Otherwise, the construction of the `Immutable<Source::Impl>` in background thread might never yeld.
+  Otherwise, the construction of the `Immutable<Source::Impl>` in background thread might never yield.
 
 - [core] Fix supercluster lambdas capturing ([#15989](https://github.com/mapbox/mapbox-gl-native/pull/15989))
 

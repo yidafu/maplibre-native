@@ -1,39 +1,39 @@
 #import "MLNMapView+Impl.h"
 #import "MLNMapView_Private.h"
 
-#include <mbgl/annotation/annotation.hpp>
-#include <mbgl/layermanager/layer_manager.hpp>
-#include <mbgl/map/camera.hpp>
-#include <mbgl/map/map.hpp>
-#include <mbgl/map/map_options.hpp>
-#include <mbgl/map/mode.hpp>
-#include <mbgl/math/wrap.hpp>
+#include <mln/annotation/annotation.hpp>
+#include <mln/layermanager/layer_manager.hpp>
+#include <mln/map/camera.hpp>
+#include <mln/map/map.hpp>
+#include <mln/map/map_options.hpp>
+#include <mln/map/mode.hpp>
+#include <mln/math/wrap.hpp>
 #if MLN_RENDER_BACKEND_METAL
-#include <mbgl/mtl/mtl_fwd.hpp>
-#include <mbgl/mtl/render_pass.hpp>
+#include <mln/mtl/mtl_fwd.hpp>
+#include <mln/mtl/render_pass.hpp>
 #endif
-#include <mbgl/plugin/plugin_layer.hpp>
-#include <mbgl/plugin/plugin_layer_factory.hpp>
-#include <mbgl/plugin/plugin_layer_impl.hpp>
-#include <mbgl/renderer/paint_parameters.hpp>
-#include <mbgl/renderer/renderer.hpp>
-#include <mbgl/storage/network_status.hpp>
-#include <mbgl/storage/resource_options.hpp>
-#include <mbgl/style/image.hpp>
-#include <mbgl/style/layers/custom_layer.hpp>
-#include <mbgl/style/style.hpp>
-#include <mbgl/style/transition_options.hpp>
-#include <mbgl/util/action_journal.hpp>
-#include <mbgl/util/chrono.hpp>
-#include <mbgl/util/client_options.hpp>
-#include <mbgl/util/constants.hpp>
-#include <mbgl/util/exception.hpp>
-#include <mbgl/util/geo.hpp>
-#include <mbgl/util/image.hpp>
-#include <mbgl/util/platform.hpp>
-#include <mbgl/util/projection.hpp>
-#include <mbgl/util/run_loop.hpp>
-#include <mbgl/util/string.hpp>
+#include <mln/plugin/plugin_layer.hpp>
+#include <mln/plugin/plugin_layer_factory.hpp>
+#include <mln/plugin/plugin_layer_impl.hpp>
+#include <mln/renderer/paint_parameters.hpp>
+#include <mln/renderer/renderer.hpp>
+#include <mln/storage/network_status.hpp>
+#include <mln/storage/resource_options.hpp>
+#include <mln/style/image.hpp>
+#include <mln/style/layers/custom_layer.hpp>
+#include <mln/style/style.hpp>
+#include <mln/style/transition_options.hpp>
+#include <mln/util/action_journal.hpp>
+#include <mln/util/chrono.hpp>
+#include <mln/util/client_options.hpp>
+#include <mln/util/constants.hpp>
+#include <mln/util/exception.hpp>
+#include <mln/util/geo.hpp>
+#include <mln/util/image.hpp>
+#include <mln/util/platform.hpp>
+#include <mln/util/projection.hpp>
+#include <mln/util/run_loop.hpp>
+#include <mln/util/string.hpp>
 
 #import "MLNFeature_Private.h"
 #import "MLNFoundation_Private.h"
@@ -332,7 +332,7 @@ typedef std::unordered_map<MLNAnnotationTag, MLNAnnotationContext> MLNAnnotation
 /// Mapping from an annotation object to an annotation tag.
 typedef std::map<id<MLNAnnotation>, MLNAnnotationTag> MLNAnnotationObjectTagMap;
 
-mbgl::util::UnitBezier MLNUnitBezierForMediaTimingFunction(CAMediaTimingFunction *function) {
+mln::util::UnitBezier MLNUnitBezierForMediaTimingFunction(CAMediaTimingFunction *function) {
   if (!function) {
     function = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionDefault];
   }
@@ -452,10 +452,11 @@ public:
 // Plugin Layers
 @property NSMutableArray *pluginLayers;
 
+- (void)initDefaults;
 @end
 
 @implementation MLNMapView {
-  std::unique_ptr<mbgl::Map> _mbglMap;
+  std::unique_ptr<mln::Map> _mbglMap;
   std::unique_ptr<MLNMapViewImpl> _mbglView;
   std::unique_ptr<MLNRenderFrontend> _rendererFrontend;
 
@@ -510,14 +511,25 @@ public:
   CFTimeInterval _frameDurations;
 
   MLNRenderingStats *_renderingStats;
+
+  BOOL _createdFromIB;
+  BOOL _fastPFOREnabled;
+  BOOL _featureInfoEnabled;
 }
 
 // MARK: - Setup & Teardown -
+
+- (void)initDefaults {
+  _createdFromIB = NO;
+  _fastPFOREnabled = NO;
+  _featureInfoEnabled = NO;
+}
 
 - (instancetype)initWithFrame:(CGRect)frame {
   if (self = [super initWithFrame:frame]) {
     MLNLogInfo(@"Starting %@ initialization.", NSStringFromClass([self class]));
     MLNLogDebug(@"Initializing frame: %@", NSStringFromCGRect(frame));
+    [self initDefaults];
     [self commonInitWithOptions:nil];
     self.styleURL = nil;
     MLNLogInfo(@"Finalizing %@ initialization.", NSStringFromClass([self class]));
@@ -529,6 +541,7 @@ public:
   if (self = [super initWithFrame:frame]) {
     MLNLogInfo(@"Starting %@ initialization.", NSStringFromClass([self class]));
     MLNLogDebug(@"Initializing frame: %@ styleURL: %@", NSStringFromCGRect(frame), styleURL);
+    [self initDefaults];
     [self commonInitWithOptions:nil];
     self.styleURL = styleURL;
     MLNLogInfo(@"Finalizing %@ initialization.", NSStringFromClass([self class]));
@@ -540,6 +553,7 @@ public:
   if (self = [super initWithFrame:frame]) {
     MLNLogInfo(@"Starting %@ initialization.", NSStringFromClass([self class]));
     MLNLogDebug(@"Initializing frame: %@ styleJSON: %@", NSStringFromCGRect(frame), styleJSON);
+    [self initDefaults];
     [self commonInitWithOptions:nil];
     self.styleJSON = styleJSON;
     _initialStyleJSON = [styleJSON copy];
@@ -552,6 +566,7 @@ public:
   if (self = [super initWithFrame:frame]) {
     MLNLogInfo(@"Starting %@ initialization.", NSStringFromClass([self class]));
     MLNLogDebug(@"Initializing frame: %@ with options", NSStringFromCGRect(frame));
+    [self initDefaults];
     [self commonInitWithOptions:options];
 
     if (options) {
@@ -581,11 +596,28 @@ public:
 - (instancetype)initWithCoder:(nonnull NSCoder *)decoder {
   if (self = [super initWithCoder:decoder]) {
     MLNLogInfo(@"Starting %@ initialization.", NSStringFromClass([self class]));
-    [self commonInitWithOptions:nil];
-    self.styleURL = nil;
-    MLNLogInfo(@"Finalizing %@ initialization.", NSStringFromClass([self class]));
+    [self initDefaults];
+    _createdFromIB = YES;
+    // Options from IB set after this method and before `awakeFromNib` ...
   }
   return self;
+}
+
+- (void)awakeFromNib {
+  // ... options from IB set, continue initialization
+  [super awakeFromNib];
+  MLNMapOptions *options = [[MLNMapOptions alloc] init];
+  options.fastPFOREnabled = _fastPFOREnabled;
+  options.featureInfoEnabled = _featureInfoEnabled;
+  [self commonInitWithOptions:options];
+  self.styleURL = nil;
+
+  // Constraint installation was skipped in `didMoveToSuperview`
+  // in this case, because the subviews did not exist yet.
+  if (self.superview && _createdFromIB) {
+    [self installConstraints];
+  }
+  MLNLogInfo(@"Finalizing %@ initialization.", NSStringFromClass([self class]));
 }
 
 + (NSSet<NSString *> *)keyPathsForValuesAffectingStyle {
@@ -638,7 +670,7 @@ public:
   self.styleURL = styleURL;
 }
 
-- (mbgl::Map &)mbglMap {
+- (mln::Map &)mbglMap {
   if (!_mbglMap) {
     [NSException
          raise:MLNUnderlyingMapUnavailableException
@@ -647,7 +679,7 @@ public:
   return *_mbglMap;
 }
 
-- (mbgl::Renderer *)renderer {
+- (mln::Renderer *)renderer {
   return _rendererFrontend->getRenderer();
 }
 
@@ -698,39 +730,41 @@ public:
       config.localFontFamilyName
           ? std::optional<std::string>(std::string(config.localFontFamilyName.UTF8String))
           : std::nullopt;
-  auto renderer = std::make_unique<mbgl::Renderer>(_mbglView->getRendererBackend(),
-                                                   config.scaleFactor, localFontFamilyName);
+  auto renderer = std::make_unique<mln::Renderer>(_mbglView->getRendererBackend(),
+                                                  config.scaleFactor, localFontFamilyName);
   BOOL enableCrossSourceCollisions = !config.perSourceCollisions;
   _rendererFrontend = std::make_unique<MLNRenderFrontend>(std::move(renderer), self,
                                                           _mbglView->getRendererBackend());
 
-  mbgl::MapOptions mapOptions;
-  mapOptions.withMapMode(mbgl::MapMode::Continuous)
+  mln::MapOptions mapOptions;
+  mapOptions.withMapMode(mln::MapMode::Continuous)
       .withSize(self.size)
       .withPixelRatio(config.scaleFactor)
-      .withConstrainMode(mbgl::ConstrainMode::None)
-      .withViewportMode(mbgl::ViewportMode::Default)
-      .withCrossSourceCollisions(enableCrossSourceCollisions);
+      .withConstrainMode(mln::ConstrainMode::None)
+      .withViewportMode(mln::ViewportMode::Default)
+      .withCrossSourceCollisions(enableCrossSourceCollisions)
+      .withFastPFOREnabled(mlnMapoptions.fastPFOREnabled)
+      .withRenderedFeatureInfo(mlnMapoptions.featureInfoEnabled);
 
-  mbgl::TileServerOptions *tileServerOptions =
+  mln::TileServerOptions *tileServerOptions =
       [[MLNSettings sharedSettings] tileServerOptionsInternal];
-  mbgl::ResourceOptions resourceOptions;
+  mln::ResourceOptions resourceOptions;
   resourceOptions.withCachePath(MLNOfflineStorage.sharedOfflineStorage.databasePath.UTF8String)
       .withAssetPath([NSBundle mainBundle].resourceURL.path.UTF8String)
       .withTileServerOptions(*tileServerOptions);
-  mbgl::ClientOptions clientOptions;
+  mln::ClientOptions clientOptions;
 
   auto apiKey = [[MLNSettings sharedSettings] apiKey];
   if (apiKey) {
     resourceOptions.withApiKey([apiKey UTF8String]);
   }
 
-  const mbgl::util::ActionJournalOptions &actionJournalOptions =
+  const mln::util::ActionJournalOptions &actionJournalOptions =
       [mlnMapoptions.actionJournalOptions getCoreOptions];
 
   NSAssert(!_mbglMap, @"_mbglMap should be NULL");
-  _mbglMap = std::make_unique<mbgl::Map>(*_rendererFrontend, *_mbglView, mapOptions,
-                                         resourceOptions, clientOptions, actionJournalOptions);
+  _mbglMap = std::make_unique<mln::Map>(*_rendererFrontend, *_mbglView, mapOptions, resourceOptions,
+                                        clientOptions, actionJournalOptions);
 
   // start paused if launch into the background
   if (background) {
@@ -974,9 +1008,9 @@ public:
 
   // set initial position
   //
-  mbgl::CameraOptions options;
-  options.center = mbgl::LatLng(0, 0);
-  mbgl::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(self.contentInset);
+  mln::CameraOptions options;
+  options.center = mln::LatLng(0, 0);
+  mln::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(self.contentInset);
   options.padding = padding;
   options.zoom = 0;
 
@@ -992,7 +1026,7 @@ public:
   _dynamicNavigationCameraAnimationDuration = NO;
 }
 
-- (mbgl::Size)size {
+- (mln::Size)size {
   // check for minimum texture size supported by OpenGL ES 2.0
   //
   CGSize size = CGSizeMake(MAX(self.bounds.size.width, 64), MAX(self.bounds.size.height, 64));
@@ -1004,7 +1038,7 @@ public:
 
   MLNReachability *reachability = [notification object];
   if (!_isWaitingForRedundantReachableNotification && [reachability isReachable]) {
-    mbgl::NetworkStatus::Reachable();
+    mln::NetworkStatus::Reachable();
   }
   _isWaitingForRedundantReachableNotification = NO;
 }
@@ -1483,7 +1517,7 @@ public:
     [self didUpdateLocationWithUserTrackingAnimated:animated completionHandler:completion];
   }
 
-  // Compass, logo and attribution button constraints needs to be updated.z
+  // Compass, logo and attribution button constraints needs to be updated.
   [self installConstraints];
 }
 
@@ -1660,8 +1694,8 @@ public:
 - (void)validateDisplayLink {
   BOOL isVisible = self.superview && self.window;
   if (isVisible && !_displayLink) {
-    if (_mbglMap && self.mbglMap.getMapOptions().constrainMode() == mbgl::ConstrainMode::None) {
-      self.mbglMap.setConstrainMode(mbgl::ConstrainMode::HeightOnly);
+    if (_mbglMap && self.mbglMap.getMapOptions().constrainMode() == mln::ConstrainMode::None) {
+      self.mbglMap.setConstrainMode(mln::ConstrainMode::HeightOnly);
     }
 
     _displayLink = [self.window.screen displayLinkWithTarget:self
@@ -1789,7 +1823,7 @@ public:
 
 - (void)didMoveToSuperview {
   [self validateDisplayLink];
-  if (self.superview) {
+  if (self.superview && !_createdFromIB) {
     [self installConstraints];
   }
   [super didMoveToSuperview];
@@ -1916,8 +1950,8 @@ public:
 
   [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 
-  if (_mbglMap && self.mbglMap.getMapOptions().constrainMode() == mbgl::ConstrainMode::None) {
-    self.mbglMap.setConstrainMode(mbgl::ConstrainMode::HeightOnly);
+  if (_mbglMap && self.mbglMap.getMapOptions().constrainMode() == mln::ConstrainMode::None) {
+    self.mbglMap.setConstrainMode(mln::ConstrainMode::HeightOnly);
   }
 }
 
@@ -2282,8 +2316,8 @@ public:
                                             aroundAnchorPoint:centerPoint];
 
     if ([self _shouldChangeFromCamera:oldCamera toCamera:toCamera]) {
-      self.mbglMap.jumpTo(mbgl::CameraOptions().withZoom(newZoom).withAnchor(
-          mbgl::ScreenCoordinate{centerPoint.x, centerPoint.y}));
+      self.mbglMap.jumpTo(mln::CameraOptions().withZoom(newZoom).withAnchor(
+          mln::ScreenCoordinate{centerPoint.x, centerPoint.y}));
 
       // The gesture recognizer only reports the gesture’s current center
       // point, so use the previous center point to anchor the transition.
@@ -2331,8 +2365,8 @@ public:
       drift = NO;
     } else {
       if (drift) {
-        self.mbglMap.easeTo(mbgl::CameraOptions().withZoom(zoom).withAnchor(
-                                mbgl::ScreenCoordinate{centerPoint.x, centerPoint.y}),
+        self.mbglMap.easeTo(mln::CameraOptions().withZoom(zoom).withAnchor(
+                                mln::ScreenCoordinate{centerPoint.x, centerPoint.y}),
                             MLNDurationFromTimeInterval(duration));
       }
     }
@@ -2400,9 +2434,9 @@ public:
                                              aroundAnchorPoint:centerPoint];
 
     if ([self _shouldChangeFromCamera:oldCamera toCamera:toCamera]) {
-      self.mbglMap.jumpTo(mbgl::CameraOptions()
+      self.mbglMap.jumpTo(mln::CameraOptions()
                               .withBearing(newDegrees)
-                              .withAnchor(mbgl::ScreenCoordinate{centerPoint.x, centerPoint.y}));
+                              .withAnchor(mln::ScreenCoordinate{centerPoint.x, centerPoint.y}));
     }
 
     [self cameraIsChanging];
@@ -2439,9 +2473,9 @@ public:
                                                aroundAnchorPoint:centerPoint];
 
       if ([self _shouldChangeFromCamera:oldCamera toCamera:toCamera]) {
-        self.mbglMap.easeTo(mbgl::CameraOptions()
+        self.mbglMap.easeTo(mln::CameraOptions()
                                 .withBearing(newDegrees)
-                                .withAnchor(mbgl::ScreenCoordinate{centerPoint.x, centerPoint.y}),
+                                .withAnchor(mln::ScreenCoordinate{centerPoint.x, centerPoint.y}),
                             MLNDurationFromTimeInterval(decelerationRate));
 
         [self notifyGestureDidEndWithDrift:YES];
@@ -2560,8 +2594,8 @@ public:
   MLNMapCamera *toCamera = [self cameraByZoomingToZoomLevel:newZoom aroundAnchorPoint:gesturePoint];
 
   if ([self _shouldChangeFromCamera:oldCamera toCamera:toCamera]) {
-    mbgl::ScreenCoordinate center(gesturePoint.x, gesturePoint.y);
-    self.mbglMap.easeTo(mbgl::CameraOptions().withZoom(newZoom).withAnchor(center),
+    mln::ScreenCoordinate center(gesturePoint.x, gesturePoint.y);
+    self.mbglMap.easeTo(mln::CameraOptions().withZoom(newZoom).withAnchor(center),
                         MLNDurationFromTimeInterval(MLNAnimationDuration));
 
     __weak MLNMapView *weakSelf = self;
@@ -2595,8 +2629,8 @@ public:
   MLNMapCamera *toCamera = [self cameraByZoomingToZoomLevel:newZoom aroundAnchorPoint:gesturePoint];
 
   if ([self _shouldChangeFromCamera:oldCamera toCamera:toCamera]) {
-    mbgl::ScreenCoordinate center(gesturePoint.x, gesturePoint.y);
-    self.mbglMap.easeTo(mbgl::CameraOptions().withZoom(newZoom).withAnchor(center),
+    mln::ScreenCoordinate center(gesturePoint.x, gesturePoint.y);
+    self.mbglMap.easeTo(mln::CameraOptions().withZoom(newZoom).withAnchor(center),
                         MLNDurationFromTimeInterval(MLNAnimationDuration));
 
     __weak MLNMapView *weakSelf = self;
@@ -2637,8 +2671,8 @@ public:
                                             aroundAnchorPoint:centerPoint];
 
     if ([self _shouldChangeFromCamera:oldCamera toCamera:toCamera]) {
-      self.mbglMap.jumpTo(mbgl::CameraOptions().withZoom(newZoom).withAnchor(
-          mbgl::ScreenCoordinate{centerPoint.x, centerPoint.y}));
+      self.mbglMap.jumpTo(mln::CameraOptions().withZoom(newZoom).withAnchor(
+          mln::ScreenCoordinate{centerPoint.x, centerPoint.y}));
     }
 
     [self cameraIsChanging];
@@ -2700,8 +2734,8 @@ public:
       MLNMapCamera *toCamera = [self cameraByTiltingToPitch:pitchNew];
 
       if ([self _shouldChangeFromCamera:oldCamera toCamera:toCamera]) {
-        self.mbglMap.jumpTo(mbgl::CameraOptions().withPitch(pitchNew).withAnchor(
-            mbgl::ScreenCoordinate{centerPoint.x, centerPoint.y}));
+        self.mbglMap.jumpTo(mln::CameraOptions().withPitch(pitchNew).withAnchor(
+            mln::ScreenCoordinate{centerPoint.x, centerPoint.y}));
       }
 
       [self cameraIsChanging];
@@ -2730,12 +2764,12 @@ public:
 }
 
 - (MLNMapCamera *)cameraByZoomingToZoomLevel:(double)zoom aroundAnchorPoint:(CGPoint)anchorPoint {
-  mbgl::ScreenCoordinate anchor = mbgl::ScreenCoordinate{anchorPoint.x, anchorPoint.y};
-  mbgl::EdgeInsets padding =
-      mbgl::EdgeInsets(anchor.y, anchor.x, self.size.height - anchor.y, self.size.width - anchor.x);
-  mbgl::CameraOptions currentCameraOptions = self.mbglMap.getCameraOptions(padding);
+  mln::ScreenCoordinate anchor = mln::ScreenCoordinate{anchorPoint.x, anchorPoint.y};
+  mln::EdgeInsets padding =
+      mln::EdgeInsets(anchor.y, anchor.x, self.size.height - anchor.y, self.size.width - anchor.x);
+  mln::CameraOptions currentCameraOptions = self.mbglMap.getCameraOptions(padding);
 
-  currentCameraOptions.zoom = mbgl::util::clamp(zoom, self.minimumZoomLevel, self.maximumZoomLevel);
+  currentCameraOptions.zoom = mln::util::clamp(zoom, self.minimumZoomLevel, self.maximumZoomLevel);
   currentCameraOptions.anchor = anchor;
   MLNCoordinateBounds bounds =
       MLNCoordinateBoundsFromLatLngBounds(self.mbglMap.latLngBoundsForCamera(currentCameraOptions));
@@ -2745,11 +2779,11 @@ public:
 
 - (MLNMapCamera *)cameraByRotatingToDirection:(CLLocationDirection)degrees
                             aroundAnchorPoint:(CGPoint)anchorPoint {
-  mbgl::CameraOptions currentCameraOptions = self.mbglMap.getCameraOptions();
+  mln::CameraOptions currentCameraOptions = self.mbglMap.getCameraOptions();
 
   MLNMapCamera *camera;
 
-  mbgl::ScreenCoordinate anchor = mbgl::ScreenCoordinate{anchorPoint.x, anchorPoint.y};
+  mln::ScreenCoordinate anchor = mln::ScreenCoordinate{anchorPoint.x, anchorPoint.y};
   currentCameraOptions.bearing = degrees;
   currentCameraOptions.anchor = anchor;
   camera = [self cameraForCameraOptions:currentCameraOptions];
@@ -2758,7 +2792,7 @@ public:
 }
 
 - (MLNMapCamera *)cameraByTiltingToPitch:(CGFloat)pitch {
-  mbgl::CameraOptions currentCameraOptions = self.mbglMap.getCameraOptions();
+  mln::CameraOptions currentCameraOptions = self.mbglMap.getCameraOptions();
 
   MLNMapCamera *camera;
 
@@ -2956,7 +2990,7 @@ static void *windowScreenContext = &windowScreenContext;
     // match a valid annotation tag, the annotation will be unnecessarily
     // but safely updated.
     if (annotation == [self annotationWithTag:annotationTag]) {
-      const mbgl::Point<double> point = MLNPointFromLocationCoordinate2D(annotation.coordinate);
+      const mln::Point<double> point = MLNPointFromLocationCoordinate2D(annotation.coordinate);
 
       if (annotationTag != MLNAnnotationTagNotFound) {
         MLNAnnotationContext &annotationContext =
@@ -2976,7 +3010,7 @@ static void *windowScreenContext = &windowScreenContext;
         // disables the view’s animation actions, because it can’t distinguish between moves due to
         // the viewport changing and moves due to the annotation’s coordinate changing.
         self.mbglMap.updateAnnotation(annotationTag,
-                                      mbgl::SymbolAnnotation{point, symbolName.UTF8String});
+                                      mln::SymbolAnnotation{point, symbolName.UTF8String});
         [self updateCalloutView];
       }
     }
@@ -3025,21 +3059,21 @@ static void *windowScreenContext = &windowScreenContext;
     return self.residualDebugMask;
   }
 
-  mbgl::MapDebugOptions options = self.mbglMap.getDebug();
+  mln::MapDebugOptions options = self.mbglMap.getDebug();
   MLNMapDebugMaskOptions mask = 0;
-  if (options & mbgl::MapDebugOptions::TileBorders) {
+  if (options & mln::MapDebugOptions::TileBorders) {
     mask |= MLNMapDebugTileBoundariesMask;
   }
-  if (options & mbgl::MapDebugOptions::ParseStatus) {
+  if (options & mln::MapDebugOptions::ParseStatus) {
     mask |= MLNMapDebugTileInfoMask;
   }
-  if (options & mbgl::MapDebugOptions::Timestamps) {
+  if (options & mln::MapDebugOptions::Timestamps) {
     mask |= MLNMapDebugTimestampsMask;
   }
-  if (options & mbgl::MapDebugOptions::Collision) {
+  if (options & mln::MapDebugOptions::Collision) {
     mask |= MLNMapDebugCollisionBoxesMask;
   }
-  if (options & mbgl::MapDebugOptions::Overdraw) {
+  if (options & mln::MapDebugOptions::Overdraw) {
     mask |= MLNMapDebugOverdrawVisualizationMask;
   }
   return mask;
@@ -3050,21 +3084,21 @@ static void *windowScreenContext = &windowScreenContext;
     return;
   }
 
-  mbgl::MapDebugOptions options = mbgl::MapDebugOptions::NoDebug;
+  mln::MapDebugOptions options = mln::MapDebugOptions::NoDebug;
   if (debugMask & MLNMapDebugTileBoundariesMask) {
-    options |= mbgl::MapDebugOptions::TileBorders;
+    options |= mln::MapDebugOptions::TileBorders;
   }
   if (debugMask & MLNMapDebugTileInfoMask) {
-    options |= mbgl::MapDebugOptions::ParseStatus;
+    options |= mln::MapDebugOptions::ParseStatus;
   }
   if (debugMask & MLNMapDebugTimestampsMask) {
-    options |= mbgl::MapDebugOptions::Timestamps;
+    options |= mln::MapDebugOptions::Timestamps;
   }
   if (debugMask & MLNMapDebugCollisionBoxesMask) {
-    options |= mbgl::MapDebugOptions::Collision;
+    options |= mln::MapDebugOptions::Collision;
   }
   if (debugMask & MLNMapDebugOverdrawVisualizationMask) {
-    options |= mbgl::MapDebugOptions::Overdraw;
+    options |= mln::MapDebugOptions::Overdraw;
   }
   self.mbglMap.setDebug(options);
 }
@@ -3087,9 +3121,9 @@ static void *windowScreenContext = &windowScreenContext;
   double pitch = camera.pitch ? *camera.pitch : 0.0;
   double bearing = camera.bearing ? *camera.bearing : 0.0;
   double zoom = camera.zoom ? *camera.zoom : 0.0;
-  mbgl::LatLng center = camera.center ? *camera.center : mbgl::LatLng();
+  mln::LatLng center = camera.center ? *camera.center : mln::LatLng();
 
-  CLLocationDirection heading = mbgl::util::wrap(bearing, 0., 360.);
+  CLLocationDirection heading = mln::util::wrap(bearing, 0., 360.);
   CLLocationDistance altitude = MLNAltitudeForZoomLevel(zoom, pitch, 0, self.frame.size);
   self.camera =
       [MLNMapCamera cameraLookingAtCenterCoordinate:MLNLocationCoordinate2DFromLatLng(center)
@@ -3169,7 +3203,7 @@ static void *windowScreenContext = &windowScreenContext;
 }
 
 - (void)setPrefetchesTiles:(BOOL)prefetchesTiles {
-  self.mbglMap.setPrefetchZoomDelta(prefetchesTiles ? mbgl::util::DEFAULT_PREFETCH_ZOOM_DELTA : 0);
+  self.mbglMap.setPrefetchZoomDelta(prefetchesTiles ? mln::util::DEFAULT_PREFETCH_ZOOM_DELTA : 0);
 }
 
 - (BOOL)prefetchesTiles {
@@ -3763,8 +3797,8 @@ static void *windowScreenContext = &windowScreenContext;
     centerPoint = self.userLocationAnnotationViewCenter;
   }
   double newZoom = round(self.zoomLevel) + log2(scaleFactor);
-  self.mbglMap.jumpTo(mbgl::CameraOptions().withZoom(newZoom).withAnchor(
-      mbgl::ScreenCoordinate{centerPoint.x, centerPoint.y}));
+  self.mbglMap.jumpTo(mln::CameraOptions().withZoom(newZoom).withAnchor(
+      mln::ScreenCoordinate{centerPoint.x, centerPoint.y}));
   [self unrotateIfNeededForGesture];
 
   _accessibilityValueAnnouncementIsPending = YES;
@@ -3854,7 +3888,7 @@ static void *windowScreenContext = &windowScreenContext;
     return;
   }
 
-  mbgl::CameraOptions cameraOptions;
+  mln::CameraOptions cameraOptions;
   cameraOptions.center = MLNLatLngFromLocationCoordinate2D(centerCoordinate);
   cameraOptions.padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
   cameraOptions.zoom = zoomLevel;
@@ -3862,7 +3896,7 @@ static void *windowScreenContext = &windowScreenContext;
     cameraOptions.bearing = direction;
   }
 
-  mbgl::AnimationOptions animationOptions;
+  mln::AnimationOptions animationOptions;
   if (duration) {
     animationOptions.duration.emplace(MLNDurationFromTimeInterval(duration));
     animationOptions.easing.emplace(MLNUnitBezierForMediaTimingFunction(function));
@@ -3926,13 +3960,13 @@ static void *windowScreenContext = &windowScreenContext;
 
   CGFloat duration = animated ? MLNAnimationDuration : 0;
 
-  self.mbglMap.easeTo(mbgl::CameraOptions().withZoom(zoomLevel),
+  self.mbglMap.easeTo(mln::CameraOptions().withZoom(zoomLevel),
                       MLNDurationFromTimeInterval(duration));
 }
 
 - (void)setMinimumZoomLevel:(double)minimumZoomLevel {
   MLNLogDebug(@"Setting minimumZoomLevel: %f", minimumZoomLevel);
-  self.mbglMap.setBounds(mbgl::BoundOptions().withMinZoom(minimumZoomLevel));
+  self.mbglMap.setBounds(mln::BoundOptions().withMinZoom(minimumZoomLevel));
 }
 
 - (double)minimumZoomLevel {
@@ -3941,7 +3975,7 @@ static void *windowScreenContext = &windowScreenContext;
 
 - (void)setMaximumZoomLevel:(double)maximumZoomLevel {
   MLNLogDebug(@"Setting maximumZoomLevel: %f", maximumZoomLevel);
-  self.mbglMap.setBounds(mbgl::BoundOptions().withMaxZoom(maximumZoomLevel));
+  self.mbglMap.setBounds(mln::BoundOptions().withMaxZoom(maximumZoomLevel));
 }
 
 - (double)maximumZoomLevel {
@@ -3949,13 +3983,13 @@ static void *windowScreenContext = &windowScreenContext;
 }
 
 - (void)setMaximumScreenBounds:(MLNCoordinateBounds)maximumScreenBounds {
-  mbgl::LatLng sw = {maximumScreenBounds.sw.latitude, maximumScreenBounds.sw.longitude};
-  mbgl::LatLng ne = {maximumScreenBounds.ne.latitude, maximumScreenBounds.ne.longitude};
-  mbgl::BoundOptions newBounds =
-      mbgl::BoundOptions().withLatLngBounds(mbgl::LatLngBounds::hull(sw, ne));
+  mln::LatLng sw = {maximumScreenBounds.sw.latitude, maximumScreenBounds.sw.longitude};
+  mln::LatLng ne = {maximumScreenBounds.ne.latitude, maximumScreenBounds.ne.longitude};
+  mln::BoundOptions newBounds =
+      mln::BoundOptions().withLatLngBounds(mln::LatLngBounds::hull(sw, ne));
 
   self.mbglMap.setBounds(newBounds);
-  self.mbglMap.setConstrainMode(mbgl::ConstrainMode::Screen);
+  self.mbglMap.setConstrainMode(mln::ConstrainMode::Screen);
 }
 
 - (MLNCoordinateBounds)maximumScreenBounds {
@@ -3969,7 +4003,7 @@ static void *windowScreenContext = &windowScreenContext;
 
 - (void)setMinimumPitch:(CGFloat)minimumPitch {
   MLNLogDebug(@"Setting minimumPitch: %f", minimumPitch);
-  self.mbglMap.setBounds(mbgl::BoundOptions().withMinPitch(minimumPitch));
+  self.mbglMap.setBounds(mln::BoundOptions().withMinPitch(minimumPitch));
 }
 
 - (CGFloat)maximumPitch {
@@ -3978,7 +4012,7 @@ static void *windowScreenContext = &windowScreenContext;
 
 - (void)setMaximumPitch:(CGFloat)maximumPitch {
   MLNLogDebug(@"Setting maximumPitch: %f", maximumPitch);
-  self.mbglMap.setBounds(mbgl::BoundOptions().withMaxPitch(maximumPitch));
+  self.mbglMap.setBounds(mln::BoundOptions().withMaxPitch(maximumPitch));
 }
 
 - (MLNCoordinateBounds)visibleCoordinateBounds {
@@ -4096,9 +4130,9 @@ static void *windowScreenContext = &windowScreenContext;
     return;
   }
 
-  mbgl::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
+  mln::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
   padding += MLNEdgeInsetsFromNSEdgeInsets(self.contentInset);
-  std::vector<mbgl::LatLng> latLngs;
+  std::vector<mln::LatLng> latLngs;
   latLngs.reserve(count);
   for (NSUInteger i = 0; i < count; i++) {
     latLngs.push_back({coordinates[i].latitude, coordinates[i].longitude});
@@ -4106,10 +4140,10 @@ static void *windowScreenContext = &windowScreenContext;
 
   CLLocationDirection cameraDirection = direction >= 0 ? direction : self.direction;
 
-  mbgl::CameraOptions cameraOptions =
+  mln::CameraOptions cameraOptions =
       self.mbglMap.cameraForLatLngs(latLngs, padding, cameraDirection);
 
-  mbgl::AnimationOptions animationOptions;
+  mln::AnimationOptions animationOptions;
   if (duration > 0) {
     animationOptions.duration.emplace(MLNDurationFromTimeInterval(duration));
     animationOptions.easing.emplace(MLNUnitBezierForMediaTimingFunction(function));
@@ -4156,7 +4190,7 @@ static void *windowScreenContext = &windowScreenContext;
 }
 
 - (CLLocationDirection)direction {
-  return mbgl::util::wrap(*self.mbglMap.getCameraOptions().bearing, 0., 360.);
+  return mln::util::wrap(*self.mbglMap.getCameraOptions().bearing, 0., 360.);
 }
 
 - (void)setDirection:(CLLocationDirection)direction animated:(BOOL)animated {
@@ -4186,15 +4220,15 @@ static void *windowScreenContext = &windowScreenContext;
   self.cameraChangeReasonBitmask |= MLNCameraChangeReasonProgrammatic;
 
   if (self.userTrackingMode == MLNUserTrackingModeNone) {
-    self.mbglMap.easeTo(mbgl::CameraOptions().withBearing(direction),
+    self.mbglMap.easeTo(mln::CameraOptions().withBearing(direction),
                         MLNDurationFromTimeInterval(duration));
   } else {
     CGPoint anchor = self.userLocationAnnotationViewCenter;
 
-    mbgl::CameraOptions cameraOptions = mbgl::CameraOptions().withBearing(direction).withAnchor(
-        mbgl::ScreenCoordinate{anchor.x, anchor.y});
+    mln::CameraOptions cameraOptions = mln::CameraOptions().withBearing(direction).withAnchor(
+        mln::ScreenCoordinate{anchor.x, anchor.y});
 
-    mbgl::AnimationOptions animationOptions;
+    mln::AnimationOptions animationOptions;
     animationOptions.duration.emplace(MLNDurationFromTimeInterval(duration));
 
     if (CLLocationCoordinate2DIsValid(center)) {
@@ -4226,8 +4260,8 @@ static void *windowScreenContext = &windowScreenContext;
 }
 
 - (UIEdgeInsets)cameraEdgeInsets {
-  mbgl::CameraOptions cameraOptions = self.mbglMap.getCameraOptions();
-  return NSEdgeInsetsFromMLNEdgeInsets(cameraOptions.padding.value_or(mbgl::EdgeInsets()));
+  mln::CameraOptions cameraOptions = self.mbglMap.getCameraOptions();
+  return NSEdgeInsetsFromMLNEdgeInsets(cameraOptions.padding.value_or(mln::EdgeInsets()));
 }
 
 - (MLNMapCamera *)camera {
@@ -4293,7 +4327,7 @@ static void *windowScreenContext = &windowScreenContext;
 
   edgePadding = MLNEdgeInsetsInsetEdgeInset(edgePadding, self.contentInset);
 
-  mbgl::AnimationOptions animationOptions;
+  mln::AnimationOptions animationOptions;
   if (duration > 0) {
     animationOptions.duration.emplace(MLNDurationFromTimeInterval(duration));
     animationOptions.easing.emplace(MLNUnitBezierForMediaTimingFunction(function));
@@ -4328,8 +4362,8 @@ static void *windowScreenContext = &windowScreenContext;
 
   self.cameraChangeReasonBitmask |= MLNCameraChangeReasonProgrammatic;
 
-  mbgl::CameraOptions cameraOptions = [self cameraOptionsObjectForAnimatingToCamera:camera
-                                                                        edgePadding:edgePadding];
+  mln::CameraOptions cameraOptions = [self cameraOptionsObjectForAnimatingToCamera:camera
+                                                                       edgePadding:edgePadding];
   self.mbglMap.easeTo(cameraOptions, animationOptions);
   [self didChangeValueForKey:@"camera"];
 }
@@ -4386,7 +4420,7 @@ static void *windowScreenContext = &windowScreenContext;
     return;
   }
 
-  mbgl::AnimationOptions animationOptions;
+  mln::AnimationOptions animationOptions;
   if (duration >= 0) {
     animationOptions.duration = MLNDurationFromTimeInterval(duration);
   }
@@ -4426,8 +4460,8 @@ static void *windowScreenContext = &windowScreenContext;
 
   self.cameraChangeReasonBitmask |= MLNCameraChangeReasonProgrammatic;
 
-  mbgl::CameraOptions cameraOptions = [self cameraOptionsObjectForAnimatingToCamera:camera
-                                                                        edgePadding:insets];
+  mln::CameraOptions cameraOptions = [self cameraOptionsObjectForAnimatingToCamera:camera
+                                                                       edgePadding:insets];
   self.mbglMap.flyTo(cameraOptions, animationOptions);
   [self didChangeValueForKey:@"camera"];
 }
@@ -4451,9 +4485,9 @@ static void *windowScreenContext = &windowScreenContext;
     return self.residualCamera;
   }
 
-  mbgl::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
+  mln::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
   padding += MLNEdgeInsetsFromNSEdgeInsets(self.contentInset);
-  mbgl::CameraOptions cameraOptions =
+  mln::CameraOptions cameraOptions =
       self.mbglMap.cameraForLatLngBounds(MLNLatLngBoundsFromCoordinateBounds(bounds), padding);
   return [self cameraForCameraOptions:cameraOptions];
 }
@@ -4465,14 +4499,14 @@ static void *windowScreenContext = &windowScreenContext;
     return self.residualCamera;
   }
 
-  mbgl::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
+  mln::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
   padding += MLNEdgeInsetsFromNSEdgeInsets(self.contentInset);
 
   MLNMapCamera *currentCamera = self.camera;
   CGFloat pitch = camera.pitch < 0 ? currentCamera.pitch : camera.pitch;
   CLLocationDirection direction = camera.heading < 0 ? currentCamera.heading : camera.heading;
 
-  mbgl::CameraOptions cameraOptions = self.mbglMap.cameraForLatLngBounds(
+  mln::CameraOptions cameraOptions = self.mbglMap.cameraForLatLngBounds(
       MLNLatLngBoundsFromCoordinateBounds(bounds), padding, direction, pitch);
   return [self cameraForCameraOptions:cameraOptions];
 }
@@ -4484,14 +4518,14 @@ static void *windowScreenContext = &windowScreenContext;
     return self.residualCamera;
   }
 
-  mbgl::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
+  mln::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
   padding += MLNEdgeInsetsFromNSEdgeInsets(self.contentInset);
 
   MLNMapCamera *currentCamera = self.camera;
   CGFloat pitch = camera.pitch < 0 ? currentCamera.pitch : camera.pitch;
   CLLocationDirection direction = camera.heading < 0 ? currentCamera.heading : camera.heading;
 
-  mbgl::CameraOptions cameraOptions =
+  mln::CameraOptions cameraOptions =
       self.mbglMap.cameraForGeometry([shape geometryObject], padding, direction, pitch);
 
   return [self cameraForCameraOptions:cameraOptions];
@@ -4504,26 +4538,26 @@ static void *windowScreenContext = &windowScreenContext;
     return self.residualCamera;
   }
 
-  mbgl::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
+  mln::EdgeInsets padding = MLNEdgeInsetsFromNSEdgeInsets(insets);
   padding += MLNEdgeInsetsFromNSEdgeInsets(self.contentInset);
 
-  mbgl::CameraOptions cameraOptions =
+  mln::CameraOptions cameraOptions =
       self.mbglMap.cameraForGeometry([shape geometryObject], padding, direction);
 
   return [self cameraForCameraOptions:cameraOptions];
 }
 
-- (MLNMapCamera *)cameraForCameraOptions:(const mbgl::CameraOptions &)cameraOptions {
+- (MLNMapCamera *)cameraForCameraOptions:(const mln::CameraOptions &)cameraOptions {
   if (!_mbglMap) {
     return self.residualCamera;
   }
 
-  mbgl::CameraOptions mapCamera = self.mbglMap.getCameraOptions();
+  mln::CameraOptions mapCamera = self.mbglMap.getCameraOptions();
   CLLocationCoordinate2D centerCoordinate = MLNLocationCoordinate2DFromLatLng(
       cameraOptions.center ? *cameraOptions.center : *mapCamera.center);
   double zoomLevel = cameraOptions.zoom ? *cameraOptions.zoom : self.zoomLevel;
   CLLocationDirection direction =
-      cameraOptions.bearing ? mbgl::util::wrap(*cameraOptions.bearing, 0., 360.) : self.direction;
+      cameraOptions.bearing ? mln::util::wrap(*cameraOptions.bearing, 0., 360.) : self.direction;
   CGFloat pitch = cameraOptions.pitch ? *cameraOptions.pitch : *mapCamera.pitch;
   CLLocationDistance altitude =
       MLNAltitudeForZoomLevel(zoomLevel, pitch, centerCoordinate.latitude, self.frame.size);
@@ -4542,9 +4576,9 @@ static void *windowScreenContext = &windowScreenContext;
 
 /// Returns a CameraOptions object that specifies parameters for animating to
 /// the given camera.
-- (mbgl::CameraOptions)cameraOptionsObjectForAnimatingToCamera:(MLNMapCamera *)camera
-                                                   edgePadding:(UIEdgeInsets)insets {
-  mbgl::CameraOptions options;
+- (mln::CameraOptions)cameraOptionsObjectForAnimatingToCamera:(MLNMapCamera *)camera
+                                                  edgePadding:(UIEdgeInsets)insets {
+  mln::CameraOptions options;
   if (CLLocationCoordinate2DIsValid(camera.centerCoordinate)) {
     options.center = MLNLatLngFromLocationCoordinate2D(camera.centerCoordinate);
   }
@@ -4566,9 +4600,9 @@ static void *windowScreenContext = &windowScreenContext;
 }
 
 /// Converts a point in the view’s coordinate system to a geographic coordinate.
-- (mbgl::LatLng)convertPoint:(CGPoint)point toLatLngFromView:(nullable UIView *)view {
+- (mln::LatLng)convertPoint:(CGPoint)point toLatLngFromView:(nullable UIView *)view {
   CGPoint convertedPoint = [self convertPoint:point fromView:view];
-  return self.mbglMap.latLngForPixel(mbgl::ScreenCoordinate(convertedPoint.x, convertedPoint.y))
+  return self.mbglMap.latLngForPixel(mln::ScreenCoordinate(convertedPoint.x, convertedPoint.y))
       .wrapped();
 }
 
@@ -4581,8 +4615,8 @@ static void *windowScreenContext = &windowScreenContext;
 }
 
 /// Converts a geographic coordinate to a point in the view’s coordinate system.
-- (CGPoint)convertLatLng:(mbgl::LatLng)latLng toPointToView:(nullable UIView *)view {
-  mbgl::ScreenCoordinate pixel = self.mbglMap.pixelForLatLng(latLng);
+- (CGPoint)convertLatLng:(mln::LatLng)latLng toPointToView:(nullable UIView *)view {
+  mln::ScreenCoordinate pixel = self.mbglMap.pixelForLatLng(latLng);
   return [self convertPoint:CGPointMake(pixel.x, pixel.y) toView:view];
 }
 
@@ -4596,7 +4630,7 @@ static void *windowScreenContext = &windowScreenContext;
 
 /// Converts a geographic bounding box to a rectangle in the view’s coordinate
 /// system.
-- (CGRect)convertLatLngBounds:(mbgl::LatLngBounds)bounds toRectToView:(nullable UIView *)view {
+- (CGRect)convertLatLngBounds:(mln::LatLngBounds)bounds toRectToView:(nullable UIView *)view {
   auto northwest = bounds.northwest();
   auto northeast = bounds.northeast();
   auto southwest = bounds.southwest();
@@ -4611,7 +4645,7 @@ static void *windowScreenContext = &windowScreenContext;
   southwest.unwrapForShortestPath(center);
   southeast.unwrapForShortestPath(center);
 
-  auto correctedLatLngBounds = mbgl::LatLngBounds::empty();
+  auto correctedLatLngBounds = mln::LatLngBounds::empty();
   correctedLatLngBounds.extend(northwest);
   correctedLatLngBounds.extend(northeast);
   correctedLatLngBounds.extend(southwest);
@@ -4626,8 +4660,8 @@ static void *windowScreenContext = &windowScreenContext;
 
 /// Converts a rectangle in the given view’s coordinate system to a geographic
 /// bounding box.
-- (mbgl::LatLngBounds)convertRect:(CGRect)rect toLatLngBoundsFromView:(nullable UIView *)view {
-  auto bounds = mbgl::LatLngBounds::empty();
+- (mln::LatLngBounds)convertRect:(CGRect)rect toLatLngBoundsFromView:(nullable UIView *)view {
+  auto bounds = mln::LatLngBounds::empty();
   auto topLeft = [self convertPoint:{CGRectGetMinX(rect), CGRectGetMinY(rect)}
                    toLatLngFromView:view];
   auto topRight = [self convertPoint:{CGRectGetMaxX(rect), CGRectGetMinY(rect)}
@@ -4655,12 +4689,12 @@ static void *windowScreenContext = &windowScreenContext;
 }
 
 - (CLLocationDistance)metersPerPointAtLatitude:(CLLocationDegrees)latitude {
-  return mbgl::Projection::getMetersPerPixelAtLatitude(latitude, self.zoomLevel);
+  return mln::Projection::getMetersPerPixelAtLatitude(latitude, self.zoomLevel);
 }
 
 - (CLLocationDistance)metersPerPointAtLatitude:(CLLocationDegrees)latitude
                                      zoomLevel:(double)zoomLevel {
-  return mbgl::Projection::getMetersPerPixelAtLatitude(latitude, zoomLevel);
+  return mln::Projection::getMetersPerPixelAtLatitude(latitude, zoomLevel);
 }
 
 - (MLNMapProjection *)mapProjection {
@@ -4862,7 +4896,7 @@ static void *windowScreenContext = &windowScreenContext;
         annotationImagesForAnnotation[annotationValue] = annotationImage;
       }
 
-      MLNAnnotationTag annotationTag = self.mbglMap.addAnnotation(mbgl::SymbolAnnotation{
+      MLNAnnotationTag annotationTag = self.mbglMap.addAnnotation(mln::SymbolAnnotation{
           MLNPointFromLocationCoordinate2D(annotation.coordinate), symbolName.UTF8String});
 
       MLNAnnotationContext context;
@@ -5009,14 +5043,14 @@ static void *windowScreenContext = &windowScreenContext;
   return 1.0;
 }
 
-- (mbgl::Color)strokeColorForShapeAnnotation:(MLNShape *)annotation {
+- (mln::Color)strokeColorForShapeAnnotation:(MLNShape *)annotation {
   UIColor *color = (_delegateHasStrokeColorsForShapeAnnotations
                         ? [self.delegate mapView:self strokeColorForShapeAnnotation:annotation]
                         : self.tintColor);
   return color.mgl_color;
 }
 
-- (mbgl::Color)fillColorForPolygonAnnotation:(MLNPolygon *)annotation {
+- (mln::Color)fillColorForPolygonAnnotation:(MLNPolygon *)annotation {
   UIColor *color = (_delegateHasFillColorsForShapeAnnotations
                         ? [self.delegate mapView:self fillColorForPolygonAnnotation:annotation]
                         : self.tintColor);
@@ -5863,7 +5897,7 @@ static void *windowScreenContext = &windowScreenContext;
     return;
   }
 
-  mbgl::LatLngBounds bounds = mbgl::LatLngBounds::empty();
+  mln::LatLngBounds bounds = mln::LatLngBounds::empty();
 
   for (id<MLNAnnotation> annotation in annotations) {
     if ([annotation conformsToProtocol:@protocol(MLNOverlay)]) {
@@ -5918,10 +5952,10 @@ static void *windowScreenContext = &windowScreenContext;
     toAnnotationsWithImageReuseIdentifier:(NSString *)reuseIdentifier {
   for (auto &pair : _annotationContextsByAnnotationTag) {
     if ([pair.second.imageReuseIdentifier isEqualToString:reuseIdentifier]) {
-      const mbgl::Point<double> point =
+      const mln::Point<double> point =
           MLNPointFromLocationCoordinate2D(pair.second.annotation.coordinate);
       self.mbglMap.updateAnnotation(pair.first,
-                                    mbgl::SymbolAnnotation{point, iconIdentifier.UTF8String ?: ""});
+                                    mln::SymbolAnnotation{point, iconIdentifier.UTF8String ?: ""});
     }
   }
 }
@@ -6448,13 +6482,13 @@ static void *windowScreenContext = &windowScreenContext;
   CLLocationDirection direction = -1;
   if (self.userTrackingMode == MLNUserTrackingModeFollowWithCourse) {
     if (CLLocationCoordinate2DIsValid(self.targetCoordinate)) {
-      mbgl::LatLng userLatLng = MLNLatLngFromLocationCoordinate2D(self.userLocation.coordinate);
-      mbgl::LatLng targetLatLng = MLNLatLngFromLocationCoordinate2D(self.targetCoordinate);
-      mbgl::ProjectedMeters userMeters = mbgl::Projection::projectedMetersForLatLng(userLatLng);
-      mbgl::ProjectedMeters targetMeters = mbgl::Projection::projectedMetersForLatLng(targetLatLng);
+      mln::LatLng userLatLng = MLNLatLngFromLocationCoordinate2D(self.userLocation.coordinate);
+      mln::LatLng targetLatLng = MLNLatLngFromLocationCoordinate2D(self.targetCoordinate);
+      mln::ProjectedMeters userMeters = mln::Projection::projectedMetersForLatLng(userLatLng);
+      mln::ProjectedMeters targetMeters = mln::Projection::projectedMetersForLatLng(targetLatLng);
       double angle = atan2(targetMeters.easting() - userMeters.easting(),
                            targetMeters.northing() - userMeters.northing());
-      direction = mbgl::util::wrap(MLNDegreesFromRadians(angle), 0., 360.);
+      direction = mln::util::wrap(MLNDegreesFromRadians(angle), 0., 360.);
     } else {
       direction = self.userLocation.location.course;
     }
@@ -6572,7 +6606,17 @@ static void *windowScreenContext = &windowScreenContext;
     // note that right/left device and interface orientations are opposites (see UIApplication.h)
     //
     CLDeviceOrientation orientation;
-    switch ([[UIApplication sharedApplication] statusBarOrientation]) {
+    // -[UIApplication statusBarOrientation] is deprecated and is a no-op as of
+    // iOS 27, so it can no longer be used to compensate the heading. It is also
+    // called on every heading update, which makes UIKit log a deprecation notice
+    // several times per second.
+    UIInterfaceOrientation interfaceOrientation;
+    if (@available(iOS 13.0, *)) {
+      interfaceOrientation = self.window.windowScene.interfaceOrientation;
+    } else {
+      interfaceOrientation = [[UIApplication sharedApplication] statusBarOrientation];
+    }
+    switch (interfaceOrientation) {
       case (UIInterfaceOrientationLandscapeLeft): {
         orientation = CLDeviceOrientationLandscapeRight;
         break;
@@ -6622,7 +6666,7 @@ static void *windowScreenContext = &windowScreenContext;
                                           predicate:(NSPredicate *)predicate {
   MLNLogDebug(@"Querying visibleFeaturesAtPoint: %@ inStyleLayersWithIdentifiers: %@ predicate: %@",
               NSStringFromCGPoint(point), styleLayerIdentifiers, predicate);
-  mbgl::ScreenCoordinate screenCoordinate = {point.x, point.y};
+  mln::ScreenCoordinate screenCoordinate = {point.x, point.y};
 
   std::optional<std::vector<std::string>> optionalLayerIDs;
   if (styleLayerIdentifiers) {
@@ -6635,12 +6679,12 @@ static void *windowScreenContext = &windowScreenContext;
     optionalLayerIDs = layerIDs;
   }
 
-  std::optional<mbgl::style::Filter> optionalFilter;
+  std::optional<mln::style::Filter> optionalFilter;
   if (predicate) {
     optionalFilter = predicate.mgl_filter;
   }
 
-  std::vector<mbgl::Feature> features = _rendererFrontend->getRenderer()->queryRenderedFeatures(
+  std::vector<mln::Feature> features = _rendererFrontend->getRenderer()->queryRenderedFeatures(
       screenCoordinate, {optionalLayerIDs, optionalFilter});
   return MLNFeaturesFromMBGLFeatures(features);
 }
@@ -6664,7 +6708,7 @@ static void *windowScreenContext = &windowScreenContext;
                                          predicate:(NSPredicate *)predicate {
   MLNLogDebug(@"Querying visibleFeaturesInRect: %@ inStyleLayersWithIdentifiers: %@ predicate: %@",
               NSStringFromCGRect(rect), styleLayerIdentifiers, predicate);
-  mbgl::ScreenBox screenBox = {
+  mln::ScreenBox screenBox = {
       {CGRectGetMinX(rect), CGRectGetMinY(rect)},
       {CGRectGetMaxX(rect), CGRectGetMaxY(rect)},
   };
@@ -6680,14 +6724,24 @@ static void *windowScreenContext = &windowScreenContext;
     optionalLayerIDs = layerIDs;
   }
 
-  std::optional<mbgl::style::Filter> optionalFilter;
+  std::optional<mln::style::Filter> optionalFilter;
   if (predicate) {
     optionalFilter = predicate.mgl_filter;
   }
 
-  std::vector<mbgl::Feature> features = _rendererFrontend->getRenderer()->queryRenderedFeatures(
+  std::vector<mln::Feature> features = _rendererFrontend->getRenderer()->queryRenderedFeatures(
       screenBox, {optionalLayerIDs, optionalFilter});
   return MLNFeaturesFromMBGLFeatures(features);
+}
+
+- (unsigned)renderedFeatureCountForFeatureID:(nullable NSString *)featureID_
+                                     LayerID:(nullable NSString *)layerID_
+                                    SourceID:(nullable NSString *)sourceID_ {
+  const auto featureID =
+      featureID_ ? featureID_.UTF8String : std::optional<std::string>(std::nullopt);
+  const auto layerID = layerID_ ? layerID_.UTF8String : std::optional<std::string>(std::nullopt);
+  const auto sourceID = sourceID_ ? sourceID_.UTF8String : std::optional<std::string>(std::nullopt);
+  return static_cast<unsigned>(self.mbglMap.getRenderedFeatureCount(featureID, layerID, sourceID));
 }
 
 // MARK: - Utility -
@@ -6881,7 +6935,7 @@ static void *windowScreenContext = &windowScreenContext;
 }
 
 - (void)mapViewDidFinishRenderingFrameFullyRendered:(BOOL)fullyRendered
-                                     renderingStats:(const mbgl::gfx::RenderingStats &)stats {
+                                     renderingStats:(const mln::gfx::RenderingStats &)stats {
   if (!_mbglMap) {
     return;
   }
@@ -6898,6 +6952,7 @@ static void *windowScreenContext = &windowScreenContext;
     }
 
     [_renderingStats setCoreData:stats];
+    [_renderingStats setFeatureInfo:stats];
     [self.delegate mapViewDidFinishRenderingFrame:self
                                     fullyRendered:fullyRendered
                                    renderingStats:_renderingStats];
@@ -7548,35 +7603,35 @@ static void *windowScreenContext = &windowScreenContext;
  Adds a plug-in layer that is external to this library
  */
 - (void)addPluginLayerType:(Class)pluginLayerClass {
-  auto layerManager = mbgl::LayerManager::get();
-  auto darwinLayerManager = (mbgl::LayerManagerDarwin *)layerManager;
+  auto layerManager = mln::LayerManager::get();
+  auto darwinLayerManager = (mln::LayerManagerDarwin *)layerManager;
 
   MLNPluginLayerCapabilities *capabilities = [pluginLayerClass layerCapabilities];
 
   std::string layerType = [capabilities.layerID UTF8String];
 
   // Default values
-  mbgl::style::LayerTypeInfo::Source source = mbgl::style::LayerTypeInfo::Source::NotRequired;
-  mbgl::style::LayerTypeInfo::TileKind tileKind = mbgl::style::LayerTypeInfo::TileKind::NotRequired;
-  mbgl::style::LayerTypeInfo::FadingTiles fadingTiles =
-      mbgl::style::LayerTypeInfo::FadingTiles::NotRequired;
-  mbgl::style::LayerTypeInfo::Layout layout = mbgl::style::LayerTypeInfo::Layout::NotRequired;
-  mbgl::style::LayerTypeInfo::CrossTileIndex crossTileIndex =
-      mbgl::style::LayerTypeInfo::CrossTileIndex::NotRequired;
+  mln::style::LayerTypeInfo::Source source = mln::style::LayerTypeInfo::Source::NotRequired;
+  mln::style::LayerTypeInfo::TileKind tileKind = mln::style::LayerTypeInfo::TileKind::NotRequired;
+  mln::style::LayerTypeInfo::FadingTiles fadingTiles =
+      mln::style::LayerTypeInfo::FadingTiles::NotRequired;
+  mln::style::LayerTypeInfo::Layout layout = mln::style::LayerTypeInfo::Layout::NotRequired;
+  mln::style::LayerTypeInfo::CrossTileIndex crossTileIndex =
+      mln::style::LayerTypeInfo::CrossTileIndex::NotRequired;
 
-  mbgl::style::LayerTypeInfo::Pass3D pass3D = mbgl::style::LayerTypeInfo::Pass3D::NotRequired;
+  mln::style::LayerTypeInfo::Pass3D pass3D = mln::style::LayerTypeInfo::Pass3D::NotRequired;
   if (capabilities.requiresPass3D) {
-    pass3D = mbgl::style::LayerTypeInfo::Pass3D::Required;
+    pass3D = mln::style::LayerTypeInfo::Pass3D::Required;
   }
 
-  auto factory = std::make_unique<mbgl::PluginLayerPeerFactory>(
+  auto factory = std::make_unique<mln::PluginLayerPeerFactory>(
       layerType, source, pass3D, layout, fadingTiles, crossTileIndex, tileKind);
 
   __weak MLNMapView *weakMapView = self;
 
   Class layerClass = pluginLayerClass;
   factory->setOnLayerCreatedEvent([layerClass, weakMapView,
-                                   pluginLayerClass](mbgl::style::PluginLayer *pluginLayer) {
+                                   pluginLayerClass](mln::style::PluginLayer *pluginLayer) {
     // NSLog(@"Creating Plugin Layer: %@", layerClass);
     MLNPluginLayer *layer = [[layerClass alloc] init];
     if (!weakMapView.pluginLayers) {
@@ -7590,25 +7645,25 @@ static void *windowScreenContext = &windowScreenContext;
     pluginLayer->_platformReference = (__bridge void *)layer;
 
     MLNPluginLayerCapabilities *capabilities = [pluginLayerClass layerCapabilities];
-    auto pluginLayerImpl = (mbgl::style::PluginLayer::Impl *)pluginLayer->baseImpl.get();
+    auto pluginLayerImpl = (mln::style::PluginLayer::Impl *)pluginLayer->baseImpl.get();
     auto &pm = pluginLayerImpl->_propertyManager;
     for (MLNPluginLayerProperty *property in capabilities.layerProperties) {
-      mbgl::style::PluginLayerProperty *p = new mbgl::style::PluginLayerProperty();
+      mln::style::PluginLayerProperty *p = new mln::style::PluginLayerProperty();
       switch (property.propertyType) {
         case MLNPluginLayerPropertyTypeSingleFloat:
-          p->_propertyType = mbgl::style::PluginLayerProperty::PropertyType::SingleFloat;
+          p->_propertyType = mln::style::PluginLayerProperty::PropertyType::SingleFloat;
           p->_defaultSingleFloatValue = property.singleFloatDefaultValue;
           break;
         case MLNPluginLayerPropertyTypeColor: {
-          p->_propertyType = mbgl::style::PluginLayerProperty::PropertyType::Color;
+          p->_propertyType = mln::style::PluginLayerProperty::PropertyType::Color;
           if (property.colorDefaultValue) {
             CGFloat r, g, b, a;
             [property.colorDefaultValue getRed:&r green:&g blue:&b alpha:&a];
-            p->_defaultColorValue = mbgl::Color(r, g, b, a);
+            p->_defaultColorValue = mln::Color(r, g, b, a);
           }
         } break;
         default:
-          p->_propertyType = mbgl::style::PluginLayerProperty::PropertyType::Unknown;
+          p->_propertyType = mln::style::PluginLayerProperty::PropertyType::Unknown;
           break;
       }
       p->_propertyName = [property.propertyName UTF8String];
@@ -7616,10 +7671,10 @@ static void *windowScreenContext = &windowScreenContext;
     }
 
     // Set the render function
-    auto renderFunction = [weakPlugInLayer, weakMapView](mbgl::PaintParameters &paintParameters) {
+    auto renderFunction = [weakPlugInLayer, weakMapView](mln::PaintParameters &paintParameters) {
 #if MLN_RENDER_BACKEND_METAL
-      const mbgl::mtl::RenderPass &renderPass =
-          static_cast<mbgl::mtl::RenderPass &>(*paintParameters.renderPass);
+      const mln::mtl::RenderPass &renderPass =
+          static_cast<mln::mtl::RenderPass &>(*paintParameters.renderPass);
       id encoder = (__bridge id)renderPass.getMetalEncoder().get();
 #else
       id encoder = nil;
@@ -7627,14 +7682,14 @@ static void *windowScreenContext = &windowScreenContext;
 
       MLNMapView *strongMapView = weakMapView;
 
-      const mbgl::TransformState &state = paintParameters.state;
+      const mln::TransformState &state = paintParameters.state;
 
       MLNPluginLayerDrawingContext drawingContext;
       drawingContext.size = CGSizeMake(state.getSize().width, state.getSize().height);
       drawingContext.centerCoordinate =
           CLLocationCoordinate2DMake(state.getLatLng().latitude(), state.getLatLng().longitude());
       drawingContext.zoomLevel = state.getZoom();
-      drawingContext.direction = mbgl::util::rad2deg(-state.getBearing());
+      drawingContext.direction = mln::util::rad2deg(-state.getBearing());
       drawingContext.pitch = state.getPitch();
       drawingContext.fieldOfView = state.getFieldOfView();
       drawingContext.projectionMatrix = MLNMatrix4Make(paintParameters.transformParams.projMatrix);
@@ -7649,7 +7704,7 @@ static void *windowScreenContext = &windowScreenContext;
     };
 
     // Set the lambdas
-    // auto pluginLayerImpl = (mbgl::style::PluginLayer::Impl *)pluginLayer->baseImpl.get();
+    // auto pluginLayerImpl = (mln::style::PluginLayer::Impl *)pluginLayer->baseImpl.get();
     pluginLayerImpl->setRenderFunction(renderFunction);
 
     // Set the update properties function
@@ -7852,6 +7907,20 @@ static void *windowScreenContext = &windowScreenContext;
 - (void)setShowsHeading:(BOOL)showsHeading {
   MLNLogDebug(@"Setting showsHeading: %@", MLNStringFromBOOL(showsHeading));
   self.showsUserHeadingIndicator = showsHeading;
+}
+
+- (BOOL)fastPFOREnabled {
+  return _fastPFOREnabled;
+}
+- (void)setFastPFOREnabled:(BOOL)fastPFOREnabled {
+  _fastPFOREnabled = fastPFOREnabled;
+}
+
+- (BOOL)featureInfoEnabled {
+  return _featureInfoEnabled;
+}
+- (void)setFeatureInfoEnabled:(BOOL)featureInfoEnabled {
+  _featureInfoEnabled = featureInfoEnabled;
 }
 
 @end

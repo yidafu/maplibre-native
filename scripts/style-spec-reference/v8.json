@@ -1050,6 +1050,20 @@
     }
   },
   "layout_fill-extrusion": {
+    "fill-extrusion-rounded-corner-distance": {
+      "type": "number",
+      "default": 0,
+      "minimum": 0,
+      "units": "meters",
+      "doc": "The distance from the corner that will be cut and replaced with rounded corner.",
+      "sdk-support": {
+        "basic functionality": {
+          "android": "13.0.0",
+          "ios": "6.0.0"
+        }
+      },
+      "property-type": "constant"
+    },
     "visibility": {
       "type": "enum",
       "values": {
@@ -2963,6 +2977,46 @@
             "js": "0.41.0",
             "android": "6.0.0",
             "ios": "4.0.0"
+          }
+        }
+      },
+      "semiliteral": {
+        "doc": "Provides an array value, evaluating expressions in the elements of the array.",
+        "syntax": {
+          "overloads": [
+            {
+              "parameters": [
+                "json_array"
+              ],
+              "output-type": "array"
+            }
+          ],
+          "parameters": [
+            {
+              "name": "json_array",
+              "type": "JSON array"
+            }
+          ]
+        },
+        "example": [
+          "semiliteral",
+          [
+            [
+              "get",
+              "label_x"
+            ],
+            [
+              "get",
+              "label_y"
+            ]
+          ]
+        ],
+        "group": "Types",
+        "sdk-support": {
+          "basic functionality": {
+            "js": "https://github.com/maplibre/maplibre-gl-js/issues/7933",
+            "android": "https://github.com/maplibre/maplibre-native/issues/4401",
+            "ios": "https://github.com/maplibre/maplibre-native/issues/4401"
           }
         }
       },

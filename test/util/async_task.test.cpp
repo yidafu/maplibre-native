@@ -1,16 +1,16 @@
-#include <mbgl/util/async_task.hpp>
+#include <mln/util/async_task.hpp>
 
-#include <mbgl/actor/actor_ref.hpp>
-#include <mbgl/actor/scheduler.hpp>
-#include <mbgl/test/util.hpp>
-#include <mbgl/util/run_loop.hpp>
+#include <mln/actor/actor_ref.hpp>
+#include <mln/actor/scheduler.hpp>
+#include <mln/test/util.hpp>
+#include <mln/util/run_loop.hpp>
 
 #include <atomic>
 #include <future>
 #include <vector>
 
-using namespace mbgl;
-using namespace mbgl::util;
+using namespace mln;
+using namespace mln::util;
 
 namespace {
 
@@ -128,7 +128,7 @@ TEST(AsyncTask, RequestCoalescingMultithreaded) {
 
 TEST(AsyncTask, ThreadSafety) {
     RunLoop loop;
-    mbgl::util::SimpleIdentity id;
+    mln::util::SimpleIdentity id;
 
     unsigned count = 0, numThreads = 25;
     std::atomic_uint completed(numThreads);
@@ -169,8 +169,8 @@ TEST(AsyncTask, scheduleAndReplyValue) {
         loop.stop();
     };
 
-    std::shared_ptr<Scheduler> sheduler = Scheduler::GetBackground();
-    sheduler->scheduleAndReplyValue(util::SimpleIdentity::Empty, runInBackground, onResult);
+    std::shared_ptr<Scheduler> scheduler = Scheduler::GetBackground();
+    scheduler->scheduleAndReplyValue(util::SimpleIdentity::Empty, runInBackground, onResult);
     loop.run();
 }
 
@@ -197,11 +197,11 @@ TEST(AsyncTask, SequencedScheduler) {
         loop.stop();
     };
 
-    std::shared_ptr<Scheduler> sheduler = Scheduler::GetSequenced();
+    std::shared_ptr<Scheduler> scheduler = Scheduler::GetSequenced();
 
-    sheduler->schedule(first);
-    sheduler->schedule(second);
-    sheduler->schedule(third);
+    scheduler->schedule(first);
+    scheduler->schedule(second);
+    scheduler->schedule(third);
     loop.run();
 }
 

@@ -1,14 +1,14 @@
-#include <mbgl/test/util.hpp>
-#include <mbgl/test/stub_file_source.hpp>
+#include <mln/test/util.hpp>
+#include <mln/test/stub_file_source.hpp>
 
-#include <mbgl/text/glyph_manager.hpp>
-#include <mbgl/util/run_loop.hpp>
-#include <mbgl/util/string.hpp>
-#include <mbgl/util/i18n.hpp>
-#include <mbgl/util/io.hpp>
-#include <mbgl/util/logging.hpp>
+#include <mln/text/glyph_manager.hpp>
+#include <mln/util/run_loop.hpp>
+#include <mln/util/string.hpp>
+#include <mln/util/i18n.hpp>
+#include <mln/util/io.hpp>
+#include <mln/util/logging.hpp>
 
-using namespace mbgl;
+using namespace mln;
 
 // Alpha channel rendering of '中'
 static constexpr const uint8_t stubBitmap[] = {
@@ -380,6 +380,9 @@ TEST(GlyphManager, LocalCJKGlyphPrefersLocalRasterizationOverRange) {
             ASSERT_EQ(testPositions.size(), 1u);
             ASSERT_EQ(testPositions.count(u'々'), 1u);
 
+            // Katakana letter te, should be locally rasterized
+            //  instead of using the glyph received from the range
+            //  for the ideagraphic mark
             test.glyphManager.getGlyphs(test.requestor,
                                         GlyphDependencies{.glyphs = {{{{"Test Stack"}}, {u'テ'}}}, // 0x30c6
                                                           .shapes = {}},
