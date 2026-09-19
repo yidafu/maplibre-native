@@ -186,6 +186,12 @@ private:
 
     // Helper: compare a stored napi_ref with a live napi_value callback for equality
     bool AreCallbacksEqual(napi_ref storedRef, napi_value callback) const;
+
+    // InvokeCallback / InvokeCallbackMulti 的共同骨架：两版函数体逐字相同，
+    // 只有 builder 类型与 ThreadSafeCallback 上的派发方法不同，把派发步骤
+    // 交给 dispatch。模板只在 callback_manager.cpp 内实例化。
+    template <typename Builder, typename Dispatch>
+    bool InvokeDispatch(const std::string& name, Builder& builder, Dispatch dispatch);
 };
 
 } // namespace harmony

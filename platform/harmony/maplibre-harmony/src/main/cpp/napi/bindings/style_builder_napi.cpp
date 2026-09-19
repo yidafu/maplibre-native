@@ -31,6 +31,17 @@ void StyleBuilderNAPI::Destructor(napi_env env, void* nativeObject, void* finali
     delete builder;
 }
 
+namespace {
+// 解包 StyleBuilderNAPI 实例；失败时抛出统一错误并返回 nullptr，调用方判空即可。
+StyleBuilderNAPI* RequireBuilder(napi_env env, napi_value thisObj) {
+    StyleBuilderNAPI* builder = mbgl::harmony::napi::NapiArgs::Unwrap<StyleBuilderNAPI>(env, thisObj);
+    if (!builder) {
+        napi_throw_error(env, nullptr, "Invalid StyleBuilder instance");
+    }
+    return builder;
+}
+} // namespace
+
 napi_value StyleBuilderNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("StyleBuilderNAPI", "Initializing StyleBuilder NAPI class");
     
@@ -77,11 +88,8 @@ napi_value StyleBuilderNAPI::FromUri(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    StyleBuilderNAPI* builder = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&builder));
-    
+    StyleBuilderNAPI* builder = RequireBuilder(env, args.This());
     if (!builder) {
-        napi_throw_error(env, nullptr, "Invalid StyleBuilder instance");
         return nullptr;
     }
     
@@ -98,11 +106,8 @@ napi_value StyleBuilderNAPI::FromJson(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    StyleBuilderNAPI* builder = nullptr;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&builder));
-    
+    StyleBuilderNAPI* builder = RequireBuilder(env, args.This());
     if (!builder) {
-        napi_throw_error(env, nullptr, "Invalid StyleBuilder instance");
         return nullptr;
     }
     
@@ -120,11 +125,8 @@ napi_value StyleBuilderNAPI::WithSource(napi_env env, napi_callback_info info) {
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
-    StyleBuilderNAPI* builder = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&builder));
-    
+    StyleBuilderNAPI* builder = RequireBuilder(env, jsThis);
     if (!builder) {
-        napi_throw_error(env, nullptr, "Invalid StyleBuilder instance");
         return nullptr;
     }
     
@@ -164,11 +166,8 @@ napi_value StyleBuilderNAPI::WithLayer(napi_env env, napi_callback_info info) {
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
-    StyleBuilderNAPI* builder = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&builder));
-    
+    StyleBuilderNAPI* builder = RequireBuilder(env, jsThis);
     if (!builder) {
-        napi_throw_error(env, nullptr, "Invalid StyleBuilder instance");
         return nullptr;
     }
     
@@ -207,11 +206,8 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
-    StyleBuilderNAPI* builder = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&builder));
-    
+    StyleBuilderNAPI* builder = RequireBuilder(env, jsThis);
     if (!builder) {
-        napi_throw_error(env, nullptr, "Invalid StyleBuilder instance");
         return nullptr;
     }
     
@@ -377,11 +373,8 @@ napi_value StyleBuilderNAPI::WithTransitionOptions(napi_env env, napi_callback_i
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
-    StyleBuilderNAPI* builder = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&builder));
-    
+    StyleBuilderNAPI* builder = RequireBuilder(env, jsThis);
     if (!builder) {
-        napi_throw_error(env, nullptr, "Invalid StyleBuilder instance");
         return nullptr;
     }
     

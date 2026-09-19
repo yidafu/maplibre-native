@@ -165,6 +165,24 @@ mbgl::style::Light* LightHarmony::ResolveLight(napi_env env, napi_value jsThis) 
     return lightHarmony->currentLight();
 }
 
+template <typename Fn>
+napi_value LightHarmony::WithLight(napi_env env, napi_callback_info info, bool requireArg, Fn fn) {
+    NapiArgs args(env, info);
+    if (requireArg) {
+        args.RequireMinArgs(1);
+    }
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    mbgl::style::Light* light = ResolveLight(env, args.This());
+    if (!light) {
+        return args.Undefined();
+    }
+
+    return fn(args, light);
+}
+
 template <typename Getter>
 napi_value LightHarmony::GetTransitionImpl(napi_env env, napi_callback_info info, Getter getter) {
     NapiArgs args(env, info);
@@ -208,117 +226,83 @@ napi_value LightHarmony::SetTransitionImpl(napi_env env, napi_callback_info info
 }
 
 napi_value LightHarmony::GetAnchor(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    if (args.HasError()) {
-        return nullptr;
-    }
+    return WithLight(env, info, false, [env](NapiArgs&, mbgl::style::Light* light) -> napi_value {
+        auto anchorType = light->getAnchor();
+        const char* anchorStr = (anchorType == style::LightAnchorType::Map) ? "map" : "viewport";
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
-    if (!light) {
-        return args.Undefined();
-    }
-
-    auto anchorType = light->getAnchor();
-    const char* anchorStr = (anchorType == style::LightAnchorType::Map) ? "map" : "viewport";
-
-    napi_value result;
-    napi_create_string_utf8(env, anchorStr, NAPI_AUTO_LENGTH, &result);
-    return result;
+        napi_value result;
+        napi_create_string_utf8(env, anchorStr, NAPI_AUTO_LENGTH, &result);
+        return result;
+    });
 }
 
 napi_value LightHarmony::SetAnchor(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return nullptr;
-    }
+    return WithLight(env, info, true, [](NapiArgs& args, mbgl::style::Light* light) -> napi_value {
+        std::string anchorStr = args.GetString(0, "anchor");
+        if (args.HasError()) {
+            return nullptr;
+        }
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
-    if (!light) {
+        if (anchorStr == "map") {
+            light->setAnchor(style::LightAnchorType::Map);
+        } else if (anchorStr == "viewport") {
+            light->setAnchor(style::LightAnchorType::Viewport);
+        }
+
         return args.Undefined();
-    }
-
-    std::string anchorStr = args.GetString(0, "anchor");
-    if (args.HasError()) {
-        return nullptr;
-    }
-
-    if (anchorStr == "map") {
-        light->setAnchor(style::LightAnchorType::Map);
-    } else if (anchorStr == "viewport") {
-        light->setAnchor(style::LightAnchorType::Viewport);
-    }
-
-    return args.Undefined();
+    });
 }
 
 napi_value LightHarmony::GetPosition(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    if (args.HasError()) {
-        return nullptr;
-    }
+    return WithLight(env, info, false, [env](NapiArgs&, mbgl::style::Light* light) -> napi_value {
+        auto position = light->getPosition().asConstant();
+        auto spherical = position.getSpherical();
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
-    if (!light) {
-        return args.Undefined();
-    }
+        napi_value result;
+        napi_create_object(env, &result);
 
-    auto position = light->getPosition().asConstant();
-    auto spherical = position.getSpherical();
+        napi_value radialValue, azimuthalValue, polarValue;
+        napi_create_double(env, spherical[0], &radialValue);
+        napi_create_double(env, spherical[1], &azimuthalValue);
+        napi_create_double(env, spherical[2], &polarValue);
 
-    napi_value result;
-    napi_create_object(env, &result);
+        napi_set_named_property(env, result, "radial", radialValue);
+        napi_set_named_property(env, result, "azimuthal", azimuthalValue);
+        napi_set_named_property(env, result, "polar", polarValue);
 
-    napi_value radialValue, azimuthalValue, polarValue;
-    napi_create_double(env, spherical[0], &radialValue);
-    napi_create_double(env, spherical[1], &azimuthalValue);
-    napi_create_double(env, spherical[2], &polarValue);
-
-    napi_set_named_property(env, result, "radial", radialValue);
-    napi_set_named_property(env, result, "azimuthal", azimuthalValue);
-    napi_set_named_property(env, result, "polar", polarValue);
-
-    return result;
+        return result;
+    });
 }
 
 napi_value LightHarmony::SetPosition(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return nullptr;
-    }
+    return WithLight(env, info, true, [env](NapiArgs& args, mbgl::style::Light* light) -> napi_value {
+        napi_value positionObj = args.GetObject(0, "position");
+        if (args.HasError()) {
+            return nullptr;
+        }
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
-    if (!light) {
+        // Parse position object {radial, azimuthal, polar}
+        napi_value radialValue, azimuthalValue, polarValue;
+        double radial = 0.0, azimuthal = 0.0, polar = 0.0;
+
+        napi_get_named_property(env, positionObj, "radial", &radialValue);
+        napi_get_named_property(env, positionObj, "azimuthal", &azimuthalValue);
+        napi_get_named_property(env, positionObj, "polar", &polarValue);
+
+        napi_get_value_double(env, radialValue, &radial);
+        napi_get_value_double(env, azimuthalValue, &azimuthal);
+        napi_get_value_double(env, polarValue, &polar);
+
+        std::array<float, 3> positionArray = {
+            static_cast<float>(radial),
+            static_cast<float>(azimuthal),
+            static_cast<float>(polar)
+        };
+        style::Position position(positionArray);
+        light->setPosition(position);
+
         return args.Undefined();
-    }
-
-    napi_value positionObj = args.GetObject(0, "position");
-    if (args.HasError()) {
-        return nullptr;
-    }
-
-    // Parse position object {radial, azimuthal, polar}
-    napi_value radialValue, azimuthalValue, polarValue;
-    double radial = 0.0, azimuthal = 0.0, polar = 0.0;
-
-    napi_get_named_property(env, positionObj, "radial", &radialValue);
-    napi_get_named_property(env, positionObj, "azimuthal", &azimuthalValue);
-    napi_get_named_property(env, positionObj, "polar", &polarValue);
-
-    napi_get_value_double(env, radialValue, &radial);
-    napi_get_value_double(env, azimuthalValue, &azimuthal);
-    napi_get_value_double(env, polarValue, &polar);
-
-    std::array<float, 3> positionArray = {
-        static_cast<float>(radial),
-        static_cast<float>(azimuthal),
-        static_cast<float>(polar)
-    };
-    style::Position position(positionArray);
-    light->setPosition(position);
-
-    return args.Undefined();
+    });
 }
 
 napi_value LightHarmony::GetPositionTransition(napi_env env, napi_callback_info info) {
@@ -330,47 +314,30 @@ napi_value LightHarmony::SetPositionTransition(napi_env env, napi_callback_info 
 }
 
 napi_value LightHarmony::GetColor(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    if (args.HasError()) {
-        return nullptr;
-    }
+    return WithLight(env, info, false, [env](NapiArgs&, mbgl::style::Light* light) -> napi_value {
+        auto color = light->getColor().asConstant();
+        std::string colorStr = color.stringify();
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
-    if (!light) {
-        return args.Undefined();
-    }
-
-    auto color = light->getColor().asConstant();
-    std::string colorStr = color.stringify();
-
-    napi_value result;
-    napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+        napi_value result;
+        napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &result);
+        return result;
+    });
 }
 
 napi_value LightHarmony::SetColor(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return nullptr;
-    }
+    return WithLight(env, info, true, [](NapiArgs& args, mbgl::style::Light* light) -> napi_value {
+        std::string colorStr = args.GetString(0, "color");
+        if (args.HasError()) {
+            return nullptr;
+        }
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
-    if (!light) {
+        auto color = Color::parse(colorStr.c_str());
+        if (color) {
+            light->setColor(*color);
+        }
+
         return args.Undefined();
-    }
-
-    std::string colorStr = args.GetString(0, "color");
-    if (args.HasError()) {
-        return nullptr;
-    }
-
-    auto color = Color::parse(colorStr.c_str());
-    if (color) {
-        light->setColor(*color);
-    }
-
-    return args.Undefined();
+    });
 }
 
 napi_value LightHarmony::GetColorTransition(napi_env env, napi_callback_info info) {
@@ -382,43 +349,26 @@ napi_value LightHarmony::SetColorTransition(napi_env env, napi_callback_info inf
 }
 
 napi_value LightHarmony::GetIntensity(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    if (args.HasError()) {
-        return nullptr;
-    }
+    return WithLight(env, info, false, [env](NapiArgs&, mbgl::style::Light* light) -> napi_value {
+        float intensity = light->getIntensity().asConstant();
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
-    if (!light) {
-        return args.Undefined();
-    }
-
-    float intensity = light->getIntensity().asConstant();
-
-    napi_value result;
-    napi_create_double(env, intensity, &result);
-    return result;
+        napi_value result;
+        napi_create_double(env, intensity, &result);
+        return result;
+    });
 }
 
 napi_value LightHarmony::SetIntensity(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return nullptr;
-    }
+    return WithLight(env, info, true, [](NapiArgs& args, mbgl::style::Light* light) -> napi_value {
+        double intensity = args.GetDouble(0, "intensity");
+        if (args.HasError()) {
+            return nullptr;
+        }
 
-    mbgl::style::Light* light = ResolveLight(env, args.This());
-    if (!light) {
+        light->setIntensity(static_cast<float>(intensity));
+
         return args.Undefined();
-    }
-
-    double intensity = args.GetDouble(0, "intensity");
-    if (args.HasError()) {
-        return nullptr;
-    }
-
-    light->setIntensity(static_cast<float>(intensity));
-
-    return args.Undefined();
+    });
 }
 
 napi_value LightHarmony::GetIntensityTransition(napi_env env, napi_callback_info info) {
@@ -431,4 +381,3 @@ napi_value LightHarmony::SetIntensityTransition(napi_env env, napi_callback_info
 
 } // namespace harmony
 } // namespace mbgl
-

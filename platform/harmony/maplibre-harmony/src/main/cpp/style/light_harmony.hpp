@@ -68,6 +68,11 @@ private:
     template <typename Setter>
     static napi_value SetTransitionImpl(napi_env env, napi_callback_info info, Setter setter);
 
+    // 属性 getter/setter 的共同前导：解析参数（requireArg 时要求 ≥1 个）、
+    // ResolveLight，成功后以 (args, light) 调用 fn 并返回其结果。
+    template <typename Fn>
+    static napi_value WithLight(napi_env env, napi_callback_info info, bool requireArg, Fn fn);
+
     // The Light is owned by the Style and is destroyed on style reload or map
     // teardown; holding a bare reference across calls is a dangling UAF. Keep
     // only the map and re-fetch the current light on every access.
