@@ -33,6 +33,15 @@ export class FillExtrusionLayer extends SourcedLayer<maplibre.FillExtrusionLayer
     return this.nativeInstance.getFillExtrusionVerticalGradient();
   }
 
+  /**
+   * Set the distance around buildings (in meters) over which corners are
+   * rounded, mirroring the Android setFillExtrusionRoundedCornerDistance API.
+   */
+  setFillExtrusionRoundedCornerDistance(distance: PropertyValue<number>): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionRoundedCornerDistance(convertValue(distance));
+    return this;
+  }
+
   // ========== FillExtrusion style property helpers ==========
 
   setFillExtrusionColor(color: PropertyValue<string>): FillExtrusionLayer {

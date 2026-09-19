@@ -149,6 +149,13 @@ export class FillExtrusionLayer {
   setFillExtrusionVerticalGradient(gradient: PropertyValue<boolean>): this;
 
   getFillExtrusionVerticalGradient(): boolean | undefined;
+
+  /**
+   * Set the distance around buildings (in meters) over which corners are
+   * rounded, mirroring the Android setFillExtrusionRoundedCornerDistance API.
+   * @param distance Radius in meters, or an expression. 0 disables rounding.
+   */
+  setFillExtrusionRoundedCornerDistance(distance: PropertyValue<number>): this;
   /**
    * Set a single property (generic helper).
    * @param propertyName Property name.

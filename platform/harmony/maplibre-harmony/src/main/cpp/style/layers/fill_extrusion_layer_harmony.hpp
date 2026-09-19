@@ -28,6 +28,7 @@ public:
     static napi_value SetFillExtrusionOpacity(napi_env env, napi_callback_info info);
     static napi_value SetFillExtrusionColor(napi_env env, napi_callback_info info);
     static napi_value SetFillExtrusionTranslate(napi_env env, napi_callback_info info);
+    static napi_value SetFillExtrusionRoundedCornerDistance(napi_env env, napi_callback_info info);
     static napi_value SetFillExtrusionHeight(napi_env env, napi_callback_info info);
     static napi_value SetFillExtrusionBase(napi_env env, napi_callback_info info);
     static napi_value SetFillExtrusionPattern(napi_env env, napi_callback_info info);

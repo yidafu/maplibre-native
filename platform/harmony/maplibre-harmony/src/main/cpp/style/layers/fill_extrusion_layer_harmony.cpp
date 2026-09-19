@@ -52,6 +52,7 @@ napi_value FillExtrusionLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setFillExtrusionBase", nullptr, SetFillExtrusionBase, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setFillExtrusionPattern", nullptr, SetFillExtrusionPattern, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setFillExtrusionTranslate", nullptr, SetFillExtrusionTranslate, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setFillExtrusionRoundedCornerDistance", nullptr, SetFillExtrusionRoundedCornerDistance, nullptr, nullptr, nullptr, napi_default, nullptr },
         LAYER_BASE_PROPERTY_DESCRIPTORS
     };
     
@@ -68,23 +69,25 @@ DEFINE_LAYER_NEW(FillExtrusionLayerNAPI, "FillExtrusionLayer", 2, new FillExtrus
         std::string layerId = args.GetString(0, "layerId");
         std::string sourceId = args.GetString(1, "sourceId");)
 
-napi_value FillExtrusionLayerNAPI::CreateInstance(napi_env env, mbgl::style::FillExtrusionLayer* layerPtr) {
+napi_value FillExtrusionLayerNAPI::CreateInstance(napi_env env, mln::style::FillExtrusionLayer* layerPtr) {
     return WrapExistingInstance(env, constructor, Destructor, "FillExtrusionLayer",
                                 layerPtr ? new FillExtrusionLayerNAPI(layerPtr) : nullptr);
 }
 
 
-DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionColor, setPaintProperty, "fill-extrusion-color", setFillExtrusionColor, mbgl::Color)
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, SetFillExtrusionColor, setPaintProperty, "fill-extrusion-color", setFillExtrusionColor, mln::Color)
 
-DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionOpacity, setPaintProperty, "fill-extrusion-opacity", setFillExtrusionOpacity, float)
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, SetFillExtrusionOpacity, setPaintProperty, "fill-extrusion-opacity", setFillExtrusionOpacity, float)
 
-DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionHeight, setPaintProperty, "fill-extrusion-height", setFillExtrusionHeight, float)
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, SetFillExtrusionHeight, setPaintProperty, "fill-extrusion-height", setFillExtrusionHeight, float)
 
-DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionBase, setPaintProperty, "fill-extrusion-base", setFillExtrusionBase, float)
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, SetFillExtrusionBase, setPaintProperty, "fill-extrusion-base", setFillExtrusionBase, float)
 
-DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionPattern, setPaintProperty, "fill-extrusion-pattern", setFillExtrusionPattern, mbgl::style::expression::Image)
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, SetFillExtrusionPattern, setPaintProperty, "fill-extrusion-pattern", setFillExtrusionPattern, mln::style::expression::Image)
 
-DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer, SetFillExtrusionTranslate, setPaintProperty, "fill-extrusion-translate", setFillExtrusionTranslate, std::array<float,2>)
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, SetFillExtrusionTranslate, setPaintProperty, "fill-extrusion-translate", setFillExtrusionTranslate, std::array<float,2>)
+
+DEFINE_LAYER_SETTER(FillExtrusionLayerNAPI, mln::style::FillExtrusionLayer, SetFillExtrusionRoundedCornerDistance, setPaintProperty, "fill-extrusion-rounded-corner-distance", setFillExtrusionRoundedCornerDistance, float)
 
 // Common layer methods
 napi_value FillExtrusionLayerNAPI::GetId(napi_env env, napi_callback_info info) {
