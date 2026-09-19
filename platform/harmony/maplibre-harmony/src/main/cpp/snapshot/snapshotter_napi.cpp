@@ -183,8 +183,13 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
     options.styleURL = args.GetStringProperty(optionsObj, "styleUrl", "");
     options.showLogo = args.GetBoolProperty(optionsObj, "showLogo", true);
     
-    // Parse optional styleJSON
-    std::string styleJSON = args.GetStringProperty(optionsObj, "styleJSON", "");
+    // Parse optional styleJSON.
+    // The NAPI options type (and the ArkTS MapSnapshotter) use `styleJson`;
+    // accept the historical `styleJSON` spelling as a fallback.
+    std::string styleJSON = args.GetStringProperty(optionsObj, "styleJson", "");
+    if (styleJSON.empty()) {
+        styleJSON = args.GetStringProperty(optionsObj, "styleJSON", "");
+    }
     if (!styleJSON.empty()) {
         options.styleJSON = styleJSON;
         Logger::info("SnapshotterNAPI", "Using styleJSON: %zu bytes", styleJSON.size());

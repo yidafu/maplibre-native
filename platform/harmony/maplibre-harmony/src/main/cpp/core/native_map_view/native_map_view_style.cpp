@@ -83,7 +83,21 @@ bool CallStyleMethod(napi_env env,
 napi_value NativeMapView::getStyleUrl(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
-    return undefined;
+
+    NativeMapView* instance = NativeMapView::FromInfo(env, info);
+    if (!instance) {
+        Logger::error("NativeMapView", "getStyleUrl: Failed to unwrap instance");
+        return undefined;
+    }
+
+    // The last URL set via setStyleUrl (also set by the ArkTS MapView default).
+    // Empty when the style was never URL-configured (e.g. loaded via JSON).
+    napi_value result;
+    if (napi_create_string_utf8(env, instance->styleUrl.c_str(),
+                                instance->styleUrl.length(), &result) != napi_ok) {
+        return undefined;
+    }
+    return result;
 }
 
 napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
@@ -103,13 +117,7 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setStyleUrl: Failed to unwrap instance");
         return undefined;
     }
-    
-    // Verify that the map object has been initialized
-    if (!instance->map) {
-        Logger::error("NativeMapView", "setStyleUrl: Map not initialized! Please call setNativeWindow first.");
-        return undefined;
-    }
-    
+
     // Retrieve the style URL argument
     size_t argc = 1;
     napi_value args[1];
@@ -117,27 +125,39 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setStyleUrl: Failed to get arguments");
         return undefined;
     }
-    
+
     if (argc < 1) {
         Logger::error("NativeMapView", "setStyleUrl: Missing style URL argument");
         return undefined;
     }
-    
+
     // Extract the style URL string
     size_t strSize;
     if (napi_get_value_string_utf8(env, args[0], nullptr, 0, &strSize) != napi_ok) {
         Logger::error("NativeMapView", "setStyleUrl: Failed to get style URL string size");
         return undefined;
     }
-    
+
     std::string styleUrl(strSize + 1, '\0');
     if (napi_get_value_string_utf8(env, args[0], &styleUrl[0], strSize + 1, &strSize) != napi_ok) {
         Logger::error("NativeMapView", "setStyleUrl: Failed to get style URL string");
         return undefined;
     }
     styleUrl.resize(strSize);
-    
+
+    // Remember the URL so getStyleUrl() and the renderer-rebuild path in
+    // setLocalIdeographFontFamily can restore it later. Stored before the
+    // map-readiness check: an early call (surface not up yet) still records
+    // the URL the ArkTS layer configured.
+    instance->styleUrl = styleUrl;
+
     Logger::info("NativeMapView", "Setting style URL: %s", styleUrl.c_str());
+
+    // Verify that the map object has been initialized
+    if (!instance->map) {
+        Logger::error("NativeMapView", "setStyleUrl: Map not initialized! Please call setNativeWindow first.");
+        return undefined;
+    }
 
     // Resource readiness gating: wait for the render thread, surface/context, and background subsystems to finish rebuilding
     if (instance->harmonyRenderer) {
@@ -229,6 +249,8 @@ napi_value NativeMapView::setStyleJson(napi_env env, napi_callback_info info) {
     
     try {
         instance->styleLoadedOnce.store(false, std::memory_order_release);
+        // The style is no longer URL-backed; getStyleUrl() reflects that.
+        instance->styleUrl.clear();
         instance->invokeOnMapThread([json](mbgl::Map* m){ m->getStyle().loadJSON(json); m->triggerRepaint(); });
         Logger::info("NativeMapView", "setStyleJson: Style JSON loaded successfully");
     } catch (const std::exception& e) {

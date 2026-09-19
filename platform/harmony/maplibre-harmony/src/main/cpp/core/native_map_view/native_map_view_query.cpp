@@ -107,6 +107,32 @@ bool ParseRenderedQueryOptions(napi_env env, NapiArgs& args,
     return true;
 }
 
+/**
+ * Honor the declared `fn(input, output)` out-parameter contract: when a
+ * second array argument was passed, copy the populated result array into it
+ * and return that array; otherwise return the populated array itself.
+ */
+napi_value WriteIntoOutputArray(napi_env env, NapiArgs& args,
+                                napi_value populatedArray) {
+    if (args.Count() < 2) {
+        return populatedArray;
+    }
+    napi_value outputArg = args.GetValue(1);
+    bool isArray = false;
+    if (napi_is_array(env, outputArg, &isArray) != napi_ok || !isArray) {
+        return populatedArray;
+    }
+
+    uint32_t length = 0;
+    napi_get_array_length(env, populatedArray, &length);
+    for (uint32_t i = 0; i < length; i++) {
+        napi_value element;
+        napi_get_element(env, populatedArray, i, &element);
+        napi_set_element(env, outputArg, i, element);
+    }
+    return outputArg;
+}
+
 } // namespace
 
 napi_value NativeMapView::getMetersPerPixelAtLatitude(napi_env env, napi_callback_info info) {
@@ -266,7 +292,7 @@ napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info
         }
 
         Logger::info("NativeMapView", "pixelsForLatLngs: Converted %zu coordinates", coordinates.size());
-        return outputArray;
+        return WriteIntoOutputArray(env, args, outputArray);
 
     } catch (const std::exception &e) {
         Logger::error("NativeMapView", "pixelsForLatLngs: Exception - %s", e.what());
@@ -402,7 +428,7 @@ napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info
         }
 
         Logger::info("NativeMapView", "latLngsForPixels: Converted %zu coordinates", latLngs.size());
-        return outputArray;
+        return WriteIntoOutputArray(env, args, outputArray);
 
     } catch (const std::exception &e) {
         Logger::error("NativeMapView", "latLngsForPixels: Exception - %s", e.what());
