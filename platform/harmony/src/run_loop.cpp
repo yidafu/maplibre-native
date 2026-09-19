@@ -12,6 +12,7 @@
  */
 
 #include "run_loop_impl.hpp"
+#include "loop_guard.hpp"
 #include <mbgl/actor/scheduler.hpp>
 #include <mbgl/util/async_task.hpp>
 #include <mbgl/util/monotonic_timer.hpp>
@@ -161,7 +162,7 @@ RunLoop::RunLoop(Type type)
     switch (type) {
         case Type::New:
             impl->loop = new uv_loop_t;
-            
+
             if (int err = uv_loop_init(impl->loop); err != 0) {
                 Logger::error("RunLoop", "Failed to initialize loop: %s", uvErrorString(err));
                 delete impl->loop;
@@ -169,16 +170,19 @@ RunLoop::RunLoop(Type type)
                 throw std::runtime_error("Failed to initialize loop: " + std::string(uvErrorString(err)));
             }
             break;
-            
+
         case Type::Default:
             impl->loop = uv_default_loop();
-            
+
             if (!impl->loop) {
                 Logger::error("RunLoop", "Failed to get default loop");
                 throw std::runtime_error("Failed to get default loop");
             }
             break;
     }
+
+    // Track this loop so AsyncTasks bound to it can detect its teardown.
+    harmony::registerLoopGuard(impl->loop);
 
     // Initialize holder async handle
     if (int err = uv_async_init(impl->loop, impl->holder, dummyCallback); err != 0) {
@@ -237,14 +241,21 @@ RunLoop::~RunLoop() {
     }
 
     if (impl->type == Type::Default) {
+        // uv_default_loop() is process-owned and never deleted; keep the
+        // liveness token alive so AsyncTasks bound to it keep working.
         return;
     }
 
+    // Retire the loop's liveness token BEFORE anything is closed or freed:
+    // from this point no AsyncTask can send a notification into this loop,
+    // so the teardown below can never race an in-flight uv_async_send.
+    harmony::retireLoopGuard(impl->loop);
+
     // Destroy AsyncTask; this issues uv_close.
     // Note: stop() may have already destroyed impl->async.
-    if (impl->async) {
+    {
+        std::lock_guard<std::mutex> lock(impl->asyncMutex);
         impl->async.reset();
-    } else {
     }
 
     // Key fix: increase loop iterations to ensure AsyncTask close callbacks complete.
@@ -284,17 +295,17 @@ RunLoop::~RunLoop() {
         uv_run(impl->loop, UV_RUN_NOWAIT);
     }
 
-    // Close the loop.
-    if (int err = uv_loop_close(impl->loop); err == UV_EBUSY) {
-        Logger::error("RunLoop", "Failed to close loop: UV_EBUSY - loop still has active handles");
-    } else if (err != 0) {
-        Logger::error("RunLoop", "Failed to close loop: %s", uvErrorString(err));
+    // Close the loop. If close fails the loop still has live handles — free
+    // it anyway and every remaining handle/queue node becomes dangling. Leak
+    // the loop instead: it is a once-per-thread, bounded allocation.
+    if (int err = uv_loop_close(impl->loop); err != 0) {
+        Logger::error("RunLoop", "uv_loop_close failed (%s) — leaking the loop intentionally",
+                      uvErrorString(err));
     } else {
+        delete impl->loop;
     }
-    
-    delete impl->loop;
     impl->loop = nullptr;
-    
+
 }
 
 /**
@@ -306,6 +317,12 @@ LOOP_HANDLE RunLoop::getLoopHandle() {
 }
 
 void RunLoop::wake() {
+    // `impl->async` is reset on the RunLoop thread (stop()/destructor) while
+    // wake() runs on foreign threads (actor mailbox, CURLEventLoop completions).
+    // Hold asyncMutex so we never dereference a half-destroyed unique_ptr; the
+    // AsyncTask's internal lock then serializes the uv_async_send against its
+    // own handle teardown.
+    std::lock_guard<std::mutex> lock(impl->asyncMutex);
     if (impl->async) {
         impl->async->send();
     }
@@ -350,12 +367,13 @@ void RunLoop::stop() {
         // 5. The RunLoop thread exits normally without detaching.
         
         // Key fix 1: destroy AsyncTask first (triggers uv_close).
-        if (impl->async) {
+        {
+            std::lock_guard<std::mutex> lock(impl->asyncMutex);
             impl->async.reset();
-            
-            // Run the loop once so uv_close moves from pending to closing.
-            uv_run(impl->loop, UV_RUN_NOWAIT);
         }
+
+        // Run the loop once so uv_close moves from pending to closing.
+        uv_run(impl->loop, UV_RUN_NOWAIT);
         
         // Shutdown fix: closeHolder() sets holderClosed and prevents double deletion.
         if (!impl->isHolderClosed()) {

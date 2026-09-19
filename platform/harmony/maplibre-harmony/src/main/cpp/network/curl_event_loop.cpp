@@ -142,6 +142,8 @@ CURLEventLoop::~CURLEventLoop() {
             holder_ = nullptr;
         }
         if (operation_signal_) {
+            std::lock_guard<std::mutex> lock(operation_signal_mutex_);
+            operation_signal_closed_ = true;
             if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(operation_signal_))) {
                 uv_close(reinterpret_cast<uv_handle_t*>(operation_signal_), [](uv_handle_t* h) {
                     delete reinterpret_cast<uv_async_t*>(h);
@@ -256,9 +258,14 @@ void CURLEventLoop::stop() {
 
     stopping_.store(true);
 
-    // Wake the CURLEventLoop thread so it can perform shutdown
-    if (operation_signal_) {
-        uv_async_send(operation_signal_);
+    // Wake the CURLEventLoop thread so it can perform shutdown. Serialized
+    // against performShutdown()'s close of the handle (the loop thread may
+    // already be shutting down the moment we set stopping_).
+    {
+        std::lock_guard<std::mutex> lock(operation_signal_mutex_);
+        if (!operation_signal_closed_ && operation_signal_) {
+            uv_async_send(operation_signal_);
+        }
     }
 
     // Wait for the thread to finish
@@ -304,8 +311,15 @@ std::shared_ptr<CURLEventLoop::OpState> CURLEventLoop::enqueue(OperationType typ
         pending_operations_.push({type, handle, state});
     }
 
-    // Wake the CURLEventLoop thread
-    uv_async_send(operation_signal_);
+    // Wake the CURLEventLoop thread. Serialized against performShutdown()'s
+    // uv_close (see operation_signal_mutex_): once the handle is closed, its
+    // memory belongs to the close callback and must not be touched again.
+    {
+        std::lock_guard<std::mutex> lock(operation_signal_mutex_);
+        if (!operation_signal_closed_ && operation_signal_) {
+            uv_async_send(operation_signal_);
+        }
+    }
     return state;
 }
 
@@ -376,7 +390,10 @@ void CURLEventLoop::removeAllHandles() {
 
     // Wait for in-flight requests to complete (with timeout)
     // These are requests that were already being processed in processCURLMessages
-    constexpr size_t kMaxWaitCount = 100;  // 100 * 10ms = 1 second max wait
+    // A request counts as in-flight while handleHTTPRequestResult() executes on
+    // the CURLEventLoop thread; proceeding early means the owner thread destroys
+    // the HTTPRequest under our feet (use-after-free), so the budget is generous.
+    constexpr size_t kMaxWaitCount = 1000;  // 1000 * 10ms = 10 seconds max wait
     size_t waitCount = 0;
     while (activeRequestCount_.load(std::memory_order_acquire) > 0 && waitCount < kMaxWaitCount) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -384,7 +401,7 @@ void CURLEventLoop::removeAllHandles() {
     }
 
     if (activeRequestCount_.load(std::memory_order_acquire) > 0) {
-        Logger::warn("Network", "removeAllHandles: %zu requests still in-flight after wait (will be orphaned)",
+        Logger::error("Network", "removeAllHandles: %zu requests still in-flight after 10s wait (proceeding anyway — likely a stuck completion callback)",
                      activeRequestCount_.load(std::memory_order_acquire));
     }
 }
@@ -647,13 +664,21 @@ void CURLEventLoop::performShutdown() {
     // the next event loop iteration. The restriction is about calling uv_close
     // from within the handle's OWN close callback, not from its regular callback.
     // Without this, uv_run never exits because operation_signal_ keeps the loop alive.
-    if (operation_signal_) {
-        if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(operation_signal_))) {
-            uv_close(reinterpret_cast<uv_handle_t*>(operation_signal_), [](uv_handle_t* h) {
-                delete reinterpret_cast<uv_async_t*>(h);
-            });
+    //
+    // Taken under operation_signal_mutex_ together with the closed flag so a
+    // racing enqueue() on a foreign thread can never uv_async_send a handle
+    // that is closing or already deleted.
+    {
+        std::lock_guard<std::mutex> lock(operation_signal_mutex_);
+        operation_signal_closed_ = true;
+        if (operation_signal_) {
+            if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(operation_signal_))) {
+                uv_close(reinterpret_cast<uv_handle_t*>(operation_signal_), [](uv_handle_t* h) {
+                    delete reinterpret_cast<uv_async_t*>(h);
+                });
+            }
+            operation_signal_ = nullptr;
         }
-        operation_signal_ = nullptr;
     }
 
     Logger::debug("Network", "performShutdown: all handles closed, uv_run will return naturally");

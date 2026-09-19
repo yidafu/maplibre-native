@@ -148,6 +148,14 @@ private:
     std::queue<PendingOperation> pending_operations_;
     std::mutex operation_queue_mutex_;
 
+    // Serializes uv_async_send(operation_signal_) against its teardown.
+    // enqueue() sends from foreign threads while performShutdown()/the
+    // destructor close (and the close callback deletes) the handle on the
+    // loop thread. Without this lock a racing send could run on a freed
+    // handle/freed loop — SIGSEGV in libuv internals.
+    std::mutex operation_signal_mutex_;
+    bool operation_signal_closed_ = false;
+
     // Active CURL handles and their uv_poll_t watchers.
     // Only accessed from the CURLEventLoop thread — no mutex needed.
     std::unordered_map<CURL*, uv_poll_t*> active_handles_;
