@@ -1,4 +1,5 @@
 #include "image_napi.hpp"
+#include "napi/bindings/annotation_napi_accessors.hpp"
 #include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
@@ -297,131 +298,48 @@ napi_value ImageNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
-napi_value ImageNAPI::GetName(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    ImageNAPI* image = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&image));
-    
-    if (!image) {
-        return CreateStringValue(env, "");
-    }
-    
-    return CreateStringValue(env, image->name);
-}
+// Image 的 getter 契约：解包失败返回各类型的默认值（"" / 0 / 1.0 / false）。
+DEFINE_NAPI_GETTER(ImageNAPI, GetName,
+    annotation_napi::JsString(env, ""), annotation_napi::JsString(env, self->name))
 
-napi_value ImageNAPI::GetWidth(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    ImageNAPI* image = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&image));
-    
-    if (!image) {
-        napi_value result;
-        napi_create_uint32(env, 0, &result);
-        return result;
-    }
-    
-    napi_value result;
-    napi_create_uint32(env, image->width, &result);
-    return result;
-}
+DEFINE_NAPI_GETTER(ImageNAPI, GetWidth,
+    annotation_napi::JsUint32(env, 0), annotation_napi::JsUint32(env, self->width))
 
-napi_value ImageNAPI::GetHeight(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    ImageNAPI* image = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&image));
-    
-    if (!image) {
-        napi_value result;
-        napi_create_uint32(env, 0, &result);
-        return result;
-    }
-    
-    napi_value result;
-    napi_create_uint32(env, image->height, &result);
-    return result;
-}
+DEFINE_NAPI_GETTER(ImageNAPI, GetHeight,
+    annotation_napi::JsUint32(env, 0), annotation_napi::JsUint32(env, self->height))
 
-napi_value ImageNAPI::GetPixelRatio(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    ImageNAPI* image = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&image));
-    
-    if (!image) {
-        napi_value result;
-        napi_create_double(env, 1.0, &result);
-        return result;
-    }
-    
-    napi_value result;
-    napi_create_double(env, image->pixelRatio, &result);
-    return result;
-}
+DEFINE_NAPI_GETTER(ImageNAPI, GetPixelRatio,
+    annotation_napi::JsNumber(env, 1.0), annotation_napi::JsNumber(env, self->pixelRatio))
 
-napi_value ImageNAPI::GetSdf(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    ImageNAPI* image = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&image));
-    
-    if (!image) {
-        return CreateBoolValue(env, false);
-    }
-    
-    return CreateBoolValue(env, image->sdf);
-}
+DEFINE_NAPI_GETTER(ImageNAPI, GetSdf,
+    annotation_napi::JsBool(env, false), annotation_napi::JsBool(env, self->sdf))
 
 napi_value ImageNAPI::GetData(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    ImageNAPI* image = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&image));
-    
+    ANN_NAPI_THIS(ImageNAPI, image);
+
     if (!image || !image->data) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
+        return annotation_napi::JsNull(env);
     }
-    
+
     // Create a new Uint8Array with a copy of the data
     size_t dataSize = image->data->size();
     void* arrayData = nullptr;
     napi_value arrayBuffer;
     napi_create_arraybuffer(env, dataSize, &arrayData, &arrayBuffer);
     std::memcpy(arrayData, image->data->data(), dataSize);
-    
+
     napi_value typedArray;
     napi_create_typedarray(env, napi_uint8_array, dataSize, arrayBuffer, 0, &typedArray);
     return typedArray;
 }
 
-napi_value ImageNAPI::GetStretchX(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    ImageNAPI* image = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&image));
-    
-    if (!image || !image->stretchX) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Convert vector of stretches to array [start1, end1, start2, end2, ...]
-    const auto& stretches = image->stretchX.value();
+namespace {
+
+// 把 stretch 对列表拼成 JS 数组 [start1, end1, start2, end2, ...]
+napi_value CreateStretchArray(napi_env env, const mbgl::style::ImageStretches& stretches) {
     napi_value result;
     napi_create_array_with_length(env, stretches.size() * 2, &result);
-    
+
     for (size_t i = 0; i < stretches.size(); ++i) {
         napi_value startVal, endVal;
         napi_create_double(env, stretches[i].first, &startVal);
@@ -429,70 +347,42 @@ napi_value ImageNAPI::GetStretchX(napi_env env, napi_callback_info info) {
         napi_set_element(env, result, i * 2, startVal);
         napi_set_element(env, result, i * 2 + 1, endVal);
     }
-    
+
     return result;
 }
 
-napi_value ImageNAPI::GetStretchY(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    ImageNAPI* image = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&image));
-    
-    if (!image || !image->stretchY) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Convert vector of stretches to array [start1, end1, start2, end2, ...]
-    const auto& stretches = image->stretchY.value();
-    napi_value result;
-    napi_create_array_with_length(env, stretches.size() * 2, &result);
-    
-    for (size_t i = 0; i < stretches.size(); ++i) {
-        napi_value startVal, endVal;
-        napi_create_double(env, stretches[i].first, &startVal);
-        napi_create_double(env, stretches[i].second, &endVal);
-        napi_set_element(env, result, i * 2, startVal);
-        napi_set_element(env, result, i * 2 + 1, endVal);
-    }
-    
-    return result;
-}
-
-napi_value ImageNAPI::GetContent(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    ImageNAPI* image = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&image));
-    
-    if (!image || !image->content) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Return array [left, top, right, bottom]
-    const auto& c = image->content.value();
+// 把 content 拼成 JS 数组 [left, top, right, bottom]
+napi_value CreateContentArray(napi_env env, const mbgl::style::ImageContent& content) {
     napi_value result;
     napi_create_array_with_length(env, 4, &result);
-    
+
     napi_value leftVal, topVal, rightVal, bottomVal;
-    napi_create_double(env, c.left, &leftVal);
-    napi_create_double(env, c.top, &topVal);
-    napi_create_double(env, c.right, &rightVal);
-    napi_create_double(env, c.bottom, &bottomVal);
-    
+    napi_create_double(env, content.left, &leftVal);
+    napi_create_double(env, content.top, &topVal);
+    napi_create_double(env, content.right, &rightVal);
+    napi_create_double(env, content.bottom, &bottomVal);
+
     napi_set_element(env, result, 0, leftVal);
     napi_set_element(env, result, 1, topVal);
     napi_set_element(env, result, 2, rightVal);
     napi_set_element(env, result, 3, bottomVal);
-    
+
     return result;
 }
+
+} // namespace
+
+DEFINE_NAPI_GETTER(ImageNAPI, GetStretchX,
+    annotation_napi::JsNull(env),
+    !self->stretchX ? annotation_napi::JsNull(env) : CreateStretchArray(env, *self->stretchX))
+
+DEFINE_NAPI_GETTER(ImageNAPI, GetStretchY,
+    annotation_napi::JsNull(env),
+    !self->stretchY ? annotation_napi::JsNull(env) : CreateStretchArray(env, *self->stretchY))
+
+DEFINE_NAPI_GETTER(ImageNAPI, GetContent,
+    annotation_napi::JsNull(env),
+    !self->content ? annotation_napi::JsNull(env) : CreateContentArray(env, *self->content))
 
 std::unique_ptr<mbgl::style::Image> ImageNAPI::toStyleImage() const {
     // Create PremultipliedImage from data
@@ -550,9 +440,7 @@ bool ImageNAPI::IsImageObject(napi_env env, napi_value value) {
 }
 
 ImageNAPI* ImageNAPI::Unwrap(napi_env env, napi_value value) {
-    ImageNAPI* image = nullptr;
-    napi_status status = napi_unwrap(env, value, reinterpret_cast<void**>(&image));
-    return (status == napi_ok) ? image : nullptr;
+    return NapiArgs::Unwrap<ImageNAPI>(env, value);
 }
 
 } // namespace harmony

@@ -1,4 +1,5 @@
 #include "marker_napi.hpp"
+#include "napi/bindings/annotation_napi_accessors.hpp"
 #include "napi/core/napi_constructor_ref.hpp"
 #include "utils/logger.h"
 #include "napi/core/napi_args.hpp"
@@ -198,182 +199,42 @@ napi_value MarkerNAPI::New(napi_env env, napi_callback_info info) {
 }
 
 // Getter implementations
-napi_value MarkerNAPI::GetPosition(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) {
-        Logger::error("MarkerNAPI", "Failed to unwrap marker in GetPosition");
-        return nullptr;
-    }
-    
-    // Create LatLng object
-    return LatLngHarmony::CreateLatLngObject(env, mbgl::LatLng(marker->position.y, marker->position.x));
-}
+DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetPosition,
+    LatLngHarmony::CreateLatLngObject(env, mbgl::LatLng(self->position.y, self->position.x)))
 
-napi_value MarkerNAPI::GetIcon(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    if (marker->iconId.empty()) {
-        napi_value null;
-        napi_get_null(env, &null);
-        return null;
-    }
-    
-    napi_value result;
-    napi_create_string_utf8(env, marker->iconId.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
-}
+DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetIcon,
+    self->iconId.empty() ? annotation_napi::JsNull(env)
+                         : annotation_napi::JsString(env, self->iconId))
 
-napi_value MarkerNAPI::GetTitle(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    napi_value result;
-    napi_create_string_utf8(env, marker->title.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
-}
+DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetTitle, annotation_napi::JsString(env, self->title))
 
-napi_value MarkerNAPI::GetSnippet(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    napi_value result;
-    napi_create_string_utf8(env, marker->snippet.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
-}
+DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetSnippet, annotation_napi::JsString(env, self->snippet))
 
-napi_value MarkerNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    napi_value result;
-    napi_create_int64(env, static_cast<int64_t>(marker->annotationId), &result);
-    return result;
-}
+DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetId,
+    annotation_napi::JsInt64(env, static_cast<int64_t>(self->annotationId)))
 
-napi_value MarkerNAPI::GetVisible(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    napi_value result;
-    napi_get_boolean(env, marker->visible, &result);
-    return result;
-}
+DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetVisible, annotation_napi::JsBool(env, self->visible))
 
-napi_value MarkerNAPI::GetAlpha(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    napi_value result;
-    napi_create_double(env, marker->alpha, &result);
-    return result;
-}
+DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetAlpha, annotation_napi::JsNumber(env, self->alpha))
 
-napi_value MarkerNAPI::GetRotation(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    napi_value result;
-    napi_create_double(env, marker->rotation, &result);
-    return result;
-}
+DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetRotation, annotation_napi::JsNumber(env, self->rotation))
 
-napi_value MarkerNAPI::GetDraggable(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    napi_value result;
-    napi_get_boolean(env, marker->draggable, &result);
-    return result;
-}
+DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetDraggable, annotation_napi::JsBool(env, self->draggable))
 
-napi_value MarkerNAPI::GetZIndex(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    napi_value result;
-    napi_create_int32(env, marker->zIndex, &result);
-    return result;
-}
+DEFINE_ANNOTATION_GETTER(MarkerNAPI, GetZIndex, annotation_napi::JsInt32(env, self->zIndex))
 
 // Setter implementations
-napi_value MarkerNAPI::SetPosition(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
+DEFINE_NAPI_SETTER(MarkerNAPI, SetPosition, nullptr, annotation_napi::JsUndefined(env),
     args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    // Parse LatLng object
     napi_value posValue = args.GetObject(0, "position");
     if (!args.HasError()) {
         mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, posValue, latLng)) {
-            marker->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
+        if (LatLngHarmony::ParseLatLng(env, posValue, latLng)) {
+            self->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
         } else {
             Logger::error("MarkerNAPI", "SetPosition: Failed to parse LatLng");
         }
-    }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-}
+    })
 
 napi_value MarkerNAPI::SetIcon(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -444,61 +305,17 @@ napi_value MarkerNAPI::SetIcon(napi_env env, napi_callback_info info) {
     return undefined;
 }
 
-napi_value MarkerNAPI::SetTitle(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
+DEFINE_NAPI_SETTER(MarkerNAPI, SetTitle, nullptr, annotation_napi::JsUndefined(env),
     args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    marker->title = args.GetString(0, "title");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-}
+    self->title = args.GetString(0, "title"))
 
-napi_value MarkerNAPI::SetSnippet(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
+DEFINE_NAPI_SETTER(MarkerNAPI, SetSnippet, nullptr, annotation_napi::JsUndefined(env),
     args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    marker->snippet = args.GetString(0, "snippet");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-}
+    self->snippet = args.GetString(0, "snippet"))
 
-napi_value MarkerNAPI::SetVisible(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
+DEFINE_NAPI_SETTER(MarkerNAPI, SetVisible, nullptr, annotation_napi::JsUndefined(env),
     args.RequireMinArgs(1);
-    
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    MarkerNAPI* marker = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
-    
-    if (!marker) return nullptr;
-    
-    marker->visible = args.GetBool(0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-}
+    self->visible = args.GetBool(0))
 
 } // namespace harmony
 } // namespace mbgl

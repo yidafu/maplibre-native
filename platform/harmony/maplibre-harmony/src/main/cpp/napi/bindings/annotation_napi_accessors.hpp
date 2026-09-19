@@ -5,12 +5,17 @@
 //   1. napi_get_cb_info 取 this
 //   2. napi_unwrap 解包原生对象 + 空检查
 //   3. 从 argv 或成员里取值 / 写值
-// 三份文件里这类样板合计近千行，且彼此只差「成员名 + 取值函数」。
+// 这类样板合计近千行，且彼此只差「成员名 + 取值函数」。
 //
 // 本头文件把这些骨架固化成宏，把取值差异交给内联的 Js* 构造器与
-// NapiScalarTraits（napi_args 侧）描述。宏体展开后与手工代码逐字等价，
-// 包括失败分支的返回值（getter 失败返回 nullptr，setter 失败返回 thisVar —
-// 这是既有对外行为，ArkTS 侧依赖它判断 undefined）。
+// NapiScalarTraits（napi_args 侧）描述。
+//
+// 各 NAPI 类的失败分支返回值契约不同（Polygon/Polyline 的 getter 失败返回
+// nullptr、setter 失败/成功都返回 thisVar 以支持链式调用；Marker 的 setter
+// 失败返回 nullptr、成功返回 undefined；Image 的 getter 失败返回类型默认值），
+// 因此泛型骨架 DEFINE_NAPI_GETTER / DEFINE_NAPI_SETTER 把失败/成功返回值作为
+// 参数，注解版宏只是固定了 Polygon/Polyline 契约的薄包装。宏体展开后与手工
+// 代码逐字等价。
 //
 // 用法示例：
 //   DEFINE_ANNOTATION_GETTER(PolygonNAPI, GetFillColor, JsHexColor(env, self->fillColor))
@@ -51,6 +56,12 @@ inline napi_value JsNumber(napi_env env, double value) {
 inline napi_value JsInt32(napi_env env, int32_t value) {
     napi_value result = nullptr;
     napi_create_int32(env, value, &result);
+    return result;
+}
+
+inline napi_value JsUint32(napi_env env, uint32_t value) {
+    napi_value result = nullptr;
+    napi_create_uint32(env, value, &result);
     return result;
 }
 
@@ -105,35 +116,51 @@ inline napi_value JsNull(napi_env env) {
     Type* SelfName = NapiArgs::Unwrap<Type>(env, thisVar)
 
 /**
- * 只读访问器：解包失败返回 nullptr（保持既有语义）。
+ * 只读访问器泛型骨架。
  *
  * @param Cls       NAPI 类
  * @param Fn        要定义的方法名
+ * @param FailRet   解包失败时的返回表达式（可用 env）
  * @param ValueExpr 返回 napi_value 的表达式，可用 env 与 self
  */
-#define DEFINE_ANNOTATION_GETTER(Cls, Fn, ValueExpr)                             \
+#define DEFINE_NAPI_GETTER(Cls, Fn, FailRet, ValueExpr)                          \
     napi_value Cls::Fn(napi_env env, napi_callback_info info) {                  \
         ANN_NAPI_THIS(Cls, self);                                                \
-        if (!self) return nullptr;                                               \
+        if (!self) return (FailRet);                                             \
         return (ValueExpr);                                                      \
     }
 
 /**
- * 写访问器通用骨架：解包失败返回 thisVar（保持既有语义，支持链式调用）。
- *
- * @param Cls  NAPI 类
- * @param Fn   要定义的方法名
- * @param ...  方法体语句（可用 env / info / thisVar / args / self 及
- *             annotation_napi 命名空间的工具函数）
+ * 只读访问器（注解版契约：解包失败返回 nullptr，保持既有语义）。
  */
-#define DEFINE_ANNOTATION_SETTER(Cls, Fn, ...)                                   \
+#define DEFINE_ANNOTATION_GETTER(Cls, Fn, ValueExpr)                             \
+    DEFINE_NAPI_GETTER(Cls, Fn, nullptr, ValueExpr)
+
+/**
+ * 写访问器泛型骨架。
+ *
+ * @param Cls     NAPI 类
+ * @param Fn      要定义的方法名
+ * @param FailRet 解包失败时的返回表达式（可用 env）
+ * @param OkRet   方法体执行后的返回表达式（可用 env）
+ * @param ...     方法体语句（可用 env / info / thisVar / args / self 及
+ *                annotation_napi 命名空间的工具函数）
+ */
+#define DEFINE_NAPI_SETTER(Cls, Fn, FailRet, OkRet, ...)                         \
     napi_value Cls::Fn(napi_env env, napi_callback_info info) {                  \
         NapiArgs args(env, info);                                                \
         ANN_NAPI_THIS(Cls, self);                                                \
-        if (!self) return thisVar;                                               \
+        if (!self) return (FailRet);                                             \
         __VA_ARGS__;                                                             \
-        return thisVar;                                                          \
+        return (OkRet);                                                          \
     }
+
+/**
+ * 写访问器（注解版契约：解包失败返回 thisVar，成功也返回 thisVar 以支持
+ * 链式调用 —— Polygon/Polyline 的既有对外行为，ArkTS 侧依赖它判断 undefined）。
+ */
+#define DEFINE_ANNOTATION_SETTER(Cls, Fn, ...)                                   \
+    DEFINE_NAPI_SETTER(Cls, Fn, thisVar, thisVar, __VA_ARGS__)
 
 /**
  * "#RRGGBB" 颜色写访问器（ParseHexColor + 失败日志，行为与手写版一致）。
