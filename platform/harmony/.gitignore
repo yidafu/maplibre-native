@@ -15,6 +15,8 @@
 *.log
 *.sh
 !scripts/verify-vulkan-backend.sh
+!patches/README.md
+!patches/apply-patches.sh
 *.bak
 *.py
 
