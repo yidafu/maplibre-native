@@ -1,0 +1,82 @@
+# MapLibre Native 项目规则
+
+使用中文对话，代码里使用英文注释。
+
+## 项目背景
+这是 MapLibre Native 的 C++ 项目，主要是为了实现鸿蒙平台的改造工作。
+
+
+## 代码规范
+- 使用 C++17 标准和部分C++20标准
+- 遵循项目现有的命名约定
+- 所有公开 API 需要添加文档注释
+- 优先使用智能指针管理内存
+
+## 构建命令
+
+```bash
+cd /Users/yidafu/github/maplibre-native/platform/harmony
+
+export DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk
+export NODE_HOME=/Applications/DevEco-Studio.app/Contents/tools/node
+
+# maplibre-harmony 模块编译命令
+/Applications/DevEco-Studio.app/Contents/tools/node/bin/node \
+  /Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw.js \
+  --mode module \
+  -p product=default \
+  -p module=maplibre-harmony@default \
+  -p buildMode=debug assembleHar \
+  --analyze=normal \
+  --parallel \
+  --incremental \
+  --no-daemon
+
+# entry 模块编译命令
+/Applications/DevEco-Studio.app/Contents/tools/node/bin/node \
+  /Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw.js \
+  --mode module \
+  -p product=default \
+  -p module=entry@default \
+  -p buildMode=debug assembleHap \
+  --analyze=normal \
+  --parallel \
+  --incremental \
+  --no-daemon
+```
+
+## 修复
+
+对于批量修复的问题才生成 python 脚本，单个问题直接修复。
+执行批量脚本之前，先创建*.backup备份文件，执行是先修改10个文件，编译正常报错数量下降，在全量执行脚本，否则回滚。
+
+## commit
+
+默认生成英文的commit msg，不要执行commit命令。
+
+
+
+## ArkTS 与 TypeScript 核心差异
+
+- ArkTS 强制静态类型：禁止使用 `any`、`unknown`、`@ts-ignore` 等规避检查的写法，运行时不允许通过 `as any` 修改对象结构。
+- 禁止在运行时变更对象布局：不能增删属性、写入不同类型的值，不支持 `Symbol()`（仅保留 `Symbol.iterator`）。
+- 变量声明必须使用 `let`/`const`，不支持 `var`，也不支持 `#` 前缀私有字段（使用 `private`）。
+- 对象属性名需为合法标识符或显式字符串字面量/枚举值，复杂键场景改用 `Map`。
+- 类型系统限制：不支持 structural typing、索引签名、call/constructor 签名类型、交叉类型、`this` 类型、条件类型（含 `infer`），类中仅允许一个静态块。
+- 类型、命名空间命名必须唯一，不与变量/函数同名。
+- 若需函数式能力，改用显式类或接口方法；保持 ArkTS 代码可回编译为合法 TypeScript。
+
+## 问题修复
+
+### 类型断言
+
+禁止修使用ESObject解决类型断言问题，查找更多上下问题找准确定义，没有就新增类型。
+## 排查问题
+
+对于不能定位原因的问题，先添加日志断点来辅助排查问题。
+
+## 注意事项
+
+### DPI问题
+
+屏幕坐标传递到cpp地图对象上的方法是需要乘以DPI。

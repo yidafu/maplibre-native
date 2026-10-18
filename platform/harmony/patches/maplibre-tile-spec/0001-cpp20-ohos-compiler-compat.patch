@@ -1,0 +1,215 @@
+diff --git a/cpp/include/mlt/common.hpp b/cpp/include/mlt/common.hpp
+index 407687e5..b164a4d5 100644
+--- a/cpp/include/mlt/common.hpp
++++ b/cpp/include/mlt/common.hpp
+@@ -22,6 +22,6 @@ struct underlying_type {
+ template <typename T>
+ struct underlying_type<T, true> : ::std::underlying_type<T> {};
+ template <class T>
+-using underlying_type_t = underlying_type<T>::type;
++using underlying_type_t = typename underlying_type<T>::type;
+ 
+ } // namespace mlt
+diff --git a/cpp/include/mlt/geometry_vector.hpp b/cpp/include/mlt/geometry_vector.hpp
+index 2bc1cc03..f42ccd9d 100644
+--- a/cpp/include/mlt/geometry_vector.hpp
++++ b/cpp/include/mlt/geometry_vector.hpp
+@@ -162,7 +162,7 @@ struct FlatGpuVector : public GpuVector {
+ 
+     bool containsPolygonGeometry() const noexcept override {
+         // TODO: cache?  types can't change
+-        return std::ranges::any_of(geometryTypes, [](const auto type) {
++        return std::any_of(geometryTypes.begin(), geometryTypes.end(), [](const auto type) {
+             return type == GeometryType::POLYGON || type == GeometryType::MULTIPOLYGON;
+         });
+     }
+@@ -257,7 +257,7 @@ struct FlatGeometryVector : public CpuVector {
+ 
+     bool containsPolygonGeometry() const noexcept override {
+         // TODO: cache?  types can't change
+-        return std::ranges::any_of(geometryTypes, [](const auto type) {
++        return std::any_of(geometryTypes.begin(), geometryTypes.end(), [](const auto type) {
+             return type == GeometryType::POLYGON || type == GeometryType::MULTIPOLYGON;
+         });
+     }
+diff --git a/cpp/include/mlt/polyfill.hpp b/cpp/include/mlt/polyfill.hpp
+index 6786fad5..7e857561 100644
+--- a/cpp/include/mlt/polyfill.hpp
++++ b/cpp/include/mlt/polyfill.hpp
+@@ -21,7 +21,7 @@ template <std::integral T>
+ constexpr T byteswap(T value) noexcept { // NOLINT(bugprone-std-namespace-modification)
+     static_assert(std::has_unique_object_representations_v<T>, "T may not have padding bits");
+     auto value_representation = std::bit_cast<std::array<std::byte, sizeof(T)>>(value);
+-    std::ranges::reverse(value_representation); // GCOVR_EXCL_BR_LINE
++    std::reverse(value_representation.begin(), value_representation.end()); // GCOVR_EXCL_BR_LINE
+     return std::bit_cast<T>(value_representation);
+ }
+ #endif
+diff --git a/cpp/include/mlt/tile.hpp b/cpp/include/mlt/tile.hpp
+index 6821df1b..0ee9f2e4 100644
+--- a/cpp/include/mlt/tile.hpp
++++ b/cpp/include/mlt/tile.hpp
+@@ -3,6 +3,7 @@
+ #include <mlt/layer.hpp>
+ #include <mlt/util/noncopyable.hpp>
+ 
++#include <algorithm>
+ #include <vector>
+ 
+ namespace mlt {
+@@ -18,7 +19,7 @@ public:
+     const std::vector<Layer>& getLayers() const noexcept { return layers; }
+ 
+     const Layer* getLayer(const std::string_view& name) const noexcept {
+-        auto hit = std::ranges::find_if(layers, [&](const auto& layer) { return layer.getName() == name; });
++        auto hit = std::find_if(layers.begin(), layers.end(), [&](const auto& layer) { return layer.getName() == name; });
+         return (hit != layers.end()) ? &*hit : nullptr;
+     }
+ 
+diff --git a/cpp/src/mlt/decode/property.hpp b/cpp/src/mlt/decode/property.hpp
+index 91ec73f7..f4f00087 100644
+--- a/cpp/src/mlt/decode/property.hpp
++++ b/cpp/src/mlt/decode/property.hpp
+@@ -180,7 +180,7 @@ protected:
+                     std::vector<float> floatBuffer;
+                     decodeRaw(tileData, floatBuffer, *streamMetadata, /*consume=*/true);
+                     doubleBuffer.reserve(streamMetadata->getNumValues());
+-                    std::ranges::transform(floatBuffer, std::back_inserter(doubleBuffer), [](float value) {
++                    std::transform(floatBuffer.begin(), floatBuffer.end(), std::back_inserter(doubleBuffer), [](float value) {
+                         return static_cast<double>(value);
+                     });
+                 }
+diff --git a/cpp/src/mlt/encode/geometry.hpp b/cpp/src/mlt/encode/geometry.hpp
+index e7fe139d..b370e924 100644
+--- a/cpp/src/mlt/encode/geometry.hpp
++++ b/cpp/src/mlt/encode/geometry.hpp
+@@ -189,8 +189,8 @@ private:
+                                                 IntegerEncoder& intEncoder,
+                                                 IntegerEncodingOption integerEncodingOption) {
+         std::vector<std::int32_t> geomTypeValues(geometryTypes.size());
+-        std::ranges::transform(
+-            geometryTypes, geomTypeValues.begin(), [](auto t) { return static_cast<std::int32_t>(t); });
++        std::transform(
++            geometryTypes.begin(), geometryTypes.end(), geomTypeValues.begin(), [](auto t) { return static_cast<std::int32_t>(t); });
+ 
+         EncodedChunks chunks;
+         util::appendChunks(chunks,
+@@ -213,10 +213,12 @@ private:
+ 
+         auto partsEncodingOption = integerEncodingOption;
+         if (integerEncodingOption == IntegerEncodingOption::AUTO && numParts.size() > 1) {
+-            const bool allMultiLine = std::ranges::all_of(geometryTypes,
+-                                                          [](auto t) { return t == GeometryType::MULTILINESTRING; });
+-            const bool repeatedPartLengths = std::ranges::all_of(numParts,
+-                                                                 [&](auto v) { return v == numParts.front(); });
++            const bool allMultiLine = std::all_of(geometryTypes.begin(),
++                                                  geometryTypes.end(),
++                                                  [](auto t) { return t == GeometryType::MULTILINESTRING; });
++            const bool repeatedPartLengths = std::all_of(numParts.begin(),
++                                                         numParts.end(),
++                                                         [&](auto v) { return v == numParts.front(); });
+             if (allMultiLine && repeatedPartLengths) {
+                 partsEncodingOption = IntegerEncodingOption::RLE;
+             }
+@@ -254,7 +256,7 @@ private:
+             return;
+         }
+         std::vector<std::int32_t> signedValues(values.size());
+-        std::ranges::transform(values, signedValues.begin(), [](auto v) { return static_cast<std::int32_t>(v); });
++        std::transform(values.begin(), values.end(), signedValues.begin(), [](auto v) { return static_cast<std::int32_t>(v); });
+         util::appendChunks(
+             chunks,
+             intEncoder.encodeIntStream(
+@@ -363,7 +365,7 @@ private:
+         offsets.reserve(vertexBuffer.size());
+         for (const auto& v : vertexBuffer) {
+             const auto id = curve.encode({static_cast<float>(v.x), static_cast<float>(v.y)});
+-            const auto it = std::ranges::lower_bound(sortedIds, id);
++            const auto it = std::lower_bound(sortedIds.begin(), sortedIds.end(), id);
+             offsets.push_back(static_cast<std::int32_t>(it - sortedIds.begin()));
+         }
+         return offsets;
+diff --git a/cpp/src/mlt/encode/int.cpp b/cpp/src/mlt/encode/int.cpp
+index 55cac4e7..f636d558 100644
+--- a/cpp/src/mlt/encode/int.cpp
++++ b/cpp/src/mlt/encode/int.cpp
+@@ -63,7 +63,7 @@ std::vector<std::uint8_t> encodeVarintsIntegral(std::span<const TInt> values, bo
+ template <typename TInput, typename Transform, typename TCodec>
+ std::vector<std::uint8_t> encodeFastPforCore(std::span<const TInput> values, Transform transform, TCodec& codec) {
+     std::vector<std::uint32_t> input(values.size());
+-    std::ranges::transform(values, input.begin(), transform);
++    std::transform(values.begin(), values.end(), input.begin(), transform);
+ 
+     // FastPFor can throw NotEnoughStorage for incompressible/alignment-sensitive inputs.
+     // Start with the common-case size and retry with larger buffers as needed.
+@@ -310,14 +310,14 @@ std::optional<IntegerEncodingResult> tryEncodeViaSignedPath(std::span<const TUns
+     static_assert(std::is_unsigned_v<TUnsigned>, "TUnsigned must be unsigned");
+     static_assert(std::is_signed_v<TSigned>, "TSigned must be signed");
+ 
+-    const bool canUseSignedPath = std::ranges::all_of(
+-        values, [](TUnsigned v) { return v <= static_cast<TUnsigned>(std::numeric_limits<TSigned>::max()); });
++    const bool canUseSignedPath = std::all_of(
++        values.begin(), values.end(), [](TUnsigned v) { return v <= static_cast<TUnsigned>(std::numeric_limits<TSigned>::max()); });
+     if (!canUseSignedPath) {
+         return std::nullopt;
+     }
+ 
+     std::vector<TSigned> signedValues(values.size());
+-    std::ranges::transform(values, signedValues.begin(), [](TUnsigned v) { return static_cast<TSigned>(v); });
++    std::transform(values.begin(), values.end(), signedValues.begin(), [](TUnsigned v) { return static_cast<TSigned>(v); });
+     return encodeSigned(signedValues);
+ }
+ 
+diff --git a/cpp/src/mlt/encoder.cpp b/cpp/src/mlt/encoder.cpp
+index e5630d30..0370381f 100644
+--- a/cpp/src/mlt/encoder.cpp
++++ b/cpp/src/mlt/encoder.cpp
+@@ -288,7 +288,7 @@ void Encoder::Impl::collectGeometry(const std::vector<Feature>& features,
+                                     std::vector<std::uint32_t>& numParts,
+                                     std::vector<std::uint32_t>& numRings,
+                                     std::vector<GeometryEncoder::Vertex>& vertexBuffer) {
+-    const bool containsPolygon = std::ranges::any_of(features, [](const auto& f) {
++    const bool containsPolygon = std::any_of(features.begin(), features.end(), [](const auto& f) {
+         return f.geometry.type == GeometryType::POLYGON || f.geometry.type == GeometryType::MULTIPOLYGON;
+     });
+ 
+@@ -357,8 +357,9 @@ std::vector<Encoder::Feature> Encoder::Impl::sortFeatures(const std::vector<Enco
+     if (firstType != GeometryType::POINT && firstType != GeometryType::LINESTRING) {
+         return {};
+     }
+-    const bool allSame = std::ranges::all_of(features,
+-                                             [firstType](const auto& f) { return f.geometry.type == firstType; });
++    const bool allSame = std::all_of(features.begin(),
++                                     features.end(),
++                                     [firstType](const auto& f) { return f.geometry.type == firstType; });
+     if (!allSame) {
+         return {};
+     }
+@@ -386,15 +387,15 @@ std::vector<Encoder::Feature> Encoder::Impl::sortFeatures(const std::vector<Enco
+     std::vector<std::size_t> order(features.size());
+     // NOLINTNEXTLINE(boost-use-ranges)
+     std::iota(order.begin(), order.end(), 0);
+-    std::ranges::sort(order, [&](std::size_t a, std::size_t b) { return hilbertIds[a] < hilbertIds[b]; });
++    std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return hilbertIds[a] < hilbertIds[b]; });
+ 
+     std::vector<Feature> sorted(features.size());
+-    std::ranges::transform(order, sorted.begin(), [&](auto idx) { return features[idx]; });
++    std::transform(order.begin(), order.end(), sorted.begin(), [&](auto idx) { return features[idx]; });
+     return sorted;
+ }
+ 
+ bool Encoder::Impl::allPolygons(const std::vector<Encoder::Feature>& features) {
+-    return !features.empty() && std::ranges::all_of(features, [](const auto& f) {
++    return !features.empty() && std::all_of(features.begin(), features.end(), [](const auto& f) {
+         return f.geometry.type == GeometryType::POLYGON || f.geometry.type == GeometryType::MULTIPOLYGON;
+     });
+ }
+@@ -421,7 +422,7 @@ void Encoder::Impl::tessellateFeatures(const std::vector<Feature>& features,
+ 
+         auto indices = mapbox::earcut<std::uint32_t>(polygon);
+         if (indexOffset > 0) {
+-            std::ranges::for_each(indices, [=](auto& idx) { idx += indexOffset; });
++            std::for_each(indices.begin(), indices.end(), [=](auto& idx) { idx += indexOffset; });
+         }
+         return {static_cast<std::uint32_t>(indices.size() / 3), std::move(indices)};
+     };

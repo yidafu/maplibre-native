@@ -1,0 +1,22 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e22f2cfdd..519dfbad4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -75,7 +75,7 @@ include_directories(AFTER
+ )
+ 
+ # We need PYTHON_EXECUTABLE to be set for running the tests...
+-include (FindPythonInterp)
++find_package(Python COMPONENTS Interpreter)
+ 
+ ## Functions and headers
+ include (CheckFunctionExists)
+@@ -743,7 +743,7 @@ macro ( make_pkgconfig_pc_file name )
+     string(REPLACE "%libdir%" "${CMAKE_INSTALL_LIBDIR}" FSTR ${FSTR})
+   else ()
+     string(REPLACE "%libdir%" "\${prefix}/${CMAKE_INSTALL_LIBDIR}" FSTR ${FSTR})
+-  endif ()  
++  endif ()
+ 
+   string(REPLACE "%VERSION%" "${HB_VERSION}" FSTR ${FSTR})
+   string(REPLACE "%requires_private%" "${PC_REQUIRES_PRIV}" FSTR ${FSTR})

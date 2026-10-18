@@ -1,0 +1,1125 @@
+From: maplibre-harmony <harmony@localhost>
+Subject: [harmony-core] harmony build/platform: OHOS cmake dispatch, Vulkan OHOS define, glMapBufferRange fallback
+
+Harmony branch carry-patch for paths outside platform/harmony.
+Base for application: origin/main tree (merge-base d5df4d12eaec; origin/main currently at b7242e43a7ef).
+Generated from: harmony branch @ bccc3ac44a844191d6312162f5665c4d30e16150,
+with one deliberate fix-up: upstream #4315 adds an OHOS elseif that includes
+platform/ohos/ohos.cmake; keeping it would shadow the harmony branch (first
+elseif wins), so this patch keeps ONLY the harmony OHOS branch (default
+renderer + include(platform/harmony/harmony.cmake)). platform/ohos/ohos.cmake
+stays in the tree (it comes with origin/main) but is not included.
+Apply from repository root: git apply <this-file>
+
+---
+diff --git a/.github/workflows/harmony-vulkan-gate.yml b/.github/workflows/harmony-vulkan-gate.yml
+new file mode 100644
+index 000000000000..c9c426853127
+--- /dev/null
++++ b/.github/workflows/harmony-vulkan-gate.yml
+@@ -0,0 +1,78 @@
++name: harmony-vulkan-gate
++
++# The HarmonyOS module builds the OpenGL backend by default
++# (-DMLN_WITH_VULKAN=OFF), so the Vulkan renderer backend
++# (`harmony_vulkan_renderer_backend.{hpp,cpp}`) is not exercised by any other
++# pipeline. This workflow is the compile gate for that path: it configures the
++# module CMake with MLN_WITH_VULKAN=ON against the OpenHarmony NDK and
++# compiles the backend translation unit (no device, no HAP).
++
++on:
++  workflow_dispatch:
++  pull_request:
++    paths:
++      - 'platform/harmony/**'
++      - 'vendor/Vulkan-Headers/**'
++      - '.github/workflows/harmony-vulkan-gate.yml'
++
++concurrency:
++  group: ${{ github.workflow }}-${{ github.ref }}
++  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
++
++permissions:
++  contents: read
++
++env:
++  # OpenHarmony NDK release used to provision the toolchain.
++  # Bump OHOS_SDK_URL to move to a newer release; the tarball must contain
++  # ohos-sdk/linux/native-linux-x64-*.tar.gz (standard layout of
++  # https://repo.huaweicloud.com/openharmony/os/<version>/ohos-sdk-windows_linux-public.tar.gz)
++  OHOS_SDK_URL: https://repo.huaweicloud.com/openharmony/os/5.0.3-Release/ohos-sdk-windows_linux-public.tar.gz
++
++jobs:
++  vulkan-compile-gate:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 60
++    steps:
++      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
++        with:
++          submodules: recursive
++          persist-credentials: false
++
++      - name: Install build tools
++        run: |
++          sudo apt-get update
++          sudo apt-get install -y --no-install-recommends cmake ninja-build
++
++      - name: Cache OpenHarmony SDK
++        id: sdk-cache
++        uses: actions/cache@v4
++        with:
++          path: ~/ohos-sdk
++          key: ohos-sdk-${{ env.OHOS_SDK_URL }}
++
++      - name: Download OpenHarmony SDK
++        if: steps.sdk-cache.outputs.cache-hit != 'true'
++        run: |
++          mkdir -p ~/ohos-sdk-download
++          curl -fSL --retry 3 -o ~/ohos-sdk-download/sdk.tar.gz "${OHOS_SDK_URL}"
++          tar -xzf ~/ohos-sdk-download/sdk.tar.gz -C ~/ohos-sdk-download
++          # Layout: ohos-sdk/linux/native-linux-x64-*.tar.gz -> extract native/
++          INNER=$(find ~/ohos-sdk-download -name 'native-linux-x64-*.tar.gz' | head -1)
++          test -n "${INNER}" || { echo "native SDK tarball not found"; exit 1; }
++          mkdir -p ~/ohos-sdk
++          tar -xzf "${INNER}" -C ~/ohos-sdk
++          test -f ~/ohos-sdk/native/build/cmake/ohos.toolchain.cmake \
++            || { echo "ohos.toolchain.cmake missing after extraction"; exit 1; }
++
++      - name: Arrange DevEco-style SDK layout
++        run: |
++          # The module CMake derives sysroot paths from DEVECO_SDK_HOME as
++          # <root>/default/openharmony/native — provide that layout via symlink.
++          mkdir -p ~/deveco-layout/default/openharmony
++          ln -sfn ~/ohos-sdk/native ~/deveco-layout/default/openharmony/native
++
++      - name: Compile Vulkan backend gate
++        run: |
++          export DEVECO_SDK_HOME="$HOME/deveco-layout"
++          ./platform/harmony/scripts/verify-vulkan-backend.sh
+diff --git a/.gitignore b/.gitignore
+index 30d9798aa420..7b8b6bcb0006 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -64,3 +64,17 @@ out.png
+ **/target/
+ **/*.rs.bk
+ **/*.profraw
++*.md
++*.py
++# macOS 系统文件
++.DS_Store
++**/.DS_Store
++
++# 日志文件
++*.log
++.hvigor/outputs/build-logs/
++
++# CMake 构建文件
++.cxx/
++output.log
++*.backup
+\ No newline at end of file
+diff --git a/cmake/metal.cmake b/cmake/metal.cmake
+index 6596f0d42aa5..03338974a82d 100644
+--- a/cmake/metal.cmake
++++ b/cmake/metal.cmake
+@@ -35,6 +35,8 @@ list(APPEND
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/mtl/clipping_mask.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/mtl/common.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/mtl/collision.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/shaders/mtl/custom_geometry.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/shaders/mtl/custom_symbol_icon.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/mtl/debug.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/mtl/fill.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/mtl/fill_extrusion.hpp
+@@ -76,6 +78,8 @@ list(APPEND
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/mtl/circle.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/mtl/collision.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/mtl/clipping_mask.cpp
++        ${PROJECT_SOURCE_DIR}/src/mln/shaders/mtl/custom_geometry.cpp
++        ${PROJECT_SOURCE_DIR}/src/mln/shaders/mtl/custom_symbol_icon.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/mtl/debug.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/mtl/fill.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/mtl/fill_extrusion.cpp
+diff --git a/cmake/opengl.cmake b/cmake/opengl.cmake
+index ac5897e42811..4b2cfe0082e3 100644
+--- a/cmake/opengl.cmake
++++ b/cmake/opengl.cmake
+@@ -23,6 +23,8 @@ list(APPEND
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/gl/clipping_mask.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/gl/collision_box.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/gl/collision_circle.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/shaders/gl/custom_geometry.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/shaders/gl/custom_symbol_icon.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/gl/debug.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/gl/fill.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/gl/fill_outline.hpp
+@@ -107,6 +109,7 @@ list(APPEND INCLUDE_FILES
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/background_layer_ubo.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/circle_layer_ubo.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/collision_layer_ubo.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/shaders/custom_drawable_layer_ubo.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/debug_layer_ubo.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/fill_layer_ubo.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/fill_extrusion_layer_ubo.hpp
+@@ -122,6 +125,8 @@ list(APPEND INCLUDE_FILES
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/shader_defines.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/symbol_layer_ubo.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/widevector_ubo.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/style/layers/custom_drawable_layer.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/layermanager/custom_drawable_layer_factory.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/gl/shader_program_gl.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/gl/buffer_allocator.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/gl/drawable_gl.hpp
+diff --git a/cmake/vulkan.cmake b/cmake/vulkan.cmake
+index a9a6afd0f0c5..3048f0a320b7 100644
+--- a/cmake/vulkan.cmake
++++ b/cmake/vulkan.cmake
+@@ -41,6 +41,8 @@ list(APPEND
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/vulkan/clipping_mask.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/vulkan/collision.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/vulkan/common.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/shaders/vulkan/custom_geometry.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/shaders/vulkan/custom_symbol_icon.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/vulkan/fill.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/vulkan/fill_extrusion.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/vulkan/heatmap.hpp
+@@ -84,6 +86,8 @@ list(APPEND
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/vulkan/circle.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/vulkan/clipping_mask.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/vulkan/collision.cpp
++        ${PROJECT_SOURCE_DIR}/src/mln/shaders/vulkan/custom_geometry.cpp
++        ${PROJECT_SOURCE_DIR}/src/mln/shaders/vulkan/custom_symbol_icon.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/vulkan/debug.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/vulkan/fill.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/vulkan/fill_extrusion.cpp
+diff --git a/cmake/webgpu.cmake b/cmake/webgpu.cmake
+index 1f95d834438c..6a549f82cde3 100644
+--- a/cmake/webgpu.cmake
++++ b/cmake/webgpu.cmake
+@@ -32,6 +32,8 @@ list(APPEND
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/webgpu/circle.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/webgpu/clipping_mask.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/webgpu/collision.cpp
++        ${PROJECT_SOURCE_DIR}/src/mln/shaders/webgpu/custom_geometry.cpp
++        ${PROJECT_SOURCE_DIR}/src/mln/shaders/webgpu/custom_symbol_icon.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/webgpu/debug.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/webgpu/fill.cpp
+         ${PROJECT_SOURCE_DIR}/src/mln/shaders/webgpu/fill_extrusion.cpp
+@@ -70,6 +72,8 @@ list(APPEND
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/webgpu/clipping_mask.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/webgpu/collision.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/webgpu/common.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/shaders/webgpu/custom_geometry.hpp
++        ${PROJECT_SOURCE_DIR}/include/mln/shaders/webgpu/custom_symbol_icon.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/webgpu/debug.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/webgpu/fill.hpp
+         ${PROJECT_SOURCE_DIR}/include/mln/shaders/webgpu/fill_extrusion.hpp
+diff --git a/include/mln/gfx/backend.hpp b/include/mln/gfx/backend.hpp
+index a622681d9449..658a21b390dc 100644
+--- a/include/mln/gfx/backend.hpp
++++ b/include/mln/gfx/backend.hpp
+@@ -3,6 +3,7 @@
+ #include <cstdint>
+ #include <cstdlib>
+ #include <memory>
++#include <string>
+ 
+ namespace mln {
+ namespace gfx {
+@@ -37,6 +38,16 @@ public:
+ 
+     static Type GetType() { return Value(DefaultType); }
+ 
++    static std::string GetTypeName(Type type) {
++        switch (type) {
++            case Type::OpenGL: return "opengl";
++            case Type::Metal: return "metal";
++            case Type::Vulkan: return "vulkan";
++            case Type::WebGPU: return "webgpu";
++            default: return "unknown";
++        }
++    }
++
+     static bool getEnableGPUExpressionEval() { return enableGPUExpressionEval; }
+     static void setEnableGPUExpressionEval(bool value) { enableGPUExpressionEval = value; }
+ 
+diff --git a/include/mln/vulkan/renderer_backend.hpp b/include/mln/vulkan/renderer_backend.hpp
+index 3c29f0a14fd7..c16da006fd32 100644
+--- a/include/mln/vulkan/renderer_backend.hpp
++++ b/include/mln/vulkan/renderer_backend.hpp
+@@ -10,6 +10,8 @@
+ #define VK_USE_PLATFORM_WIN32_KHR
+ #elif defined(__ANDROID__)
+ #define VK_USE_PLATFORM_ANDROID_KHR
++#elif defined(__OHOS__) || defined(OHOS_PLATFORM)
++#define VK_USE_PLATFORM_OHOS_KHR
+ #endif
+ 
+ #include <vulkan/vulkan.hpp>
+diff --git a/scripts/build-harmony.sh b/scripts/build-harmony.sh
+new file mode 100755
+index 000000000000..f72261320a1b
+--- /dev/null
++++ b/scripts/build-harmony.sh
+@@ -0,0 +1,342 @@
++#!/bin/bash
++# Harmony 平台编译脚本
++# 用于编译 maplibre-harmony 模块
++
++set -e  # 遇到错误立即退出
++
++# 颜色定义
++RED='\033[0;31m'
++GREEN='\033[0;32m'
++YELLOW='\033[1;33m'
++BLUE='\033[0;34m'
++NC='\033[0m' # No Color
++
++# 打印函数
++print_header() {
++    echo -e "${BLUE}╔═══════════════════════════════════════╗${NC}"
++    echo -e "${BLUE}║  $1${NC}"
++    echo -e "${BLUE}╚═══════════════════════════════════════╝${NC}"
++}
++
++print_success() {
++    echo -e "${GREEN}✅ $1${NC}"
++}
++
++print_error() {
++    echo -e "${RED}❌ $1${NC}"
++}
++
++print_warning() {
++    echo -e "${YELLOW}⚠️  $1${NC}"
++}
++
++print_info() {
++    echo -e "${BLUE}ℹ️  $1${NC}"
++}
++
++# 检查环境变量
++check_environment() {
++    print_header "检查环境"
++
++    if [ ! -d "/Applications/DevEco-Studio.app" ]; then
++        print_error "未找到 DevEco Studio，请确认已安装"
++        exit 1
++    fi
++    print_success "DevEco Studio 已安装"
++
++    export DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk
++    export NODE_HOME=/Applications/DevEco-Studio.app/Contents/tools/node
++
++    if [ ! -d "$DEVECO_SDK_HOME" ]; then
++        print_error "SDK 路径不存在: $DEVECO_SDK_HOME"
++        exit 1
++    fi
++    print_success "SDK 路径正确: $DEVECO_SDK_HOME"
++
++    if [ ! -d "$NODE_HOME" ]; then
++        print_error "Node 路径不存在: $NODE_HOME"
++        exit 1
++    fi
++    print_success "Node 路径正确: $NODE_HOME"
++}
++
++MODULE_DIR="/Users/yidafu/github/maplibre-native/platform/harmony/maplibre-harmony"
++PROFILE_FILE="$MODULE_DIR/build-profile.json5"
++
++# 读取 build-profile.json5 当前配置的后端
++get_current_backend() {
++    if grep -q -- "-DMLN_WITH_VULKAN=ON" "$PROFILE_FILE"; then
++        echo "vulkan"
++    else
++        echo "opengl"
++    fi
++}
++
++# 将目标后端写入 build-profile.json5（编译期决定后端，GL/Vulkan 分离构建）
++# 后端变化时清理 native 构建缓存，避免增量编译混入旧后端产物
++switch_backend() {
++    print_header "配置渲染后端: $BACKEND"
++
++    local current
++    current=$(get_current_backend)
++
++    if [ "$current" = "$BACKEND" ]; then
++        print_success "build-profile.json5 已是 $BACKEND 后端，无需修改"
++        return
++    fi
++
++    if [ "$BACKEND" = "vulkan" ]; then
++        local args="-DCMAKE_CXX_STANDARD=20 -DCMAKE_POLICY_DEFAULT_CMP0148=NEW -DMLN_WITH_VULKAN=ON -DMLN_WITH_OPENGL=OFF"
++    else
++        local args="-DCMAKE_CXX_STANDARD=20 -DCMAKE_POLICY_DEFAULT_CMP0148=NEW -DMLN_WITH_VULKAN=OFF -DMLN_WITH_OPENGL=ON"
++    fi
++
++    local tmp="$PROFILE_FILE.tmp"
++    sed "s|\"arguments\": \"-DCMAKE_CXX_STANDARD[^\"]*\"|\"arguments\": \"$args\"|" "$PROFILE_FILE" > "$tmp"
++    if ! grep -qF -- "$args" "$tmp"; then
++        rm -f "$tmp"
++        print_error "改写 build-profile.json5 失败，请手动修改 arguments 行"
++        exit 1
++    fi
++    mv "$tmp" "$PROFILE_FILE"
++
++    # 后端切换必须清理 native 缓存
++    if [ -d "$MODULE_DIR/.cxx" ]; then
++        print_info "后端已切换，清理 native 构建缓存 (.cxx)..."
++        rm -rf "$MODULE_DIR/.cxx"
++    fi
++
++    print_success "已切换到 $BACKEND 后端"
++}
++
++# 清理构建
++clean_build() {
++    print_header "清理构建"
++    
++    cd /Users/yidafu/github/maplibre-native/platform/harmony
++    
++    if [ -d "maplibre-harmony/.cxx" ]; then
++        print_info "删除 .cxx 目录..."
++        rm -rf maplibre-harmony/.cxx
++    fi
++    
++    if [ -d "maplibre-harmony/build" ]; then
++        print_info "删除 build 目录..."
++        rm -rf maplibre-harmony/build
++    fi
++    
++    if [ -d ".hvigor" ]; then
++        print_info "删除 .hvigor 目录..."
++        rm -rf .hvigor
++    fi
++    
++    print_success "清理完成"
++}
++
++# 编译模块
++build_module() {
++    print_header "编译 maplibre-harmony 模块"
++    
++    cd /Users/yidafu/github/maplibre-native/platform/harmony
++    
++    print_info "开始编译..."
++    print_info "模式: $BUILD_MODE"
++    print_info "产品: default"
++    print_info "模块: maplibre_harmony@default"
++    
++    /Applications/DevEco-Studio.app/Contents/tools/node/bin/node \
++        /Applications/DevEco-Studio.app/Contents/tools/hvigor/bin/hvigorw.js \
++        --mode module \
++        -p product=default \
++        -p module=maplibre_harmony@default \
++        -p buildMode=$BUILD_MODE assembleHar \
++        --analyze=normal \
++        --parallel \
++        --incremental \
++        --daemon
++    
++    if [ $? -eq 0 ]; then
++        print_success "编译成功"
++
++        # 显示输出文件，并按后端分离产物
++        # 注意：hvigor 每次构建会清空 outputs 目录，因此分离产物存放在
++        # dist/ 下以保留两种后端的构建结果
++        HAR_FILE="maplibre-harmony/build/default/outputs/default/maplibre_harmony.har"
++        if [ -f "$HAR_FILE" ]; then
++            HAR_SIZE=$(du -h "$HAR_FILE" | cut -f1)
++            print_success "HAR 文件: $HAR_FILE ($HAR_SIZE)"
++
++            DIST_DIR="/Users/yidafu/github/maplibre-native/platform/harmony/dist"
++            mkdir -p "$DIST_DIR"
++            BACKEND_HAR="$DIST_DIR/maplibre-harmony_${BACKEND}.har"
++            cp "$HAR_FILE" "$BACKEND_HAR"
++            print_success "后端产物: $BACKEND_HAR ($(du -h "$BACKEND_HAR" | cut -f1))"
++        fi
++    else
++        print_error "编译失败"
++        exit 1
++    fi
++}
++
++# 显示编译统计
++show_statistics() {
++    print_header "编译统计"
++    
++    cd /Users/yidafu/github/maplibre-native/platform/harmony
++    
++    if [ -f "maplibre-harmony/build/default/outputs/default/maplibre_harmony.har" ]; then
++        HAR_FILE="maplibre-harmony/build/default/outputs/default/maplibre_harmony.har"
++        HAR_SIZE=$(du -h "$HAR_FILE" | cut -f1)
++        print_info "HAR 大小: $HAR_SIZE"
++    fi
++    
++    if [ -d "maplibre-harmony/.cxx" ]; then
++        SO_FILES=$(find maplibre-harmony/.cxx -name "*.so" 2>/dev/null | wc -l)
++        print_info "生成的 .so 文件数: $SO_FILES"
++        
++        if [ $SO_FILES -gt 0 ]; then
++            print_info "主要的 .so 文件:"
++            find maplibre-harmony/.cxx -name "*.so" 2>/dev/null | while read so_file; do
++                so_size=$(du -h "$so_file" | cut -f1)
++                so_name=$(basename "$so_file")
++                echo -e "  ${BLUE}→${NC} $so_name ($so_size)"
++            done
++        fi
++    fi
++}
++
++# 快速编译（增量编译，不清理）
++quick_build() {
++    print_header "快速编译（增量）"
++    check_environment
++    switch_backend
++    build_module
++    show_statistics
++}
++
++# 完整编译（清理后编译）
++full_build() {
++    print_header "完整编译（清理 + 编译）"
++    check_environment
++    switch_backend
++    clean_build
++    build_module
++    show_statistics
++}
++
++# 仅清理
++only_clean() {
++    check_environment
++    clean_build
++}
++
++# 显示帮助
++show_help() {
++    echo "Harmony 平台编译脚本"
++    echo ""
++    echo "用法:"
++    echo "  $0 [命令] [选项]"
++    echo ""
++    echo "命令:"
++    echo "  quick       快速编译（增量编译，默认）"
++    echo "  full        完整编译（清理后编译）"
++    echo "  clean       仅清理构建文件"
++    echo "  help        显示此帮助信息"
++    echo ""
++    echo "选项:"
++    echo "  --debug            使用 debug 模式编译（默认）"
++    echo "  --release          使用 release 模式编译"
++    echo "  --backend opengl   编译 OpenGL ES 后端（默认）"
++    echo "  --backend vulkan   编译 Vulkan 后端（编译期决定，产物分离为 maplibre-harmony_vulkan.har）"
++    echo ""
++    echo "示例:"
++    echo "  $0 quick                        # 快速增量编译（debug, opengl）"
++    echo "  $0 full --backend vulkan        # 完整编译 Vulkan 后端"
++    echo "  $0 quick --release --backend vulkan"
++    echo "  $0 clean                        # 清理构建文件"
++    echo ""
++}
++
++# 主函数
++main() {
++    # 默认参数
++    COMMAND="quick"
++    BUILD_MODE="debug"
++    BACKEND="opengl"
++
++    # 解析参数
++    while [[ $# -gt 0 ]]; do
++        case $1 in
++            quick|full|clean|help)
++                COMMAND=$1
++                shift
++                ;;
++            --debug)
++                BUILD_MODE="debug"
++                shift
++                ;;
++            --release)
++                BUILD_MODE="release"
++                shift
++                ;;
++            --backend)
++                shift
++                if [[ "$1" != "opengl" && "$1" != "vulkan" ]]; then
++                    print_error "--backend 仅支持 opengl 或 vulkan"
++                    exit 1
++                fi
++                BACKEND=$1
++                shift
++                ;;
++            *)
++                print_error "未知参数: $1"
++                show_help
++                exit 1
++                ;;
++        esac
++    done
++    
++    # 记录开始时间
++    START_TIME=$(date +%s)
++    
++    # 执行命令
++    case $COMMAND in
++        quick)
++            quick_build
++            ;;
++        full)
++            full_build
++            ;;
++        clean)
++            only_clean
++            ;;
++        help)
++            show_help
++            exit 0
++            ;;
++        *)
++            print_error "未知命令: $COMMAND"
++            show_help
++            exit 1
++            ;;
++    esac
++    
++    # 计算耗时
++    END_TIME=$(date +%s)
++    DURATION=$((END_TIME - START_TIME))
++    
++    print_header "完成"
++    print_success "总耗时: ${DURATION} 秒"
++    
++    # 显示下一步提示
++    echo ""
++    print_info "下一步:"
++    echo "  1. 检查编译输出是否有警告"
++    echo "  2. 使用 DevEco Studio 运行测试应用"
++    echo "  3. 查看日志: hdc hilog | grep -E 'MapRenderThread|HarmonyRenderer'"
++    echo ""
++}
++
++# 运行主函数
++main "$@"
++
+diff --git a/scripts/test-map-render-merge.sh b/scripts/test-map-render-merge.sh
+new file mode 100755
+index 000000000000..6447a7a48342
+--- /dev/null
++++ b/scripts/test-map-render-merge.sh
+@@ -0,0 +1,392 @@
++#!/bin/bash
++# Map+Render Thread 合并方案测试脚本
++# 用于验证新架构是否正常工作
++
++set -e
++
++# 颜色定义
++RED='\033[0;31m'
++GREEN='\033[0;32m'
++YELLOW='\033[1;33m'
++BLUE='\033[0;34m'
++CYAN='\033[0;36m'
++NC='\033[0m'
++
++# 打印函数
++print_header() {
++    echo ""
++    echo -e "${BLUE}╔════════════════════════════════════════════════════╗${NC}"
++    printf "${BLUE}║${NC} %-50s ${BLUE}║${NC}\n" "$1"
++    echo -e "${BLUE}╚════════════════════════════════════════════════════╝${NC}"
++}
++
++print_test() {
++    echo -e "${CYAN}🧪 测试: $1${NC}"
++}
++
++print_success() {
++    echo -e "${GREEN}  ✅ $1${NC}"
++}
++
++print_error() {
++    echo -e "${RED}  ❌ $1${NC}"
++}
++
++print_warning() {
++    echo -e "${YELLOW}  ⚠️  $1${NC}"
++}
++
++print_info() {
++    echo -e "${BLUE}  ℹ️  $1${NC}"
++}
++
++# 测试计数器
++TOTAL_TESTS=0
++PASSED_TESTS=0
++FAILED_TESTS=0
++WARNINGS=0
++
++# 测试结果记录
++declare -a TEST_RESULTS
++
++# 记录测试结果
++record_test() {
++    local test_name=$1
++    local result=$2
++    local message=$3
++    
++    TOTAL_TESTS=$((TOTAL_TESTS + 1))
++    
++    if [ "$result" = "PASS" ]; then
++        PASSED_TESTS=$((PASSED_TESTS + 1))
++        TEST_RESULTS+=("✅ $test_name: PASS")
++        print_success "$message"
++    elif [ "$result" = "FAIL" ]; then
++        FAILED_TESTS=$((FAILED_TESTS + 1))
++        TEST_RESULTS+=("❌ $test_name: FAIL - $message")
++        print_error "$message"
++    elif [ "$result" = "WARN" ]; then
++        WARNINGS=$((WARNINGS + 1))
++        TEST_RESULTS+=("⚠️  $test_name: WARNING - $message")
++        print_warning "$message"
++    fi
++}
++
++# 检查设备连接
++check_device() {
++    print_header "检查设备连接"
++    
++    print_test "HDC 连接"
++    if command -v hdc &> /dev/null; then
++        record_test "HDC 命令" "PASS" "HDC 命令可用"
++    else
++        record_test "HDC 命令" "FAIL" "HDC 命令不可用"
++        return 1
++    fi
++    
++    print_test "设备列表"
++    DEVICE_COUNT=$(hdc list targets | grep -v "Empty" | wc -l)
++    if [ $DEVICE_COUNT -gt 0 ]; then
++        record_test "设备连接" "PASS" "已连接 $DEVICE_COUNT 个设备"
++    else
++        record_test "设备连接" "FAIL" "未找到连接的设备"
++        return 1
++    fi
++}
++
++# 检查编译输出
++check_build_output() {
++    print_header "检查编译输出"
++    
++    cd /Users/yidafu/github/maplibre-native/platform/harmony
++    
++    print_test "HAR 文件"
++    HAR_FILE="maplibre-harmony/build/default/outputs/default/maplibre_harmony.har"
++    if [ -f "$HAR_FILE" ]; then
++        HAR_SIZE=$(du -h "$HAR_FILE" | cut -f1)
++        record_test "HAR 文件存在" "PASS" "文件大小: $HAR_SIZE"
++    else
++        record_test "HAR 文件存在" "FAIL" "HAR 文件不存在"
++        return 1
++    fi
++    
++    print_test ".so 文件"
++    SO_FILE=$(find maplibre-harmony/.cxx -name "libmaplibre.so" 2>/dev/null | head -1)
++    if [ -n "$SO_FILE" ]; then
++        SO_SIZE=$(du -h "$SO_FILE" | cut -f1)
++        record_test ".so 文件存在" "PASS" "文件大小: $SO_SIZE"
++    else
++        record_test ".so 文件存在" "FAIL" ".so 文件不存在"
++    fi
++    
++    print_test "关键符号检查"
++    if [ -n "$SO_FILE" ]; then
++        # 检查 HarmonyMapRenderThread 符号
++        if nm "$SO_FILE" 2>/dev/null | grep -q "HarmonyMapRenderThread"; then
++            record_test "HarmonyMapRenderThread 符号" "PASS" "类符号存在"
++        else
++            record_test "HarmonyMapRenderThread 符号" "WARN" "未找到类符号"
++        fi
++    fi
++}
++
++# 检查源代码
++check_source_code() {
++    print_header "检查源代码"
++    
++    cd /Users/yidafu/github/maplibre-native/platform/harmony/maplibre-harmony/src/main/cpp
++    
++    print_test "核心文件存在"
++    
++    if [ -f "rendering/harmony_map_render_thread.hpp" ]; then
++        record_test "头文件" "PASS" "harmony_map_render_thread.hpp 存在"
++    else
++        record_test "头文件" "FAIL" "harmony_map_render_thread.hpp 不存在"
++    fi
++    
++    if [ -f "rendering/harmony_map_render_thread.cpp" ]; then
++        record_test "实现文件" "PASS" "harmony_map_render_thread.cpp 存在"
++    else
++        record_test "实现文件" "FAIL" "harmony_map_render_thread.cpp 不存在"
++    fi
++    
++    print_test "旧文件已删除"
++    
++    if [ ! -f "rendering/harmony_render_thread.hpp" ]; then
++        record_test "旧 RenderThread" "PASS" "旧文件已删除"
++    else
++        record_test "旧 RenderThread" "WARN" "旧文件仍存在"
++    fi
++    
++    if [ ! -f "rendering/forwarding_renderer_observer.hpp" ]; then
++        record_test "旧 ForwardingObserver" "PASS" "旧文件已删除"
++    else
++        record_test "旧 ForwardingObserver" "WARN" "旧文件仍存在"
++    fi
++}
++
++# 分析日志
++analyze_logs() {
++    print_header "分析应用日志"
++    
++    print_info "请确保应用正在运行..."
++    print_info "将收集 10 秒的日志..."
++    
++    # 创建临时日志文件
++    LOG_FILE="/tmp/harmony_map_test_$(date +%s).log"
++    
++    # 收集日志
++    timeout 10s hdc hilog > "$LOG_FILE" 2>&1 || true
++    
++    print_test "初始化序列"
++    
++    if grep -q "Map+Render Thread Started" "$LOG_FILE"; then
++        record_test "线程启动" "PASS" "线程成功启动"
++    else
++        record_test "线程启动" "FAIL" "未找到线程启动日志"
++    fi
++    
++    if grep -q "RunLoop created" "$LOG_FILE"; then
++        record_test "RunLoop 创建" "PASS" "RunLoop 成功创建"
++    else
++        record_test "RunLoop 创建" "FAIL" "未找到 RunLoop 创建日志"
++    fi
++    
++    if grep -q "EGL Context initialized" "$LOG_FILE"; then
++        record_test "EGL 初始化" "PASS" "EGL Context 成功初始化"
++    else
++        record_test "EGL 初始化" "FAIL" "未找到 EGL 初始化日志"
++    fi
++    
++    if grep -q "Renderer created" "$LOG_FILE"; then
++        record_test "Renderer 创建" "PASS" "Renderer 成功创建"
++    else
++        record_test "Renderer 创建" "FAIL" "未找到 Renderer 创建日志"
++    fi
++    
++    if grep -q "Map created" "$LOG_FILE"; then
++        record_test "Map 创建" "PASS" "Map 成功创建"
++    else
++        record_test "Map 创建" "FAIL" "未找到 Map 创建日志"
++    fi
++    
++    print_test "运行状态"
++    
++    if grep -q "Starting RunLoop" "$LOG_FILE"; then
++        record_test "RunLoop 运行" "PASS" "RunLoop 开始运行"
++    else
++        record_test "RunLoop 运行" "FAIL" "未找到 RunLoop 运行日志"
++    fi
++    
++    print_test "Style 加载"
++    
++    if grep -q "Style.*load" "$LOG_FILE"; then
++        record_test "Style 加载" "PASS" "检测到 Style 加载活动"
++    else
++        record_test "Style 加载" "WARN" "未检测到 Style 加载"
++    fi
++    
++    print_test "错误检查"
++    
++    ERROR_COUNT=$(grep -iE "error|exception|crash|fail" "$LOG_FILE" | grep -v "Failed to.*test" | wc -l)
++    if [ $ERROR_COUNT -eq 0 ]; then
++        record_test "错误检查" "PASS" "未发现错误日志"
++    else
++        record_test "错误检查" "WARN" "发现 $ERROR_COUNT 条可能的错误日志"
++        print_info "请查看日志文件: $LOG_FILE"
++    fi
++    
++    print_info "日志文件保存在: $LOG_FILE"
++}
++
++# 性能检查
++check_performance() {
++    print_header "性能检查"
++    
++    print_test "内存使用"
++    
++    # 获取应用进程
++    APP_PID=$(hdc shell pidof com.example.myapplication 2>/dev/null || echo "")
++    
++    if [ -n "$APP_PID" ]; then
++        # 获取内存信息
++        MEM_INFO=$(hdc shell cat /proc/$APP_PID/status 2>/dev/null | grep VmRSS || echo "")
++        if [ -n "$MEM_INFO" ]; then
++            MEM_KB=$(echo "$MEM_INFO" | awk '{print $2}')
++            MEM_MB=$((MEM_KB / 1024))
++            record_test "内存使用" "PASS" "当前使用: ${MEM_MB} MB"
++        else
++            record_test "内存使用" "WARN" "无法获取内存信息"
++        fi
++    else
++        record_test "内存使用" "WARN" "应用未运行"
++    fi
++}
++
++# 显示测试报告
++show_report() {
++    print_header "测试报告"
++    
++    echo ""
++    echo "测试结果摘要:"
++    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
++    echo -e "  总测试数:   ${BLUE}$TOTAL_TESTS${NC}"
++    echo -e "  通过:       ${GREEN}$PASSED_TESTS${NC}"
++    echo -e "  失败:       ${RED}$FAILED_TESTS${NC}"
++    echo -e "  警告:       ${YELLOW}$WARNINGS${NC}"
++    
++    if [ $TOTAL_TESTS -gt 0 ]; then
++        PASS_RATE=$((PASSED_TESTS * 100 / TOTAL_TESTS))
++        echo -e "  通过率:     ${BLUE}${PASS_RATE}%${NC}"
++    fi
++    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
++    echo ""
++    
++    if [ $FAILED_TESTS -gt 0 ]; then
++        echo -e "${RED}失败的测试:${NC}"
++        for result in "${TEST_RESULTS[@]}"; do
++            if [[ $result == *"FAIL"* ]]; then
++                echo "  $result"
++            fi
++        done
++        echo ""
++    fi
++    
++    if [ $WARNINGS -gt 0 ]; then
++        echo -e "${YELLOW}警告:${NC}"
++        for result in "${TEST_RESULTS[@]}"; do
++            if [[ $result == *"WARNING"* ]]; then
++                echo "  $result"
++            fi
++        done
++        echo ""
++    fi
++    
++    # 总体评估
++    if [ $FAILED_TESTS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
++        echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
++        echo -e "${GREEN}║  ✅ 所有测试通过！架构实施成功！    ║${NC}"
++        echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
++        return 0
++    elif [ $FAILED_TESTS -eq 0 ]; then
++        echo -e "${YELLOW}╔════════════════════════════════════════╗${NC}"
++        echo -e "${YELLOW}║  ⚠️  测试通过，但有警告项          ║${NC}"
++        echo -e "${YELLOW}╚════════════════════════════════════════╝${NC}"
++        return 0
++    else
++        echo -e "${RED}╔════════════════════════════════════════╗${NC}"
++        echo -e "${RED}║  ❌ 测试失败，需要修复              ║${NC}"
++        echo -e "${RED}╚════════════════════════════════════════╝${NC}"
++        return 1
++    fi
++}
++
++# 快速测试（仅编译检查）
++quick_test() {
++    print_header "快速测试"
++    check_build_output
++    check_source_code
++}
++
++# 完整测试
++full_test() {
++    print_header "完整测试"
++    check_device
++    check_build_output
++    check_source_code
++    
++    echo ""
++    print_info "准备进行运行时测试..."
++    print_info "请确保应用正在运行地图页面"
++    read -p "按 Enter 继续..." 
++    
++    analyze_logs
++    check_performance
++}
++
++# 显示帮助
++show_help() {
++    echo "Map+Render Thread 合并方案测试脚本"
++    echo ""
++    echo "用法:"
++    echo "  $0 [命令]"
++    echo ""
++    echo "命令:"
++    echo "  quick    快速测试（仅检查编译输出和源代码）"
++    echo "  full     完整测试（包括运行时测试）"
++    echo "  help     显示此帮助信息"
++    echo ""
++    echo "示例:"
++    echo "  $0 quick    # 快速验证编译结果"
++    echo "  $0 full     # 完整测试（需要应用运行）"
++    echo ""
++}
++
++# 主函数
++main() {
++    local command=${1:-quick}
++    
++    case $command in
++        quick)
++            quick_test
++            show_report
++            ;;
++        full)
++            full_test
++            show_report
++            ;;
++        help|--help|-h)
++            show_help
++            exit 0
++            ;;
++        *)
++            print_error "未知命令: $command"
++            show_help
++            exit 1
++            ;;
++    esac
++}
++
++# 运行主函数
++main "$@"
++
+diff --git a/src/mln/gl/buffer_allocator.cpp b/src/mln/gl/buffer_allocator.cpp
+index 4cf4a39200a9..805350df92a2 100644
+--- a/src/mln/gl/buffer_allocator.cpp
++++ b/src/mln/gl/buffer_allocator.cpp
+@@ -3,6 +3,8 @@
+ #include <mln/gl/context.hpp>
+ #include <mln/gl/uniform_buffer_gl.hpp>
+ #include <mln/util/instrumentation.hpp>
++#include <mln/util/string.hpp>
++#include <mln/util/logging.hpp>
+ 
+ #include <utility>
+ 
+@@ -273,14 +275,16 @@ public:
+         if (buf) {
+             std::memcpy(buf, data, size);
+             MBGL_CHECK_ERROR(glUnmapBuffer(type));
+-
+-            residentBuffer = buffer->addRef(nullptr, writtenIndex, size);
+-            buffer->pointer += alignedSize;
+         } else {
+-            assert(0);
+-            return false;
++            std::string warningMsg = std::string("glMapBufferRange failed at offset ") + util::toString(buffer->pointer) +
++                                     " size " + util::toString(alignedSize) + ", falling back to glBufferSubData";
++            Log::Warning(Event::GraphicsBackend, warningMsg);
++            MBGL_CHECK_ERROR(glBufferSubData(type, buffer->pointer, size, data));
+         }
+ 
++        residentBuffer = buffer->addRef(nullptr, writtenIndex, size);
++        buffer->pointer += alignedSize;
++
+ #ifndef NDEBUG
+         MBGL_CHECK_ERROR(glBindBuffer(type, 0));
+ #endif
+@@ -445,11 +449,14 @@ private:
+         if (buf) {
+             std::memcpy(buf, ref.getOwner()->getManagedBuffer().getContents().data(), ref.getOwner()->getSize());
+             MBGL_CHECK_ERROR(glUnmapBuffer(type));
+-            destBuffer.pointer += alignedSize;
+         } else {
+-            assert(0);
+-            return false;
++            std::string warningMsg = std::string("glMapBufferRange failed during defragmentation at offset ") +
++                                     util::toString(destBuffer.pointer) + " size " + util::toString(alignedSize) +
++                                     ", using glBufferSubData";
++            Log::Warning(Event::GraphicsBackend, warningMsg);
++            MBGL_CHECK_ERROR(glBufferSubData(type, destBuffer.pointer, ref.getOwner()->getSize(), ref.getOwner()->getManagedBuffer().getContents().data()));
+         }
++        destBuffer.pointer += alignedSize;
+ 
+         // 2.c: Now the ref must be made aware of the relocation of its contents.
+         // Note that this means defragmentation can never run on refs that are
+CMakeLists.txt hunk is relative to origin/main (not merge-base): drops upstream #4315 OHOS elseif, keeps harmony branch.
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b605ba479a09..6bd5783522d6 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -14,6 +14,13 @@ option(MLN_WITH_EGL "Build with EGL renderer" OFF)
+ option(MLN_WITH_VULKAN "Build with Vulkan renderer" OFF)
+ option(MLN_WITH_METAL "Build with Metal renderer" OFF)
+ option(MLN_WITH_WEBGPU "Build with WebGPU renderer" OFF)
++
++# Default renderer for HarmonyOS platform (can be overridden by build configuration)
++if(CMAKE_SYSTEM_NAME STREQUAL "OHOS" AND NOT MLN_WITH_VULKAN AND NOT MLN_WITH_OPENGL)
++    set(MLN_WITH_VULKAN ON CACHE BOOL "Build with Vulkan renderer" FORCE)
++    message(STATUS "HarmonyOS: Defaulting to Vulkan renderer backend")
++endif()
++option(MLN_WITH_WEBGPU "Build with WebGPU renderer" OFF)
+ option(MLN_WITH_PMTILES "Build with PMTiles support" ON)
+ option(MLN_WITH_WERROR "Make all compilation warnings errors" ON)
+ option(MLN_USE_UNORDERED_DENSE "Use ankerl dense containers for performance" ON)
+@@ -85,7 +92,7 @@ target_compile_options(
+         $<$<STREQUAL:${MLN_WITH_SANITIZER},undefined>:-fsanitize=float-divide-by-zero,
+         -fsanitize-blacklist=${UBSAN_BLACKLIST}>
+         $<$<PLATFORM_ID:iOS>:-fembed-bitcode>
+-        $<$<AND:$<OR:$<COMPILE_LANGUAGE:CXX>,$<COMPILE_LANGUAGE:OBJCXX>>,$<NOT:$<OR:$<BOOL:${MLN_WITH_RTTI}>,$<CXX_COMPILER_ID:MSVC>>>>:-fno-rtti>
++        $<$<AND:$<OR:$<COMPILE_LANGUAGE:CXX>,$<COMPILE_LANGUAGE:OBJCXX>>,$<NOT:$<OR:$<BOOL:${MLN_WITH_RTTI}>,$<CXX_COMPILER_ID:MSVC>,$<STREQUAL:${CMAKE_SYSTEM_NAME},OHOS>>>>:-fno-rtti>
+         $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<PLATFORM_ID:Windows>>>:-Wall>
+         $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<PLATFORM_ID:Windows>>>:-Wshadow>
+         $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<PLATFORM_ID:Windows>>>:-Wextra>
+@@ -1033,6 +1040,16 @@ include(${PROJECT_SOURCE_DIR}/cmake/metal.cmake)
+ include(${PROJECT_SOURCE_DIR}/cmake/vulkan.cmake)
+ include(${PROJECT_SOURCE_DIR}/cmake/webgpu.cmake)
+ 
++list(APPEND
++    SRC_FILES
++        ${PROJECT_SOURCE_DIR}/src/mln/layermanager/custom_drawable_layer_factory.cpp
++        ${PROJECT_SOURCE_DIR}/src/mln/renderer/layers/render_custom_drawable_layer.cpp
++        ${PROJECT_SOURCE_DIR}/src/mln/renderer/layers/render_custom_drawable_layer.hpp
++        ${PROJECT_SOURCE_DIR}/src/mln/style/layers/custom_drawable_layer_impl.cpp
++        ${PROJECT_SOURCE_DIR}/src/mln/style/layers/custom_drawable_layer_impl.hpp
++        ${PROJECT_SOURCE_DIR}/src/mln/style/layers/custom_drawable_layer.cpp
++)
++
+ # Harfbuzz text shaping
+ set(SHAPE_TARGETS, "")
+ list(APPEND
+@@ -1299,8 +1316,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL Android)
+     include(${PROJECT_SOURCE_DIR}/platform/android/android.cmake)
+ elseif(CMAKE_SYSTEM_NAME STREQUAL Linux)
+     include(${PROJECT_SOURCE_DIR}/platform/linux/linux.cmake)
+-elseif(CMAKE_SYSTEM_NAME STREQUAL OHOS)
+-    include(${PROJECT_SOURCE_DIR}/platform/ohos/ohos.cmake)
+ elseif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
+     include(${PROJECT_SOURCE_DIR}/platform/darwin/darwin.cmake)
+     include(${PROJECT_SOURCE_DIR}/platform/macos/macos.cmake)
+@@ -1309,6 +1324,12 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
+     include(${PROJECT_SOURCE_DIR}/platform/ios/ios.cmake)
+ elseif(WIN32)
+     include(${PROJECT_SOURCE_DIR}/platform/windows/windows.cmake)
++elseif(CMAKE_SYSTEM_NAME STREQUAL OHOS)
++    # HarmonyOS: Set default renderer backend if not specified
++    if(NOT DEFINED MLN_WITH_VULKAN AND NOT DEFINED MLN_WITH_OPENGL)
++        set(MLN_WITH_OPENGL ON CACHE BOOL "Build with OpenGL renderer" FORCE)
++    endif()
++    include(${PROJECT_SOURCE_DIR}/platform/harmony/harmony.cmake)
+ else()
+     message(FATAL_ERROR "Unsupported target platform: " ${CMAKE_SYSTEM_NAME})
+ endif()

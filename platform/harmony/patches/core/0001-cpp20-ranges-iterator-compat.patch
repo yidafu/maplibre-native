@@ -1,0 +1,372 @@
+From: maplibre-harmony <harmony@localhost>
+Subject: [harmony-core] cpp20: replace std::ranges algorithms with iterator equivalents (OHOS clang++ compat)
+
+Harmony branch carry-patch for paths outside platform/harmony.
+Base for application: origin/main tree (merge-base d5df4d12eaec; origin/main currently at b7242e43a7ef).
+Generated from: harmony branch @ bccc3ac44a844191d6312162f5665c4d30e16150.
+Apply from repository root: git apply <this-file>
+
+---
+diff --git a/include/mln/gfx/vertex_attribute.hpp b/include/mln/gfx/vertex_attribute.hpp
+index 5af8c476a323..a49ae8fa5b47 100644
+--- a/include/mln/gfx/vertex_attribute.hpp
++++ b/include/mln/gfx/vertex_attribute.hpp
+@@ -320,7 +320,7 @@ public:
+ 
+     /// Indicates whether any values have changed
+     bool isModifiedAfter(std::chrono::duration<double> time) const {
+-        return std::ranges::any_of(attrs, [&](const auto& attr) { return attr && attr->isModifiedAfter(time); });
++        return std::any_of(attrs.begin(), attrs.end(), [&](const auto& attr) { return attr && attr->isModifiedAfter(time); });
+     }
+ 
+     /// Clear the collection
+diff --git a/include/mln/text/glyph.hpp b/include/mln/text/glyph.hpp
+index 16174b11011f..41ef7366d864 100644
+--- a/include/mln/text/glyph.hpp
++++ b/include/mln/text/glyph.hpp
+@@ -150,7 +150,7 @@ public:
+     float right = 0;
+     WritingModeType writingMode;
+     explicit operator bool() const {
+-        return std::ranges::any_of(positionedLines, [](const auto &line) { return !line.positionedGlyphs.empty(); });
++        return std::any_of(positionedLines.begin(), positionedLines.end(), [](const auto &line) { return !line.positionedGlyphs.empty(); });
+     }
+     // The y offset *should* be part of the font metadata.
+     static constexpr int32_t yOffset = -17;
+diff --git a/src/mln/geometry/feature_index.cpp b/src/mln/geometry/feature_index.cpp
+index fde694a25a8c..82571603b868 100644
+--- a/src/mln/geometry/feature_index.cpp
++++ b/src/mln/geometry/feature_index.cpp
+@@ -171,7 +171,7 @@ void FeatureIndex::query(std::unordered_map<std::string, std::vector<Feature>>&
+     std::vector<RefIndexedSubfeature> features = grid.query(
+         {convertPoint<float>(box.min - additionalPadding), convertPoint<float>(box.max + additionalPadding)});
+ 
+-    std::ranges::sort(features, [](const RefIndexedSubfeature& a, const RefIndexedSubfeature& b) {
++    std::sort(features.begin(), features.end(), [](const RefIndexedSubfeature& a, const RefIndexedSubfeature& b) {
+         return a.getSortIndex() > b.getSortIndex();
+     });
+     size_t previousSortIndex = std::numeric_limits<size_t>::max();
+@@ -206,7 +206,7 @@ std::unordered_map<std::string, std::vector<Feature>> FeatureIndex::lookupSymbol
+     std::vector<std::reference_wrapper<const RefIndexedSubfeature>> sortedFeatures(symbolFeatures.begin(),
+                                                                                    symbolFeatures.end());
+ 
+-    std::ranges::sort(sortedFeatures, [featureSortOrder](const RefIndexedSubfeature& a, const RefIndexedSubfeature& b) {
++    std::sort(sortedFeatures.begin(), sortedFeatures.end(), [featureSortOrder](const RefIndexedSubfeature& a, const RefIndexedSubfeature& b) {
+         // Same idea as the non-symbol sort order, but symbol features may
+         // have changed their sort order since their corresponding
+         // IndexedSubfeature was added to the CollisionIndex The
+diff --git a/src/mln/gfx/gpu_expression.cpp b/src/mln/gfx/gpu_expression.cpp
+index a6cb8677fec8..b6697763eb86 100644
+--- a/src/mln/gfx/gpu_expression.cpp
++++ b/src/mln/gfx/gpu_expression.cpp
+@@ -55,7 +55,7 @@ auto addStop(UniqueGPUExpression& expr, GPUOutputType outType, std::size_t& inde
+                     assert(value.is<Color>());
+                     if (value.is<Color>()) {
+                         const auto& color = attributeValue(value.get<Color>());
+-                        std::ranges::copy(color, &expr->stops.colors[2 * index++]);
++                        std::copy(std::begin(color), std::end(color), &expr->stops.colors[2 * index++]);
+                     } else {
+                         // Evaluation error, cancel
+                         expr.reset();
+diff --git a/src/mln/gfx/rendering_stats.cpp b/src/mln/gfx/rendering_stats.cpp
+index 1cc9b2057ce0..20c6cd49a46b 100644
+--- a/src/mln/gfx/rendering_stats.cpp
++++ b/src/mln/gfx/rendering_stats.cpp
+@@ -9,6 +9,7 @@
+ 
+ #include <initializer_list>
+ #include <iomanip>
++#include <algorithm>
+ #include <sstream>
+ 
+ namespace mln {
+@@ -27,7 +28,7 @@ bool RenderingStats::isZero() const {
+                                 memIndexBuffers,
+                                 memVertexBuffers,
+                                 memUniformBuffers};
+-    return std::ranges::all_of(expectedZeros, [](auto x) { return x == 0; });
++    return std::all_of(expectedZeros.begin(), expectedZeros.end(), [](auto x) { return x == 0; });
+ }
+ 
+ RenderingStats& RenderingStats::operator+=(const RenderingStats& r) {
+diff --git a/src/mln/layout/symbol_layout.cpp b/src/mln/layout/symbol_layout.cpp
+index f85e1accd953..533a73f5bba8 100644
+--- a/src/mln/layout/symbol_layout.cpp
++++ b/src/mln/layout/symbol_layout.cpp
+@@ -158,11 +158,11 @@ SymbolLayout::SymbolLayout(const BucketParameters& parameters,
+         auto modes = layout->get<TextWritingMode>();
+         // Remove duplicates and preserve order.
+         std::set<style::TextWritingModeType> seen;
+-        auto end = std::ranges::remove_if(modes, [&seen, this](const auto& placementMode) {
++        auto end = std::remove_if(modes.begin(), modes.end(), [&seen, this](const auto& placementMode) {
+                        allowVerticalPlacement = allowVerticalPlacement ||
+                                                 placementMode == style::TextWritingModeType::Vertical;
+                        return !seen.insert(placementMode).second;
+-                   }).begin();
++                   });
+         modes.erase(end, modes.end());
+         placementModes = std::move(modes);
+     }
+diff --git a/src/mln/renderer/buckets/symbol_bucket.cpp b/src/mln/renderer/buckets/symbol_bucket.cpp
+index e072cf3e5565..247a23fbf4b2 100644
+--- a/src/mln/renderer/buckets/symbol_bucket.cpp
++++ b/src/mln/renderer/buckets/symbol_bucket.cpp
+@@ -266,7 +266,7 @@ SymbolInstanceReferences SymbolBucket::getSortedSymbols(const float angle) const
+     const float sin = std::sin(angle);
+     const float cos = std::cos(angle);
+ 
+-    std::ranges::sort(result, [sin, cos](const SymbolInstance& a, const SymbolInstance& b) {
++    std::sort(result.begin(), result.end(), [sin, cos](const SymbolInstance& a, const SymbolInstance& b) {
+         const auto aRotated = std::lround(sin * a.getAnchor().point.x + cos * a.getAnchor().point.y);
+         const auto bRotated = std::lround(sin * b.getAnchor().point.x + cos * b.getAnchor().point.y);
+         if (aRotated != bRotated) {
+diff --git a/src/mln/renderer/layers/render_background_layer.cpp b/src/mln/renderer/layers/render_background_layer.cpp
+index 8eadd6491519..afda576bd18b 100644
+--- a/src/mln/renderer/layers/render_background_layer.cpp
++++ b/src/mln/renderer/layers/render_background_layer.cpp
+@@ -201,7 +201,7 @@ void RenderBackgroundLayer::update(gfx::ShaderRegistry& shaders,
+     // Remove drawables for tiles that are no longer in the cover set.
+     // (Note that `RenderTiles` is empty, and this layer does not use it)
+     tileLayerGroup->removeDrawablesIf([&](gfx::Drawable& drawable) -> bool {
+-        return drawable.getTileID() && (std::ranges::find(tileCover, *drawable.getTileID()) == tileCover.end());
++        return drawable.getTileID() && (std::find(tileCover.begin(), tileCover.end(), *drawable.getTileID()) == tileCover.end());
+     });
+ 
+     // For each tile in the cover set, add a tile drawable if one doesn't already exist.
+diff --git a/src/mln/renderer/render_orchestrator.cpp b/src/mln/renderer/render_orchestrator.cpp
+index d74eb5cf3f8e..b0062b9399b0 100644
+--- a/src/mln/renderer/render_orchestrator.cpp
++++ b/src/mln/renderer/render_orchestrator.cpp
+@@ -591,8 +591,7 @@ void RenderOrchestrator::queryRenderedSymbols(std::unordered_map<std::string, st
+     };
+ 
+     std::unordered_map<std::string, const RenderLayer*> crossTileSymbolIndexLayers;
+-    std::ranges::copy_if(
+-        layers, std::inserter(crossTileSymbolIndexLayers, crossTileSymbolIndexLayers.begin()), hasCrossTileIndex);
++    std::copy_if(layers.begin(), layers.end(), std::inserter(crossTileSymbolIndexLayers, crossTileSymbolIndexLayers.begin()), hasCrossTileIndex);
+ 
+     if (crossTileSymbolIndexLayers.empty()) {
+         return;
+@@ -607,7 +606,7 @@ void RenderOrchestrator::queryRenderedSymbols(std::unordered_map<std::string, st
+     // Although symbol query is global, symbol results are only sortable within
+     // a bucket For a predictable global sort renderItems, we sort the buckets
+     // based on their corresponding tile position
+-    std::ranges::sort(bucketQueryData, [](const RetainedQueryData& a, const RetainedQueryData& b) {
++    std::sort(bucketQueryData.begin(), bucketQueryData.end(), [](const RetainedQueryData& a, const RetainedQueryData& b) {
+         return std::tie(a.tileID.canonical.z, a.tileID.canonical.y, a.tileID.wrap, a.tileID.canonical.x) <
+                std::tie(b.tileID.canonical.z, b.tileID.canonical.y, b.tileID.wrap, b.tileID.canonical.x);
+     });
+@@ -622,7 +621,7 @@ void RenderOrchestrator::queryRenderedSymbols(std::unordered_map<std::string, st
+ 
+         for (auto layer : bucketSymbols) {
+             auto& resultFeatures = resultsByLayer[layer.first];
+-            std::ranges::move(layer.second, std::inserter(resultFeatures, resultFeatures.end()));
++            std::copy(layer.second.begin(), layer.second.end(), std::inserter(resultFeatures, resultFeatures.end()));
+         }
+     }
+ }
+@@ -651,7 +650,7 @@ std::vector<Feature> RenderOrchestrator::queryRenderedFeatures(
+         if (RenderSource* renderSource = getRenderSource(sourceID)) {
+             auto sourceResults = renderSource->queryRenderedFeatures(
+                 geometry, transformState, filteredLayers, options, projMatrix);
+-            std::ranges::move(sourceResults, std::inserter(resultsByLayer, resultsByLayer.begin()));
++            std::copy(sourceResults.begin(), sourceResults.end(), std::inserter(resultsByLayer, resultsByLayer.begin()));
+         }
+     }
+ 
+@@ -1018,7 +1017,7 @@ void RenderOrchestrator::processChanges() {
+ }
+ 
+ bool RenderOrchestrator::addRenderTarget(RenderTargetPtr renderTarget) {
+-    auto it = std::ranges::find(renderTargets, renderTarget);
++    auto it = std::find(renderTargets.begin(), renderTargets.end(), renderTarget);
+     if (it == renderTargets.end()) {
+         renderTargets.emplace_back(renderTarget);
+         return true;
+@@ -1028,7 +1027,7 @@ bool RenderOrchestrator::addRenderTarget(RenderTargetPtr renderTarget) {
+ }
+ 
+ bool RenderOrchestrator::removeRenderTarget(const RenderTargetPtr& renderTarget) {
+-    auto it = std::ranges::find(renderTargets, renderTarget);
++    auto it = std::find(renderTargets.begin(), renderTargets.end(), renderTarget);
+     if (it != renderTargets.end()) {
+         renderTargets.erase(it);
+         return true;
+diff --git a/src/mln/renderer/renderer.cpp b/src/mln/renderer/renderer.cpp
+index c1cfa1100272..8e28464766c4 100644
+--- a/src/mln/renderer/renderer.cpp
++++ b/src/mln/renderer/renderer.cpp
+@@ -99,7 +99,7 @@ AnnotationIDs Renderer::getAnnotationIDs(const std::vector<Feature>& features) c
+     }
+     AnnotationIDs ids;
+     ids.reserve(set.size());
+-    std::ranges::move(set, std::back_inserter(ids));
++    std::copy(set.begin(), set.end(), std::back_inserter(ids));
+     return ids;
+ }
+ 
+diff --git a/src/mln/renderer/tile_layer_group.cpp b/src/mln/renderer/tile_layer_group.cpp
+index 1a2f23ffdc24..5227d2cfa899 100644
+--- a/src/mln/renderer/tile_layer_group.cpp
++++ b/src/mln/renderer/tile_layer_group.cpp
+@@ -41,7 +41,7 @@ std::vector<gfx::UniqueDrawable> TileLayerGroup::removeDrawables(mln::RenderPass
+             return std::move(pair.second);
+         });
+     drawablesByTile.erase(range.first, range.second);
+-    std::ranges::for_each(result, [&](const auto& item) {
++    std::for_each(result.begin(), result.end(), [&](const auto& item) {
+         const auto hit = sortedDrawables.find(item.get());
+         assert(hit != sortedDrawables.end());
+         if (hit != sortedDrawables.end()) {
+diff --git a/src/mln/style/expression/coercion.cpp b/src/mln/style/expression/coercion.cpp
+index 9527ebf12d07..cf4135df84eb 100644
+--- a/src/mln/style/expression/coercion.cpp
++++ b/src/mln/style/expression/coercion.cpp
+@@ -53,8 +53,8 @@ EvaluationResult toColor(const Value& colorValue) {
+         },
+         [&colorValue](const std::vector<Value>& components) -> EvaluationResult {
+             const std::size_t len = components.size();
+-            bool isNumeric = std::ranges::all_of(components,
+-                                                 [](const Value& item) -> bool { return item.template is<double>(); });
++            bool isNumeric = std::all_of(components.begin(), components.end(),
++                                         [](const Value& item) -> bool { return item.template is<double>(); });
+             if ((len == 3 || len == 4) && isNumeric) {
+                 Result<Color> c = {rgba(components[0].template get<double>(),
+                                         components[1].template get<double>(),
+diff --git a/src/mln/style/expression/compound_expression.cpp b/src/mln/style/expression/compound_expression.cpp
+index da025387dcc3..7c0a919b62b7 100644
+--- a/src/mln/style/expression/compound_expression.cpp
++++ b/src/mln/style/expression/compound_expression.cpp
+@@ -1023,7 +1023,7 @@ const auto& filterTypeInCompoundExpression() {
+         [](const EvaluationContext& params, const Varargs<std::string>& types) -> Result<bool> {
+             assert(params.feature);
+             const auto type = featureTypeAsString(params.feature->getType());
+-            return std::ranges::find(types, type) != types.end();
++            return std::find(types.begin(), types.end(), type) != types.end();
+         },
+         Dependency::Feature);
+     return signature;
+@@ -1034,7 +1034,7 @@ const auto& filterIdInCompoundExpression() {
+         "filter-id-in",
+         [](const EvaluationContext& params, const Varargs<Value>& ids) -> Result<bool> {
+             const auto id = featureIdAsExpressionValue(params);
+-            return std::ranges::find(ids, id) != ids.end();
++            return std::find(ids.begin(), ids.end(), id) != ids.end();
+         },
+         Dependency::Feature);
+     return signature;
+diff --git a/src/mln/style/expression/semiliteral.cpp b/src/mln/style/expression/semiliteral.cpp
+index 4b628a74d302..078b664e40c2 100644
+--- a/src/mln/style/expression/semiliteral.cpp
++++ b/src/mln/style/expression/semiliteral.cpp
+@@ -9,8 +9,8 @@ namespace mln::style::expression {
+ namespace {
+ type::Array arrayType(const std::vector<std::unique_ptr<Expression>>& elements) {
+     const auto itemType = elements.empty() ? type::Value : elements.front()->getType();
+-    const bool homogeneous = std::ranges::all_of(elements,
+-                                                 [&](const auto& element) { return element->getType() == itemType; });
++    const bool homogeneous = std::all_of(elements.begin(), elements.end(),
++                                         [&](const auto& element) { return element->getType() == itemType; });
+     return type::Array(homogeneous ? itemType : type::Value, elements.size());
+ }
+ } // namespace
+diff --git a/src/mln/tile/tile_cache.cpp b/src/mln/tile/tile_cache.cpp
+index 9423e6658daa..cd672b4c348a 100644
+--- a/src/mln/tile/tile_cache.cpp
++++ b/src/mln/tile/tile_cache.cpp
+@@ -4,6 +4,7 @@
+ #include <mln/util/instrumentation.hpp>
+ 
+ #include <cassert>
++#include <algorithm>
+ 
+ namespace mln {
+ 
+@@ -43,7 +44,7 @@ namespace {
+ struct CaptureWrapper {
+     CaptureWrapper(std::vector<std::unique_ptr<Tile>>&& items_)
+         : items(items_.size()) {
+-        std::ranges::move(items_, items.begin());
++        std::move(items_.begin(), items_.end(), items.begin());
+     }
+     CaptureWrapper(CaptureWrapper&&) = default;
+ 
+diff --git a/src/mln/tile/vector_mlt_tile_data.cpp b/src/mln/tile/vector_mlt_tile_data.cpp
+index 56c4ca96995e..4fb40816f175 100644
+--- a/src/mln/tile/vector_mlt_tile_data.cpp
++++ b/src/mln/tile/vector_mlt_tile_data.cpp
+@@ -137,7 +137,7 @@ struct PointConverter {
+ 
+     GeometryCoordinates operator()(const mlt::CoordVec& coords) const {
+         GeometryCoordinates result(coords.size());
+-        std::ranges::transform(coords, result.begin(), *this);
++        std::transform(coords.begin(), coords.end(), result.begin(), *this);
+         return result;
+     }
+ };
+@@ -164,7 +164,7 @@ const GeometryCollection& VectorMLTTileFeature::getGeometries() const {
+             case GeometryType::POLYGON: {
+                 const auto& geom = static_cast<const mlt::geometry::Polygon&>(geometry);
+                 lines.emplace(geom.getRings().size());
+-                std::ranges::transform(geom.getRings(), lines->begin(), convert);
++                std::transform(geom.getRings().begin(), geom.getRings().end(), lines->begin(), convert);
+                 if (!geometry.getTriangles().empty()) {
+                     lines->setTriangles(tile, geometry.getTriangles());
+                 }
+@@ -173,7 +173,7 @@ const GeometryCollection& VectorMLTTileFeature::getGeometries() const {
+             case GeometryType::MULTILINESTRING: {
+                 const auto& geom = static_cast<const mlt::geometry::MultiLineString&>(geometry);
+                 lines.emplace(geom.getLineStrings().size());
+-                std::ranges::transform(geom.getLineStrings(), lines->begin(), convert);
++                std::transform(geom.getLineStrings().begin(), geom.getLineStrings().end(), lines->begin(), convert);
+                 break;
+             }
+             case GeometryType::MULTIPOLYGON: {
+@@ -185,7 +185,7 @@ const GeometryCollection& VectorMLTTileFeature::getGeometries() const {
+                         return a + b.size();
+                     }));
+                 for (const auto& poly : polygons) {
+-                    std::ranges::transform(poly, std::back_inserter(*lines), convert);
++                    std::transform(poly.begin(), poly.end(), std::back_inserter(*lines), convert);
+                 }
+                 if (!geometry.getTriangles().empty()) {
+                     lines->setTriangles(tile, geometry.getTriangles());
+@@ -260,8 +260,10 @@ public:
+         }
+         if (tile) {
+             std::vector<std::string> result(tile->getLayers().size());
+-            std::ranges::transform(
+-                tile->getLayers(), result.begin(), [](const auto& layer) { return layer.getName(); });
++            std::transform(tile->getLayers().begin(),
++                           tile->getLayers().end(),
++                           result.begin(),
++                           [](const auto& layer) { return layer.getName(); });
+             return result;
+         }
+         return {};
+diff --git a/src/mln/util/bounding_volumes.cpp b/src/mln/util/bounding_volumes.cpp
+index 40034a774a1d..afb87418a7e9 100644
+--- a/src/mln/util/bounding_volumes.cpp
++++ b/src/mln/util/bounding_volumes.cpp
+@@ -165,7 +165,7 @@ Frustum Frustum::fromInvProjMatrix(const mat4& invProj, double worldSize, double
+     }};
+ 
+     if (flippedY) {
+-        std::ranges::for_each(frustumPlanePointIndices, [](vec3i& tri) { std::swap(tri[1], tri[2]); });
++        std::for_each(frustumPlanePointIndices.begin(), frustumPlanePointIndices.end(), [](vec3i& tri) { std::swap(tri[1], tri[2]); });
+     }
+ 
+     std::array<vec4, 6> frustumPlanes;
+diff --git a/src/mln/vulkan/buffer_resource.cpp b/src/mln/vulkan/buffer_resource.cpp
+index 581ed337f6b6..389ed2adfcd8 100644
+--- a/src/mln/vulkan/buffer_resource.cpp
++++ b/src/mln/vulkan/buffer_resource.cpp
+@@ -226,7 +226,7 @@ void BufferResource::update(const void* newData, std::size_t updateSize, std::si
+         version = VersionType{} + 1;
+ 
+         if (bufferWindowSize) {
+-            std::ranges::fill(bufferWindowVersions, VersionType{});
++            std::fill(bufferWindowVersions.begin(), bufferWindowVersions.end(), VersionType{});
+         }
+     }
+ 

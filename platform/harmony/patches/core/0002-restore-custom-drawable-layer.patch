@@ -1,0 +1,2706 @@
+From: maplibre-harmony <harmony@localhost>
+Subject: [harmony-core] restore CustomDrawableLayer with custom geometry/symbol-icon shaders
+
+Harmony branch carry-patch for paths outside platform/harmony.
+Base for application: origin/main tree (merge-base d5df4d12eaec; origin/main currently at b7242e43a7ef).
+Generated from: harmony branch @ bccc3ac44a844191d6312162f5665c4d30e16150.
+Apply from repository root: git apply <this-file>
+
+---
+diff --git a/include/mln/layermanager/custom_drawable_layer_factory.hpp b/include/mln/layermanager/custom_drawable_layer_factory.hpp
+new file mode 100644
+index 000000000000..c9b1e3cfd39b
+--- /dev/null
++++ b/include/mln/layermanager/custom_drawable_layer_factory.hpp
+@@ -0,0 +1,18 @@
++#pragma once
++
++#include <mln/layermanager/layer_factory.hpp>
++#include <mln/style/layer.hpp>
++
++#include <array>
++
++namespace mln {
++
++class CustomDrawableLayerFactory : public LayerFactory {
++protected:
++    const style::LayerTypeInfo* getTypeInfo() const noexcept final;
++    std::unique_ptr<style::Layer> createLayer(const std::string& id,
++                                              const style::conversion::Convertible& value) noexcept final;
++    std::unique_ptr<RenderLayer> createRenderLayer(Immutable<style::Layer::Impl>) noexcept final;
++};
++
++} // namespace mln
+diff --git a/include/mln/shaders/custom_drawable_layer_ubo.hpp b/include/mln/shaders/custom_drawable_layer_ubo.hpp
+new file mode 100644
+index 000000000000..86a66de8ae08
+--- /dev/null
++++ b/include/mln/shaders/custom_drawable_layer_ubo.hpp
+@@ -0,0 +1,25 @@
++#pragma once
++
++#include <mln/shaders/layer_ubo.hpp>
++
++namespace mln {
++namespace shaders {
++
++struct alignas(16) CustomSymbolIconDrawableUBO {
++    /*   0 */ std::array<float, 4 * 4> matrix;
++    /*  64 */ std::array<float, 2> extrude_scale;
++    /*  72 */ std::array<float, 2> anchor;
++    /*  80 */ float angle_degrees;
++    /*  84 */ uint32_t scale_with_map;
++    /*  88 */ uint32_t pitch_with_map;
++    /*  92 */ float camera_to_center_distance;
++    /*  96 */ float aspect_ratio;
++    /* 100 */ float pad1;
++    /* 104 */ float pad2;
++    /* 108 */ float pad3;
++    /* 112 */
++};
++static_assert(sizeof(CustomSymbolIconDrawableUBO) == 7 * 16);
++
++} // namespace shaders
++} // namespace mln
+diff --git a/include/mln/shaders/custom_geometry_ubo.hpp b/include/mln/shaders/custom_geometry_ubo.hpp
+new file mode 100644
+index 000000000000..1b32ef4ce84e
+--- /dev/null
++++ b/include/mln/shaders/custom_geometry_ubo.hpp
+@@ -0,0 +1,16 @@
++#pragma once
++
++#include <mln/shaders/layer_ubo.hpp>
++
++namespace mln {
++namespace shaders {
++
++struct alignas(16) CustomGeometryDrawableUBO {
++    /*  0 */ std::array<float, 4 * 4> matrix;
++    /* 64 */ Color color;
++    /* 80 */
++};
++static_assert(sizeof(CustomGeometryDrawableUBO) == 5 * 16);
++
++} // namespace shaders
++} // namespace mln
+diff --git a/include/mln/shaders/gl/custom_geometry.hpp b/include/mln/shaders/gl/custom_geometry.hpp
+new file mode 100644
+index 000000000000..3bba437d584f
+--- /dev/null
++++ b/include/mln/shaders/gl/custom_geometry.hpp
+@@ -0,0 +1,41 @@
++// Generated code, do not modify this file!
++#pragma once
++#include <mln/shaders/shader_source.hpp>
++
++namespace mln {
++namespace shaders {
++
++template <>
++struct ShaderSource<BuiltIn::CustomGeometryShader, gfx::Backend::Type::OpenGL> {
++    static constexpr const char* name = "CustomGeometryShader";
++    static constexpr const char* vertex = R"(layout (std140) uniform CustomGeometryDrawableUBO {
++    mat4 u_matrix;
++    vec4 u_color;
++};
++
++layout(location = 0) in vec3 a_pos;
++layout(location = 1) in vec2 a_uv;
++
++out vec2 frag_uv;
++
++void main() {
++    frag_uv = a_uv;
++    gl_Position = u_matrix * vec4(a_pos, 1.0);
++}
++)";
++    static constexpr const char* fragment = R"(layout (std140) uniform CustomGeometryDrawableUBO {
++    mat4 u_matrix;
++    vec4 u_color;
++};
++
++in vec2 frag_uv;
++uniform sampler2D u_image;
++
++void main() {
++    fragColor = texture(u_image, frag_uv) * u_color;
++}
++)";
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/include/mln/shaders/gl/custom_symbol_icon.hpp b/include/mln/shaders/gl/custom_symbol_icon.hpp
+new file mode 100644
+index 000000000000..dbebd9d82f44
+--- /dev/null
++++ b/include/mln/shaders/gl/custom_symbol_icon.hpp
+@@ -0,0 +1,91 @@
++// Generated code, do not modify this file!
++#pragma once
++#include <mln/shaders/shader_source.hpp>
++
++namespace mln {
++namespace shaders {
++
++template <>
++struct ShaderSource<BuiltIn::CustomSymbolIconShader, gfx::Backend::Type::OpenGL> {
++    static constexpr const char* name = "CustomSymbolIconShader";
++    static constexpr const char* vertex = R"(layout(location = 0) in vec2 a_pos;
++layout(location = 1) in vec2 a_tex;
++
++layout(std140) uniform CustomSymbolIconDrawableUBO {
++    highp mat4 u_matrix;
++    highp vec2 u_extrude_scale;
++    highp vec2 u_anchor;
++    highp float u_angle_degrees;
++    bool u_scale_with_map;
++    bool u_pitch_with_map;
++    highp float u_camera_to_center_distance;
++    highp float u_aspect_ratio;
++    lowp float drawable_pad1;
++    lowp float drawable_pad2;
++    lowp float drawable_pad3;
++};
++
++out vec2 v_tex;
++
++vec2 rotateVec2(vec2 v, float angle) {
++    float cosA = cos(angle);
++    float sinA = sin(angle);
++    return vec2(v.x * cosA - v.y * sinA, v.x * sinA + v.y * cosA);
++}
++
++vec2 ellipseRotateVec2(vec2 v, float angle, float radiusRatio /* A/B */) {
++    float cosA = cos(angle);
++    float sinA = sin(angle);
++    float invRatio = 1.0 / radiusRatio;
++    return vec2(v.x * cosA - radiusRatio * v.y * sinA, invRatio * v.x * sinA + v.y * cosA);
++}
++
++void main() {
++    // decode the extrusion vector (-1, -1) to (1, 1)
++    vec2 extrude = vec2(mod(a_pos, 2.0) * 2.0 - 1.0);
++
++    // make anchor relative to (0.5, 0.5) and corners in range (-1, -1) to (1, 1)
++    vec2 anchor = (u_anchor - vec2(0.5, 0.5)) * 2.0;
++
++    // decode center
++    vec2 center = floor(a_pos * 0.5);
++
++    // rotate extrusion around anchor
++    float angle = radians(-u_angle_degrees);
++    vec2 corner = extrude - anchor;
++
++    // compute
++    if (u_pitch_with_map) {
++        if (u_scale_with_map) {
++            corner *= u_extrude_scale;
++        } else {
++            vec4 projected_center = u_matrix * vec4(center, 0, 1);
++            corner *= u_extrude_scale * (projected_center.w / u_camera_to_center_distance);
++        }
++        corner = center + rotateVec2(corner, angle);
++        gl_Position = u_matrix * vec4(corner, 0, 1);
++    } else {
++        gl_Position = u_matrix * vec4(center, 0, 1);
++        if (u_scale_with_map) {
++            gl_Position.xy += ellipseRotateVec2(corner * u_extrude_scale * u_camera_to_center_distance, angle, u_aspect_ratio);
++        } else {
++            gl_Position.xy += ellipseRotateVec2(corner * u_extrude_scale * gl_Position.w, angle, u_aspect_ratio);
++        }
++    }
++
++    // texture coordinates
++    v_tex = a_tex;
++}
++)";
++    static constexpr const char* fragment = R"(uniform sampler2D u_texture;
++
++in vec2 v_tex;
++
++void main() {
++    fragColor = texture(u_texture, v_tex);
++}
++)";
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/include/mln/shaders/gl/shader_info.hpp b/include/mln/shaders/gl/shader_info.hpp
+index aa53b9484bbb..8da7b6961f39 100644
+--- a/include/mln/shaders/gl/shader_info.hpp
++++ b/include/mln/shaders/gl/shader_info.hpp
+@@ -65,6 +65,20 @@ struct ShaderInfo<BuiltIn::CollisionCircleShader, gfx::Backend::Type::OpenGL> {
+     static const std::vector<TextureInfo> textures;
+ };
+ 
++template <>
++struct ShaderInfo<BuiltIn::CustomGeometryShader, gfx::Backend::Type::OpenGL> {
++    static const std::vector<AttributeInfo> attributes;
++    static const std::vector<UniformBlockInfo> uniformBlocks;
++    static const std::vector<TextureInfo> textures;
++};
++
++template <>
++struct ShaderInfo<BuiltIn::CustomSymbolIconShader, gfx::Backend::Type::OpenGL> {
++    static const std::vector<AttributeInfo> attributes;
++    static const std::vector<UniformBlockInfo> uniformBlocks;
++    static const std::vector<TextureInfo> textures;
++};
++
+ template <>
+ struct ShaderInfo<BuiltIn::DebugShader, gfx::Backend::Type::OpenGL> {
+     static const std::vector<AttributeInfo> attributes;
+diff --git a/include/mln/shaders/mtl/custom_geometry.hpp b/include/mln/shaders/mtl/custom_geometry.hpp
+new file mode 100644
+index 000000000000..cbbe98107c1f
+--- /dev/null
++++ b/include/mln/shaders/mtl/custom_geometry.hpp
+@@ -0,0 +1,70 @@
++#pragma once
++
++#include <mln/shaders/custom_geometry_ubo.hpp>
++#include <mln/shaders/shader_source.hpp>
++#include <mln/shaders/mtl/shader_program.hpp>
++
++namespace mln {
++namespace shaders {
++
++constexpr auto customGeometryShaderPrelude = R"(
++
++enum {
++    idCustomGeometryDrawableUBO = drawableReservedUBOCount,
++    customGeometryUBOCount
++};
++
++struct alignas(16) CustomGeometryDrawableUBO {
++    /*  0 */ float4x4 matrix;
++    /* 64 */ float4 color;
++    /* 80 */
++};
++static_assert(sizeof(CustomGeometryDrawableUBO) == 5 * 16, "wrong size");
++
++)";
++
++template <>
++struct ShaderSource<BuiltIn::CustomGeometryShader, gfx::Backend::Type::Metal> {
++    static constexpr auto name = "CustomGeometryShader";
++    static constexpr auto vertexMainFunction = "vertexMain";
++    static constexpr auto fragmentMainFunction = "fragmentMain";
++
++    static const std::array<AttributeInfo, 2> attributes;
++    static constexpr std::array<AttributeInfo, 0> instanceAttributes{};
++    static const std::array<TextureInfo, 1> textures;
++
++    static constexpr auto prelude = customGeometryShaderPrelude;
++    static constexpr auto source = R"(
++
++struct VertexStage {
++    float3 position [[attribute(0)]];
++    float2 uv [[attribute(1)]];
++};
++
++struct FragmentStage {
++    float4 position [[position, invariant]];
++    float2 uv;
++};
++
++FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
++                                device const CustomGeometryDrawableUBO& drawable [[buffer(idCustomGeometryDrawableUBO)]]) {
++
++    return {
++        .position = drawable.matrix * float4(vertx.position, 1.0),
++        .uv = vertx.uv
++    };
++}
++
++half4 fragment fragmentMain(FragmentStage in [[stage_in]],
++                            device const CustomGeometryDrawableUBO& drawable [[buffer(idCustomGeometryDrawableUBO)]],
++                            texture2d<float, access::sample> colorTexture [[texture(0)]]) {
++    constexpr sampler sampler2d(coord::normalized, filter::linear);
++    const float4 color = colorTexture.sample(sampler2d, in.uv) * drawable.color;
++
++    return half4(color);
++}
++)";
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/include/mln/shaders/mtl/custom_symbol_icon.hpp b/include/mln/shaders/mtl/custom_symbol_icon.hpp
+new file mode 100644
+index 000000000000..7abc3cbfe1ef
+--- /dev/null
++++ b/include/mln/shaders/mtl/custom_symbol_icon.hpp
+@@ -0,0 +1,115 @@
++#pragma once
++
++#include <mln/shaders/custom_drawable_layer_ubo.hpp>
++#include <mln/shaders/shader_source.hpp>
++#include <mln/shaders/mtl/shader_program.hpp>
++
++namespace mln {
++namespace shaders {
++
++constexpr auto customSymbolIconShaderPrelude = R"(
++
++enum {
++    idCustomSymbolDrawableUBO = idDrawableReservedVertexOnlyUBO,
++    customSymbolUBOCount = drawableReservedUBOCount
++};
++
++struct alignas(16) CustomSymbolIconDrawableUBO {
++    /*   0 */ float4x4 matrix;
++    /*  64 */ float2 extrude_scale;
++    /*  72 */ float2 anchor;
++    /*  80 */ float angle_degrees;
++    /*  84 */ uint32_t scale_with_map;
++    /*  88 */ uint32_t pitch_with_map;
++    /*  92 */ float camera_to_center_distance;
++    /*  96 */ float aspect_ratio;
++    /* 100 */ float pad1;
++    /* 104 */ float pad2;
++    /* 108 */ float pad3;
++    /* 112 */
++};
++static_assert(sizeof(CustomSymbolIconDrawableUBO) == 7 * 16, "wrong size");
++
++)";
++
++template <>
++struct ShaderSource<BuiltIn::CustomSymbolIconShader, gfx::Backend::Type::Metal> {
++    static constexpr auto name = "CustomSymbolIconShader";
++    static constexpr auto vertexMainFunction = "vertexMain";
++    static constexpr auto fragmentMainFunction = "fragmentMain";
++
++    static const std::array<AttributeInfo, 2> attributes;
++    static constexpr std::array<AttributeInfo, 0> instanceAttributes{};
++    static const std::array<TextureInfo, 1> textures;
++
++    static constexpr auto prelude = customSymbolIconShaderPrelude;
++    static constexpr auto source = R"(
++
++struct VertexStage {
++    float2 a_pos [[attribute(0)]];
++    float2 a_tex [[attribute(1)]];
++};
++
++struct FragmentStage {
++    float4 position [[position, invariant]];
++    half2 tex;
++};
++
++float2 rotateVec2(float2 v, float angle) {
++    float cosA = cos(angle);
++    float sinA = sin(angle);
++    return float2(v.x * cosA - v.y * sinA, v.x * sinA + v.y * cosA);
++}
++
++float2 ellipseRotateVec2(float2 v, float angle, float radiusRatio /* A/B */) {
++    float cosA = cos(angle);
++    float sinA = sin(angle);
++    float invRatio = 1.0 / radiusRatio;
++    return float2(v.x * cosA - radiusRatio * v.y * sinA, invRatio * v.x * sinA + v.y * cosA);
++}
++
++FragmentStage vertex vertexMain(thread const VertexStage vertx [[stage_in]],
++                                device const CustomSymbolIconDrawableUBO& drawable [[buffer(idCustomSymbolDrawableUBO)]]) {
++
++    const float2 extrude = glMod(float2(vertx.a_pos), 2.0) * 2.0 - 1.0;
++    const float2 anchor = (drawable.anchor - float2(0.5, 0.5)) * 2.0;
++    const float2 center = floor(float2(vertx.a_pos) * 0.5);
++    const float angle = radians(-drawable.angle_degrees);
++    float2 corner = extrude - anchor;
++
++    float4 position;
++    if (drawable.pitch_with_map) {
++        if (drawable.scale_with_map) {
++            corner *= drawable.extrude_scale;
++        } else {
++            float4 projected_center = drawable.matrix * float4(center, 0, 1);
++            corner *= drawable.extrude_scale * (projected_center.w / drawable.camera_to_center_distance);
++        }
++        corner = center + rotateVec2(corner, angle);
++        position = drawable.matrix * float4(corner, 0, 1);
++    } else {
++        position = drawable.matrix * float4(center, 0, 1);
++        const float factor = drawable.scale_with_map ? drawable.camera_to_center_distance : position.w;
++        position.xy += ellipseRotateVec2(corner * drawable.extrude_scale * factor, angle, drawable.aspect_ratio);
++    }
++
++    return {
++        .position   = position,
++        .tex        = half2(vertx.a_tex)
++    };
++}
++
++half4 fragment fragmentMain(FragmentStage in [[stage_in]],
++                            texture2d<float, access::sample> image [[texture(0)]],
++                            sampler image_sampler [[sampler(0)]]) {
++#if defined(OVERDRAW_INSPECTOR)
++    return half4(1.0);
++#endif
++
++    return half4(image.sample(image_sampler, float2(in.tex)));
++}
++)";
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/include/mln/shaders/shader_defines.hpp b/include/mln/shaders/shader_defines.hpp
+index c11c65784338..088c55cfff70 100644
+--- a/include/mln/shaders/shader_defines.hpp
++++ b/include/mln/shaders/shader_defines.hpp
+@@ -211,6 +211,16 @@ enum {
+     colorReliefUBOCount = getEnumValue(colorReliefLayerUBOCount, drawableUBOStartId)
+ };
+ 
++enum {
++    idCustomGeometryDrawableUBO = getEnumValue(drawableReservedUBOCount, drawableUBOStartId), // UBO
++    customGeometryUBOCount
++};
++
++enum {
++    idCustomSymbolDrawableUBO = getEnumValue(idDrawableReservedVertexOnlyUBO, drawableUBOStartId), // UBO
++    customSymbolUBOCount = getEnumValue(drawableReservedUBOCount, idCustomSymbolDrawableUBO + 1)
++};
++
+ enum {
+     idDebugUBO = getEnumValue(drawableReservedUBOCount, drawableUBOStartId), // UBO
+     debugUBOCount
+@@ -268,6 +278,7 @@ static constexpr uint32_t maxUBOCountPerShader = std::max({static_cast<uint32_t>
+                                                            static_cast<uint32_t>(clippingMaskUBOCount),
+                                                            static_cast<uint32_t>(collisionUBOCount),
+                                                            static_cast<uint32_t>(colorReliefUBOCount),
++                                                           static_cast<uint32_t>(customGeometryUBOCount),
+                                                            static_cast<uint32_t>(debugUBOCount),
+                                                            static_cast<uint32_t>(fillUBOCount),
+                                                            static_cast<uint32_t>(fillExtrusionUBOCount),
+@@ -305,6 +316,16 @@ enum {
+     collisionTextureCount
+ };
+ 
++enum {
++    idCustomGeometryTexture,
++    customGeometryTextureCount
++};
++
++enum {
++    idCustomSymbolImageTexture,
++    customSymbolTextureCount
++};
++
+ enum {
+     idDebugOverlayTexture,
+     debugTextureCount
+@@ -364,6 +385,8 @@ static constexpr uint32_t maxTextureCountPerShader = std::max({static_cast<uint3
+                                                                static_cast<uint32_t>(circleTextureCount),
+                                                                static_cast<uint32_t>(clippingMaskTextureCount),
+                                                                static_cast<uint32_t>(collisionTextureCount),
++                                                               static_cast<uint32_t>(customGeometryTextureCount),
++                                                               static_cast<uint32_t>(customSymbolTextureCount),
+                                                                static_cast<uint32_t>(debugTextureCount),
+                                                                static_cast<uint32_t>(fillTextureCount),
+                                                                static_cast<uint32_t>(fillExtrusionTextureCount),
+@@ -410,6 +433,18 @@ enum {
+     collisionVertexAttributeCount
+ };
+ 
++enum {
++    idCustomGeometryPosVertexAttribute,
++    idCustomGeometryTexVertexAttribute,
++    customGeometryVertexAttributeCount
++};
++
++enum {
++    idCustomSymbolPosVertexAttribute,
++    idCustomSymbolTexVertexAttribute,
++    customSymbolVertexAttributeCount
++};
++
+ enum {
+     idDebugPosVertexAttribute,
+     debugVertexAttributeCount
+@@ -556,6 +591,8 @@ static constexpr uint32_t maxAttributeCountPerShader = std::max({
+     static_cast<uint32_t>(circleVertexAttributeCount),
+     static_cast<uint32_t>(clippingMaskVertexAttributeCount),
+     static_cast<uint32_t>(collisionVertexAttributeCount),
++    static_cast<uint32_t>(customGeometryVertexAttributeCount),
++    static_cast<uint32_t>(customSymbolVertexAttributeCount),
+     static_cast<uint32_t>(debugVertexAttributeCount),
+     static_cast<uint32_t>(fillVertexAttributeCount),
+     static_cast<uint32_t>(fillExtrusionVertexAttributeCount),
+diff --git a/include/mln/shaders/shader_manifest.hpp b/include/mln/shaders/shader_manifest.hpp
+index ac17b4c6a2dc..a0011a54dee8 100644
+--- a/include/mln/shaders/shader_manifest.hpp
++++ b/include/mln/shaders/shader_manifest.hpp
+@@ -10,6 +10,8 @@
+ #include <mln/shaders/gl/circle.hpp>
+ #include <mln/shaders/gl/collision_box.hpp>
+ #include <mln/shaders/gl/collision_circle.hpp>
++#include <mln/shaders/gl/custom_geometry.hpp>
++#include <mln/shaders/gl/custom_symbol_icon.hpp>
+ #include <mln/shaders/gl/debug.hpp>
+ #include <mln/shaders/gl/fill.hpp>
+ #include <mln/shaders/gl/fill_outline.hpp>
+diff --git a/include/mln/shaders/shader_source.hpp b/include/mln/shaders/shader_source.hpp
+index beae9f321c92..d9282c568810 100644
+--- a/include/mln/shaders/shader_source.hpp
++++ b/include/mln/shaders/shader_source.hpp
+@@ -16,6 +16,8 @@ enum class BuiltIn {
+     CircleShader,
+     CollisionBoxShader,
+     CollisionCircleShader,
++    CustomGeometryShader,
++    CustomSymbolIconShader,
+     DebugShader,
+     FillShader,
+     FillOutlineShader,
+diff --git a/include/mln/shaders/vulkan/custom_geometry.hpp b/include/mln/shaders/vulkan/custom_geometry.hpp
+new file mode 100644
+index 000000000000..ac411fa5a308
+--- /dev/null
++++ b/include/mln/shaders/vulkan/custom_geometry.hpp
+@@ -0,0 +1,57 @@
++#pragma once
++
++#include <mln/shaders/shader_source.hpp>
++#include <mln/shaders/vulkan/shader_program.hpp>
++
++namespace mln {
++namespace shaders {
++
++constexpr auto customGeometryShaderPrelude = R"(#define idCustomGeometryDrawableUBO  drawableUBOStartId)";
++
++template <>
++struct ShaderSource<BuiltIn::CustomGeometryShader, gfx::Backend::Type::Vulkan> {
++    static constexpr const char* name = "CustomGeometryShader";
++
++    static const std::array<AttributeInfo, 2> attributes;
++    static constexpr std::array<AttributeInfo, 0> instanceAttributes{};
++    static const std::array<TextureInfo, 1> textures;
++
++    static constexpr auto prelude = customGeometryShaderPrelude;
++    static constexpr auto vertex = R"(
++layout(location = 0) in vec3 in_position;
++layout(location = 1) in vec2 in_texcoord;
++
++layout(set = DRAWABLE_UBO_SET_INDEX, binding = idCustomGeometryDrawableUBO) uniform CustomDrawableDrawableUBO {
++    mat4 matrix;
++    vec4 color;
++} drawable;
++
++layout(location = 0) out vec2 frag_uv;
++
++void main() {
++    frag_uv = in_texcoord;
++
++    gl_Position = drawable.matrix * vec4(in_position, 1.0);
++    applySurfaceTransform();
++}
++)";
++
++    static constexpr auto fragment = R"(
++layout(location = 0) in vec2 frag_uv;
++layout(location = 0) out vec4 out_color;
++
++layout(set = DRAWABLE_UBO_SET_INDEX, binding = idCustomGeometryDrawableUBO) uniform CustomDrawableDrawableUBO {
++    mat4 matrix;
++    vec4 color;
++} drawable;
++
++layout(set = DRAWABLE_IMAGE_SET_INDEX, binding = 0) uniform sampler2D image_sampler;
++
++void main() {
++    out_color = texture(image_sampler, frag_uv) * drawable.color;
++}
++)";
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/include/mln/shaders/vulkan/custom_symbol_icon.hpp b/include/mln/shaders/vulkan/custom_symbol_icon.hpp
+new file mode 100644
+index 000000000000..7ed306892e05
+--- /dev/null
++++ b/include/mln/shaders/vulkan/custom_symbol_icon.hpp
+@@ -0,0 +1,103 @@
++#pragma once
++
++#include <mln/shaders/shader_source.hpp>
++#include <mln/shaders/vulkan/shader_program.hpp>
++
++namespace mln {
++namespace shaders {
++
++constexpr auto customSymbolIconShaderPrelude = R"(#define idCustomSymbolDrawableUBO drawableUBOStartId)";
++
++template <>
++struct ShaderSource<BuiltIn::CustomSymbolIconShader, gfx::Backend::Type::Vulkan> {
++    static constexpr const char* name = "CustomSymbolIconShader";
++
++    static const std::array<AttributeInfo, 2> attributes;
++    static constexpr std::array<AttributeInfo, 0> instanceAttributes{};
++    static const std::array<TextureInfo, 1> textures;
++
++    static constexpr auto prelude = customSymbolIconShaderPrelude;
++    static constexpr auto vertex = R"(
++
++layout(location = 0) in vec2 in_position;
++layout(location = 1) in vec2 in_tex;
++
++layout(set = DRAWABLE_UBO_SET_INDEX, binding = idCustomSymbolDrawableUBO) uniform CustomSymbolIconDrawableUBO {
++    mat4 matrix;
++    vec2 extrude_scale;
++    vec2 anchor;
++    float angle_degrees;
++    bool scale_with_map;
++    bool pitch_with_map;
++    float camera_to_center_distance;
++    float aspect_ratio;
++    float pad1;
++    float pad2;
++    float pad3;
++} drawable;
++
++layout(location = 0) out vec2 frag_tex;
++
++vec2 rotateVec2(vec2 v, float angle) {
++    float cosA = cos(angle);
++    float sinA = sin(angle);
++    return vec2(v.x * cosA - v.y * sinA, v.x * sinA + v.y * cosA);
++}
++
++vec2 ellipseRotateVec2(vec2 v, float angle, float radiusRatio /* A/B */) {
++    float cosA = cos(angle);
++    float sinA = sin(angle);
++    float invRatio = 1.0 / radiusRatio;
++    return vec2(v.x * cosA - radiusRatio * v.y * sinA, invRatio * v.x * sinA + v.y * cosA);
++}
++
++void main() {
++    const vec2 extrude = mod(in_position, 2.0) * 2.0 - 1.0;
++    const vec2 anchor = (drawable.anchor - vec2(0.5, 0.5)) * 2.0;
++    const vec2 center = floor(in_position * 0.5);
++    const float angle = radians(-drawable.angle_degrees);
++    vec2 corner = extrude - anchor;
++
++    vec4 position;
++    if (drawable.pitch_with_map) {
++        if (drawable.scale_with_map) {
++            corner *= drawable.extrude_scale;
++        } else {
++            vec4 projected_center = drawable.matrix * vec4(center, 0, 1);
++            corner *= drawable.extrude_scale * (projected_center.w / drawable.camera_to_center_distance);
++        }
++        corner = center + rotateVec2(corner, angle);
++        position = drawable.matrix * vec4(corner, 0, 1);
++    } else {
++        position = drawable.matrix * vec4(center, 0, 1);
++        const float factor = drawable.scale_with_map ? drawable.camera_to_center_distance : position.w;
++        position.xy += ellipseRotateVec2(corner * drawable.extrude_scale * factor, angle, drawable.aspect_ratio);
++    }
++
++    gl_Position = position;
++    applySurfaceTransform();
++
++    frag_tex = in_tex;
++}
++)";
++
++    static constexpr auto fragment = R"(
++layout(location = 0) in vec2 frag_tex;
++layout(location = 0) out vec4 out_color;
++
++layout(set = DRAWABLE_IMAGE_SET_INDEX, binding = 0) uniform sampler2D image_sampler;
++
++void main() {
++
++#if defined(OVERDRAW_INSPECTOR)
++    out_color = vec4(1.0);
++    return;
++#endif
++
++    out_color = texture(image_sampler, frag_tex);
++}
++)";
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/include/mln/shaders/webgpu/custom_geometry.hpp b/include/mln/shaders/webgpu/custom_geometry.hpp
+new file mode 100644
+index 000000000000..199a75e59e30
+--- /dev/null
++++ b/include/mln/shaders/webgpu/custom_geometry.hpp
+@@ -0,0 +1,66 @@
++#pragma once
++
++#include <mln/shaders/shader_source.hpp>
++#include <mln/shaders/webgpu/shader_program.hpp>
++#include <mln/shaders/custom_geometry_ubo.hpp>
++
++namespace mln {
++namespace shaders {
++
++template <>
++struct ShaderSource<BuiltIn::CustomGeometryShader, gfx::Backend::Type::WebGPU> {
++    static constexpr const char* name = "CustomGeometryShader";
++    static const std::array<AttributeInfo, 2> attributes;
++    static constexpr std::array<AttributeInfo, 0> instanceAttributes{};
++    static const std::array<TextureInfo, 1> textures;
++
++    static constexpr auto vertex = R"(
++struct VertexInput {
++    @location(3) position: vec3<f32>,
++    @location(4) texcoord: vec2<f32>,
++};
++
++struct VertexOutput {
++    @builtin(position) position: vec4<f32>,
++    @location(0) uv: vec2<f32>,
++};
++
++struct CustomDrawableUBO {
++    matrix: mat4x4<f32>,
++    color: vec4<f32>,
++};
++
++@group(0) @binding(0) var<uniform> drawable: CustomDrawableUBO;
++
++@vertex
++fn main(in: VertexInput) -> VertexOutput {
++    var out: VertexOutput;
++    out.uv = in.texcoord;
++    out.position = drawable.matrix * vec4<f32>(in.position, 1.0);
++    return out;
++}
++)";
++
++    static constexpr auto fragment = R"(
++struct FragmentInput {
++    @location(0) uv: vec2<f32>,
++};
++
++struct CustomDrawableUBO {
++    matrix: mat4x4<f32>,
++    color: vec4<f32>,
++};
++
++@group(0) @binding(0) var<uniform> drawable: CustomDrawableUBO;
++@group(1) @binding(0) var texture_sampler: sampler;
++@group(1) @binding(1) var texture_image: texture_2d<f32>;
++
++@fragment
++fn main(in: FragmentInput) -> @location(0) vec4<f32> {
++    return textureSample(texture_image, texture_sampler, in.uv) * drawable.color;
++}
++)";
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/include/mln/shaders/webgpu/custom_symbol_icon.hpp b/include/mln/shaders/webgpu/custom_symbol_icon.hpp
+new file mode 100644
+index 000000000000..5d0e19f24d84
+--- /dev/null
++++ b/include/mln/shaders/webgpu/custom_symbol_icon.hpp
+@@ -0,0 +1,68 @@
++#pragma once
++
++#include <mln/shaders/shader_source.hpp>
++#include <mln/shaders/webgpu/shader_program.hpp>
++#include <mln/shaders/custom_drawable_layer_ubo.hpp>
++
++namespace mln {
++namespace shaders {
++
++template <>
++struct ShaderSource<BuiltIn::CustomSymbolIconShader, gfx::Backend::Type::WebGPU> {
++    static constexpr const char* name = "CustomSymbolIconShader";
++    static const std::array<AttributeInfo, 2> attributes;
++    static constexpr std::array<AttributeInfo, 0> instanceAttributes{};
++    static const std::array<TextureInfo, 1> textures;
++
++    static constexpr auto vertex = R"(
++struct VertexInput {
++    @location(4) position: vec3<f32>,
++    @location(5) texcoord: vec2<f32>,
++};
++
++struct VertexOutput {
++    @builtin(position) position: vec4<f32>,
++    @location(0) uv: vec2<f32>,
++};
++
++struct SymbolUBO {
++    matrix: mat4x4<f32>,
++    opacity: f32,
++};
++
++@group(0) @binding(0) var<uniform> symbol_ubo: SymbolUBO;
++
++@vertex
++fn main(in: VertexInput) -> VertexOutput {
++    var out: VertexOutput;
++    out.position = symbol_ubo.matrix * vec4<f32>(in.position, 1.0);
++    out.uv = in.texcoord;
++    return out;
++}
++)";
++
++    static constexpr auto fragment = R"(
++struct FragmentInput {
++    @location(0) uv: vec2<f32>,
++};
++
++struct SymbolUBO {
++    matrix: mat4x4<f32>,
++    opacity: f32,
++};
++
++@group(0) @binding(0) var<uniform> symbol_ubo: SymbolUBO;
++@group(1) @binding(0) var texture_sampler: sampler;
++@group(1) @binding(1) var texture_image: texture_2d<f32>;
++
++@fragment
++fn main(in: FragmentInput) -> @location(0) vec4<f32> {
++    var color = textureSample(texture_image, texture_sampler, in.uv);
++    color.a = color.a * symbol_ubo.opacity;
++    return color;
++}
++)";
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/include/mln/style/layers/custom_drawable_layer.hpp b/include/mln/style/layers/custom_drawable_layer.hpp
+new file mode 100644
+index 000000000000..f837da1c1e8c
+--- /dev/null
++++ b/include/mln/style/layers/custom_drawable_layer.hpp
+@@ -0,0 +1,256 @@
++#pragma once
++
++#include <mln/style/layer.hpp>
++#include <mln/gfx/shader_registry.hpp>
++#include <mln/map/transform_state.hpp>
++#include <mln/renderer/update_parameters.hpp>
++#include <mln/renderer/render_tree.hpp>
++#include <mln/renderer/change_request.hpp>
++#include <mln/gfx/drawable_builder.hpp>
++#include <mln/gfx/texture2d.hpp>
++#include <mln/gfx/context.hpp>
++
++#include <array>
++#include <memory>
++#include <optional>
++
++namespace mln {
++namespace style {
++
++class CustomDrawableLayerHost {
++public:
++    class Interface;
++
++public:
++    virtual ~CustomDrawableLayerHost() = default;
++
++    virtual void initialize() = 0;
++
++    virtual void update(Interface& interface) = 0;
++
++    virtual void deinitialize() = 0;
++};
++
++class CustomDrawableLayerHost::Interface {
++public:
++    enum class LineShaderType {
++        Classic,
++        WideVector
++    };
++
++    struct LineOptions {
++        gfx::PolylineGeneratorOptions geometry;
++
++        float blur = 0.f;
++        float opacity = 1.f;
++        float gapWidth = 0.f;
++        float offset = 0.f;
++        float width = 1.f;
++        Color color;
++    };
++
++    struct FillOptions {
++        Color color;
++        float opacity = 1.f;
++    };
++
++    struct SymbolOptions {
++        Size size;
++        gfx::Texture2DPtr texture;
++        std::array<float, 2> anchor{0.5f, 0.5f};
++        float angleDegrees{.0f};
++        bool scaleWithMap{false};
++        bool pitchWithMap{false};
++    };
++
++    struct GeometryVertex {
++        std::array<float, 3> position;
++        std::array<float, 2> texcoords;
++    };
++
++    struct GeometryOptions {
++        mat4 matrix = matrix::identity4();
++        Color color = Color::white();
++        gfx::Texture2DPtr texture;
++    };
++
++    template <typename T>
++    using TweakerCallback = std::function<void(mln::gfx::Drawable&, const mln::PaintParameters&, T&)>;
++
++    using LineTweakerCallback = TweakerCallback<LineOptions>;
++    using FillTweakerCallback = TweakerCallback<FillOptions>;
++    using SymbolTweakerCallback = TweakerCallback<SymbolOptions>;
++    using GeometryTweakerCallback = TweakerCallback<GeometryOptions>;
++
++public:
++    /// @brief Construct a new Interface object (internal core use only)
++    Interface(RenderLayer& layer,
++              LayerGroupBasePtr& layerGroup,
++              gfx::ShaderRegistry& shaders,
++              gfx::Context& context,
++              const TransformState& state,
++              const std::shared_ptr<UpdateParameters>& updateParameters,
++              const RenderTree& renderTree,
++              UniqueChangeRequestVec& changes);
++    /**
++     * @brief Get the drawable count
++     *
++     * @return std::size_t
++     */
++    std::size_t getDrawableCount() const;
++
++    /**
++     * @brief Set the Tile ID
++     *
++     * @param tileID
++     */
++    void setTileID(OverscaledTileID tileID);
++
++    /**
++     * @brief Set the line options
++     *
++     * @param options
++     */
++    void setLineOptions(const LineOptions& options);
++
++    /**
++     * @brief Set the fill options
++     *
++     * @param options
++     */
++    void setFillOptions(const FillOptions& options);
++
++    /**
++     * @brief Set the Symbol options
++     *
++     * @param options
++     */
++    void setSymbolOptions(const SymbolOptions& options);
++
++    /**
++     * @brief Set the geometry options
++     *
++     * @param options
++     */
++    void setGeometryOptions(const GeometryOptions& options);
++
++    void setLineTweakerCallback(LineTweakerCallback&& callback) { lineTweakerCallback = callback; }
++    void setFillTweakerCallback(FillTweakerCallback&& callback) { fillTweakerCallback = callback; }
++    void setSymbolTweakerCallback(SymbolTweakerCallback&& callback) { symbolTweakerCallback = callback; }
++    void setGeometryTweakerCallback(GeometryTweakerCallback&& callback) { geometryTweakerCallback = callback; }
++
++    /**
++     * @brief Add a polyline
++     *
++     * @param coordinates in tile range
++     * @param shaderType
++     * @return a valid util::SimpleIdentity if the polyline was added
++     */
++    util::SimpleIdentity addPolyline(const GeometryCoordinates& coordinates,
++                                     LineShaderType shaderType = LineShaderType::Classic);
++
++    /**
++     * @brief Add a polyline
++     *
++     * @param coordinates Geographic coordinates
++     * @param shaderType
++     * @return a valid util::SimpleIdentity if the poline was added
++     */
++    util::SimpleIdentity addPolyline(const LineString<double>& coordinates,
++                                     LineShaderType shaderType = LineShaderType::Classic);
++
++    /**
++     * @brief Add a multipolygon area fill
++     *
++     * @param geometry a collection of rings with optional holes
++     * @return a valid util::SimpleIdentity if the fill was added
++     */
++    util::SimpleIdentity addFill(const GeometryCollection& geometry);
++
++    /**
++     * @brief Add a symbol
++     *
++     * @param point
++     * @param textureCoordinates (optional mapping)
++     * @return a valid util::SimpleIdentity if the symbol was added
++     */
++    util::SimpleIdentity addSymbol(const GeometryCoordinate& point,
++                                   const std::array<std::array<float, 2>, 2>& textureCoordinates = {{{0, 0}, {1, 1}}});
++
++    util::SimpleIdentity addGeometry(std::shared_ptr<gfx::VertexVector<GeometryVertex>> vertices,
++                                     std::shared_ptr<gfx::IndexVector<gfx::Triangles>> indices,
++                                     bool is3D);
++
++    /**
++     * @brief Finish the current drawable building session
++     *
++     */
++    void finish();
++
++    void removeDrawable(const util::SimpleIdentity& id);
++
++public:
++    RenderLayer& layer;
++    LayerGroupBasePtr& layerGroup;
++    gfx::ShaderRegistry& shaders;
++    gfx::Context& context;
++    const TransformState& state;
++    const std::shared_ptr<UpdateParameters>& updateParameters;
++    const RenderTree& renderTree;
++    UniqueChangeRequestVec& changes;
++
++private:
++    gfx::ShaderPtr lineShaderDefault() const;
++    gfx::ShaderPtr lineShaderWideVector() const;
++    gfx::ShaderPtr fillShaderDefault() const;
++    gfx::ShaderPtr symbolShaderDefault() const;
++    gfx::ShaderPtr geometryShaderDefault() const;
++
++    enum class BuilderType {
++        None,
++        LineClassic,
++        LineWideVector,
++        Fill,
++        Symbol,
++        Geometry
++    };
++
++    std::unique_ptr<gfx::DrawableBuilder> createBuilder(const std::string& name, gfx::ShaderPtr shader) const;
++    bool updateBuilder(BuilderType type, const std::string& name, gfx::ShaderPtr shader);
++
++    std::unique_ptr<gfx::DrawableBuilder> builder;
++    std::optional<OverscaledTileID> tileID;
++
++    LineOptions lineOptions;
++    FillOptions fillOptions;
++    SymbolOptions symbolOptions;
++    GeometryOptions geometryOptions;
++
++    LineTweakerCallback lineTweakerCallback;
++    FillTweakerCallback fillTweakerCallback;
++    SymbolTweakerCallback symbolTweakerCallback;
++    GeometryTweakerCallback geometryTweakerCallback;
++
++    BuilderType builderType{BuilderType::None};
++};
++
++class CustomDrawableLayer final : public Layer {
++public:
++    CustomDrawableLayer(const std::string& id, std::unique_ptr<CustomDrawableLayerHost> host);
++
++    CustomDrawableLayer(const CustomDrawableLayer&) = delete;
++    ~CustomDrawableLayer() final;
++    class Impl;
++    const Impl& impl() const;
++    Mutable<Impl> mutableImpl() const;
++
++private:
++    std::optional<conversion::Error> setPropertyInternal(const std::string& name,
++                                                         const conversion::Convertible& value) final;
++    StyleProperty getProperty(const std::string&) const final;
++    std::unique_ptr<Layer> cloneRef(const std::string& id) const final;
++    Mutable<Layer::Impl> mutableBaseImpl() const final;
++};
++
++} // namespace style
++} // namespace mln
+diff --git a/platform/default/src/mln/layermanager/layer_manager.cpp b/platform/default/src/mln/layermanager/layer_manager.cpp
+index bfad3dfcd8c6..7b35aa756288 100644
+--- a/platform/default/src/mln/layermanager/layer_manager.cpp
++++ b/platform/default/src/mln/layermanager/layer_manager.cpp
+@@ -13,6 +13,7 @@
+ #include <mln/layermanager/raster_layer_factory.hpp>
+ #include <mln/layermanager/symbol_layer_factory.hpp>
+ #include <mln/util/logging.hpp>
++#include <mln/layermanager/custom_drawable_layer_factory.hpp>
+ 
+ #include <map>
+ #include <memory>
+@@ -86,6 +87,9 @@ LayerManagerDefault::LayerManagerDefault() {
+ #if !defined(MBGL_LAYER_LOCATION_INDICATOR_DISABLE_ALL)
+     addLayerType(std::make_unique<LocationIndicatorLayerFactory>());
+ #endif
++#if !defined(MLN_LAYER_CUSTOM_DRAWABLE_DISABLE_ALL)
++    addLayerType(std::make_unique<CustomDrawableLayerFactory>());
++#endif
+ }
+ 
+ void LayerManagerDefault::addLayerType(std::unique_ptr<LayerFactory> factory) {
+diff --git a/shaders/custom.symbol_icon.fragment.glsl b/shaders/custom.symbol_icon.fragment.glsl
+new file mode 100644
+index 000000000000..0f8a298e350e
+--- /dev/null
++++ b/shaders/custom.symbol_icon.fragment.glsl
+@@ -0,0 +1,7 @@
++uniform sampler2D u_texture;
++
++in vec2 v_tex;
++
++void main() {
++    fragColor = texture(u_texture, v_tex);
++}
+diff --git a/shaders/custom.symbol_icon.vertex.glsl b/shaders/custom.symbol_icon.vertex.glsl
+new file mode 100644
+index 000000000000..ce16a4f8cf8b
+--- /dev/null
++++ b/shaders/custom.symbol_icon.vertex.glsl
+@@ -0,0 +1,68 @@
++layout(location = 0) in vec2 a_pos;
++layout(location = 1) in vec2 a_tex;
++
++layout(std140) uniform CustomSymbolIconDrawableUBO {
++    highp mat4 u_matrix;
++    highp vec2 u_extrude_scale;
++    highp vec2 u_anchor;
++    highp float u_angle_degrees;
++    bool u_scale_with_map;
++    bool u_pitch_with_map;
++    highp float u_camera_to_center_distance;
++    highp float u_aspect_ratio;
++    lowp float drawable_pad1;
++    lowp float drawable_pad2;
++    lowp float drawable_pad3;
++};
++
++out vec2 v_tex;
++
++vec2 rotateVec2(vec2 v, float angle) {
++    float cosA = cos(angle);
++    float sinA = sin(angle);
++    return vec2(v.x * cosA - v.y * sinA, v.x * sinA + v.y * cosA);
++}
++
++vec2 ellipseRotateVec2(vec2 v, float angle, float radiusRatio /* A/B */) {
++    float cosA = cos(angle);
++    float sinA = sin(angle);
++    float invRatio = 1.0 / radiusRatio;
++    return vec2(v.x * cosA - radiusRatio * v.y * sinA, invRatio * v.x * sinA + v.y * cosA);
++}
++
++void main() {
++    // decode the extrusion vector (-1, -1) to (1, 1)
++    vec2 extrude = vec2(mod(a_pos, 2.0) * 2.0 - 1.0);
++
++    // make anchor relative to (0.5, 0.5) and corners in range (-1, -1) to (1, 1)
++    vec2 anchor = (u_anchor - vec2(0.5, 0.5)) * 2.0;
++
++    // decode center
++    vec2 center = floor(a_pos * 0.5);
++
++    // rotate extrusion around anchor
++    float angle = radians(-u_angle_degrees);
++    vec2 corner = extrude - anchor;
++
++    // compute
++    if (u_pitch_with_map) {
++        if (u_scale_with_map) {
++            corner *= u_extrude_scale;
++        } else {
++            vec4 projected_center = u_matrix * vec4(center, 0, 1);
++            corner *= u_extrude_scale * (projected_center.w / u_camera_to_center_distance);
++        }
++        corner = center + rotateVec2(corner, angle);
++        gl_Position = u_matrix * vec4(corner, 0, 1);
++    } else {
++        gl_Position = u_matrix * vec4(center, 0, 1);
++        if (u_scale_with_map) {
++            gl_Position.xy += ellipseRotateVec2(corner * u_extrude_scale * u_camera_to_center_distance, angle, u_aspect_ratio);
++        } else {
++            gl_Position.xy += ellipseRotateVec2(corner * u_extrude_scale * gl_Position.w, angle, u_aspect_ratio);
++        }
++    }
++
++    // texture coordinates
++    v_tex = a_tex;
++}
+diff --git a/shaders/custom_geometry.fragment.glsl b/shaders/custom_geometry.fragment.glsl
+new file mode 100644
+index 000000000000..42c8156a118a
+--- /dev/null
++++ b/shaders/custom_geometry.fragment.glsl
+@@ -0,0 +1,11 @@
++layout (std140) uniform CustomGeometryDrawableUBO {
++    mat4 u_matrix;
++    vec4 u_color;
++};
++
++in vec2 frag_uv;
++uniform sampler2D u_image;
++
++void main() {
++    fragColor = texture(u_image, frag_uv) * u_color;
++}
+diff --git a/shaders/custom_geometry.vertex.glsl b/shaders/custom_geometry.vertex.glsl
+new file mode 100644
+index 000000000000..c731979708f9
+--- /dev/null
++++ b/shaders/custom_geometry.vertex.glsl
+@@ -0,0 +1,14 @@
++layout (std140) uniform CustomGeometryDrawableUBO {
++    mat4 u_matrix;
++    vec4 u_color;
++};
++
++layout(location = 0) in vec3 a_pos;
++layout(location = 1) in vec2 a_uv;
++
++out vec2 frag_uv;
++
++void main() {
++    frag_uv = a_uv;
++    gl_Position = u_matrix * vec4(a_pos, 1.0);
++}
+diff --git a/shaders/manifest.json b/shaders/manifest.json
+index d46dacf6d33f..eeb839226c2b 100644
+--- a/shaders/manifest.json
++++ b/shaders/manifest.json
+@@ -46,6 +46,20 @@
+         "glsl_frag": "collision_circle.fragment.glsl",
+         "uses_ubos": true
+     },
++    {
++        "name": "CustomGeometryShader",
++        "header": "custom_geometry",
++        "glsl_vert": "custom_geometry.vertex.glsl",
++        "glsl_frag": "custom_geometry.fragment.glsl",
++        "uses_ubos": true
++    },
++    {
++        "name": "CustomSymbolIconShader",
++        "header": "custom_symbol_icon",
++        "glsl_vert": "custom.symbol_icon.vertex.glsl",
++        "glsl_frag": "custom.symbol_icon.fragment.glsl",
++        "uses_ubos": true
++    },
+     {
+         "name": "DebugShader",
+         "header": "debug",
+diff --git a/src/mln/gl/renderer_backend.cpp b/src/mln/gl/renderer_backend.cpp
+index 7ca7a8fe8626..487bf731fa74 100644
+--- a/src/mln/gl/renderer_backend.cpp
++++ b/src/mln/gl/renderer_backend.cpp
+@@ -123,6 +123,8 @@ void RendererBackend::initShaders(gfx::ShaderRegistry& shaders, const ProgramPar
+                   shaders::BuiltIn::CircleShader,
+                   shaders::BuiltIn::CollisionBoxShader,
+                   shaders::BuiltIn::CollisionCircleShader,
++                  shaders::BuiltIn::CustomGeometryShader,
++                  shaders::BuiltIn::CustomSymbolIconShader,
+                   shaders::BuiltIn::DebugShader,
+                   shaders::BuiltIn::FillShader,
+                   shaders::BuiltIn::FillOutlineShader,
+diff --git a/src/mln/layermanager/custom_drawable_layer_factory.cpp b/src/mln/layermanager/custom_drawable_layer_factory.cpp
+new file mode 100644
+index 000000000000..10614963e101
+--- /dev/null
++++ b/src/mln/layermanager/custom_drawable_layer_factory.cpp
+@@ -0,0 +1,23 @@
++#include <mln/style/layers/custom_drawable_layer.hpp>
++#include <mln/layermanager/custom_drawable_layer_factory.hpp>
++#include <mln/style/layers/custom_drawable_layer_impl.hpp>
++#include <mln/renderer/layers/render_custom_drawable_layer.hpp>
++
++namespace mln {
++
++const style::LayerTypeInfo* CustomDrawableLayerFactory::getTypeInfo() const noexcept {
++    return style::CustomDrawableLayer::Impl::staticTypeInfo();
++}
++
++std::unique_ptr<style::Layer> CustomDrawableLayerFactory::createLayer(const std::string&,
++                                                                      const style::conversion::Convertible&) noexcept {
++    assert(false);
++    return nullptr;
++}
++
++std::unique_ptr<RenderLayer> CustomDrawableLayerFactory::createRenderLayer(
++    Immutable<style::Layer::Impl> impl) noexcept {
++    return std::make_unique<RenderCustomDrawableLayer>(staticImmutableCast<style::CustomDrawableLayer::Impl>(impl));
++}
++
++} // namespace mln
+diff --git a/src/mln/mtl/renderer_backend.cpp b/src/mln/mtl/renderer_backend.cpp
+index 0e0c322f44e1..d463fcdd7682 100644
+--- a/src/mln/mtl/renderer_backend.cpp
++++ b/src/mln/mtl/renderer_backend.cpp
+@@ -16,6 +16,8 @@
+ #include <mln/shaders/mtl/clipping_mask.hpp>
+ #include <mln/shaders/mtl/collision.hpp>
+ #include <mln/shaders/mtl/color_relief.hpp>
++#include <mln/shaders/mtl/custom_geometry.hpp>
++#include <mln/shaders/mtl/custom_symbol_icon.hpp>
+ #include <mln/shaders/mtl/debug.hpp>
+ #include <mln/shaders/mtl/fill.hpp>
+ #include <mln/shaders/mtl/fill_extrusion.hpp>
+@@ -90,6 +92,8 @@ void RendererBackend::initShaders(gfx::ShaderRegistry& shaders, const ProgramPar
+                   shaders::BuiltIn::ClippingMaskProgram,
+                   shaders::BuiltIn::CollisionBoxShader,
+                   shaders::BuiltIn::CollisionCircleShader,
++                  shaders::BuiltIn::CustomGeometryShader,
++                  shaders::BuiltIn::CustomSymbolIconShader,
+                   shaders::BuiltIn::DebugShader,
+                   shaders::BuiltIn::FillShader,
+                   shaders::BuiltIn::FillOutlineShader,
+diff --git a/src/mln/renderer/layers/render_custom_drawable_layer.cpp b/src/mln/renderer/layers/render_custom_drawable_layer.cpp
+new file mode 100644
+index 000000000000..2c1ac98f90d0
+--- /dev/null
++++ b/src/mln/renderer/layers/render_custom_drawable_layer.cpp
+@@ -0,0 +1,81 @@
++#include <mln/gfx/backend_scope.hpp>
++#include <mln/gfx/renderer_backend.hpp>
++#include <mln/style/layers/custom_drawable_layer.hpp>
++#include <mln/style/layers/custom_drawable_layer_impl.hpp>
++#include <mln/renderer/layers/render_custom_drawable_layer.hpp>
++#include <mln/map/transform_state.hpp>
++#include <mln/math/angles.hpp>
++#include <mln/renderer/bucket.hpp>
++#include <mln/renderer/paint_parameters.hpp>
++#include <mln/util/mat4.hpp>
++
++#include <mln/gfx/context.hpp>
++#include <mln/renderer/layer_group.hpp>
++#include <mln/gfx/drawable_builder.hpp>
++
++namespace mln {
++
++using namespace style;
++
++namespace {
++
++inline const CustomDrawableLayer::Impl& impl(const Immutable<style::Layer::Impl>& impl) {
++    assert(impl->getTypeInfo() == CustomDrawableLayer::Impl::staticTypeInfo());
++    return static_cast<const CustomDrawableLayer::Impl&>(*impl);
++}
++
++} // namespace
++
++RenderCustomDrawableLayer::RenderCustomDrawableLayer(Immutable<style::CustomDrawableLayer::Impl> _impl)
++    : RenderLayer(makeMutable<CustomDrawableLayerProperties>(std::move(_impl))),
++      host(impl(baseImpl).host) {
++    assert(gfx::BackendScope::exists());
++    host->initialize();
++}
++
++RenderCustomDrawableLayer::~RenderCustomDrawableLayer() {
++    assert(gfx::BackendScope::exists());
++    host->deinitialize();
++}
++
++void RenderCustomDrawableLayer::evaluate(const PropertyEvaluationParameters&) {
++    passes = RenderPass::Translucent;
++    // It is fine to not update `evaluatedProperties`, as `baseImpl` should never be updated for this layer.
++}
++
++bool RenderCustomDrawableLayer::hasTransition() const {
++    return false;
++}
++bool RenderCustomDrawableLayer::hasCrossfade() const {
++    return false;
++}
++
++void RenderCustomDrawableLayer::prepare(const LayerPrepareParameters&) {}
++
++void RenderCustomDrawableLayer::update(gfx::ShaderRegistry& shaders,
++                                       gfx::Context& context,
++                                       const TransformState& state,
++                                       const std::shared_ptr<UpdateParameters>& updateParameters,
++                                       const PaintParameters&,
++                                       const RenderTree& renderTree,
++                                       UniqueChangeRequestVec& changes) {
++    // check if host changed and update
++    bool hostChanged = (host != impl(baseImpl).host);
++    if (hostChanged) {
++        // deinitialize the previous one before initializing the new one.
++        if (host) {
++            host->deinitialize();
++        }
++        host = impl(baseImpl).host;
++        host->initialize();
++    }
++
++    // delegate the call to the custom layer
++    if (host) {
++        CustomDrawableLayerHost::Interface interface(
++            *this, layerGroup, shaders, context, state, updateParameters, renderTree, changes);
++        host->update(interface);
++    }
++}
++
++} // namespace mln
+diff --git a/src/mln/renderer/layers/render_custom_drawable_layer.hpp b/src/mln/renderer/layers/render_custom_drawable_layer.hpp
+new file mode 100644
+index 000000000000..d0a440b2570e
+--- /dev/null
++++ b/src/mln/renderer/layers/render_custom_drawable_layer.hpp
+@@ -0,0 +1,32 @@
++#pragma once
++
++#include <mln/style/layers/custom_drawable_layer_impl.hpp>
++#include <mln/renderer/render_layer.hpp>
++
++namespace mln {
++
++class RenderCustomDrawableLayer final : public RenderLayer {
++public:
++    explicit RenderCustomDrawableLayer(Immutable<style::CustomDrawableLayer::Impl>);
++    ~RenderCustomDrawableLayer() override;
++
++    /// Generate any changes needed by the layer
++    void update(gfx::ShaderRegistry &,
++                gfx::Context &,
++                const TransformState &,
++                const std::shared_ptr<UpdateParameters> &,
++                const PaintParameters &,
++                const RenderTree &,
++                UniqueChangeRequestVec &) override;
++
++private:
++    void transition(const TransitionParameters &) override {}
++    void evaluate(const PropertyEvaluationParameters &) override;
++    bool hasTransition() const override;
++    bool hasCrossfade() const override;
++    void prepare(const LayerPrepareParameters &) override;
++
++    std::shared_ptr<style::CustomDrawableLayerHost> host;
++};
++
++} // namespace mln
+diff --git a/src/mln/shaders/gl/shader_info.cpp b/src/mln/shaders/gl/shader_info.cpp
+index 7cabf87f538a..4557e22abd00 100644
+--- a/src/mln/shaders/gl/shader_info.cpp
++++ b/src/mln/shaders/gl/shader_info.cpp
+@@ -95,6 +95,34 @@ const std::vector<AttributeInfo> CollisionCircleShaderInfo::attributes = {
+ };
+ const std::vector<TextureInfo> CollisionCircleShaderInfo::textures = {};
+ 
++// Custom Geometry
++using CustomGeometryInfo = ShaderInfo<BuiltIn::CustomGeometryShader, gfx::Backend::Type::OpenGL>;
++
++const std::vector<UniformBlockInfo> CustomGeometryInfo::uniformBlocks = {
++    UniformBlockInfo{"CustomGeometryDrawableUBO", idCustomGeometryDrawableUBO},
++};
++const std::vector<AttributeInfo> CustomGeometryInfo::attributes = {
++    AttributeInfo{"a_pos", idCustomGeometryPosVertexAttribute},
++    AttributeInfo{"a_uv", idCustomGeometryTexVertexAttribute},
++};
++const std::vector<TextureInfo> CustomGeometryInfo::textures = {
++    TextureInfo{"u_image", idCustomGeometryTexture},
++};
++
++// Custom Symbol Icon
++using CustomSymbolIconShaderInfo = ShaderInfo<BuiltIn::CustomSymbolIconShader, gfx::Backend::Type::OpenGL>;
++
++const std::vector<UniformBlockInfo> CustomSymbolIconShaderInfo::uniformBlocks = {
++    UniformBlockInfo{"CustomSymbolIconDrawableUBO", idCustomSymbolDrawableUBO},
++};
++const std::vector<AttributeInfo> CustomSymbolIconShaderInfo::attributes = {
++    AttributeInfo{"a_pos", idCustomSymbolPosVertexAttribute},
++    AttributeInfo{"a_tex", idCustomSymbolTexVertexAttribute},
++};
++const std::vector<TextureInfo> CustomSymbolIconShaderInfo::textures = {
++    TextureInfo{"u_texture", idCustomSymbolImageTexture},
++};
++
+ // Debug
+ using DebugShaderInfo = ShaderInfo<BuiltIn::DebugShader, gfx::Backend::Type::OpenGL>;
+ 
+diff --git a/src/mln/shaders/mtl/custom_geometry.cpp b/src/mln/shaders/mtl/custom_geometry.cpp
+new file mode 100644
+index 000000000000..88b4f077f3d3
+--- /dev/null
++++ b/src/mln/shaders/mtl/custom_geometry.cpp
+@@ -0,0 +1,17 @@
++#include <mln/shaders/mtl/custom_geometry.hpp>
++#include <mln/shaders/shader_defines.hpp>
++
++namespace mln {
++namespace shaders {
++
++using CustomGeometryShaderSource = ShaderSource<BuiltIn::CustomGeometryShader, gfx::Backend::Type::Metal>;
++
++const std::array<AttributeInfo, 2> CustomGeometryShaderSource::attributes = {
++    AttributeInfo{0, gfx::AttributeDataType::Float3, customGeometryUBOCount + 0, idCustomGeometryPosVertexAttribute},
++    AttributeInfo{1, gfx::AttributeDataType::Float2, customGeometryUBOCount + 0, idCustomGeometryTexVertexAttribute},
++};
++
++const std::array<TextureInfo, 1> CustomGeometryShaderSource::textures = {TextureInfo{0, idCustomGeometryTexture}};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/src/mln/shaders/mtl/custom_symbol_icon.cpp b/src/mln/shaders/mtl/custom_symbol_icon.cpp
+new file mode 100644
+index 000000000000..896ab7de2392
+--- /dev/null
++++ b/src/mln/shaders/mtl/custom_symbol_icon.cpp
+@@ -0,0 +1,18 @@
++#include <mln/shaders/mtl/custom_symbol_icon.hpp>
++#include <mln/shaders/shader_defines.hpp>
++
++namespace mln {
++namespace shaders {
++
++using CustomSymbolIconShaderSource = ShaderSource<BuiltIn::CustomSymbolIconShader, gfx::Backend::Type::Metal>;
++
++const std::array<AttributeInfo, 2> CustomSymbolIconShaderSource::attributes = {
++    AttributeInfo{0, gfx::AttributeDataType::Float2, customSymbolUBOCount + 0, idCustomSymbolPosVertexAttribute},
++    AttributeInfo{1, gfx::AttributeDataType::Float2, customSymbolUBOCount + 0, idCustomSymbolTexVertexAttribute},
++};
++const std::array<TextureInfo, 1> CustomSymbolIconShaderSource::textures = {
++    TextureInfo{0, idCustomSymbolImageTexture},
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/src/mln/shaders/shader_source.cpp b/src/mln/shaders/shader_source.cpp
+index ba965d538366..ea7517875539 100644
+--- a/src/mln/shaders/shader_source.cpp
++++ b/src/mln/shaders/shader_source.cpp
+@@ -15,6 +15,8 @@ MBGL_DEFINE_ENUM(BuiltIn,
+                   {BuiltIn::CircleShader, "CircleShader"},
+                   {BuiltIn::CollisionBoxShader, "CollisionBoxShader"},
+                   {BuiltIn::CollisionCircleShader, "CollisionCircleShader"},
++                  {BuiltIn::CustomGeometryShader, "CustomGeometryShader"},
++                  {BuiltIn::CustomSymbolIconShader, "CustomSymbolIconShader"},
+                   {BuiltIn::DebugShader, "DebugShader"},
+                   {BuiltIn::FillShader, "FillShader"},
+                   {BuiltIn::FillOutlineShader, "FillOutlineShader"},
+diff --git a/src/mln/shaders/vulkan/custom_geometry.cpp b/src/mln/shaders/vulkan/custom_geometry.cpp
+new file mode 100644
+index 000000000000..4a96d3afacb8
+--- /dev/null
++++ b/src/mln/shaders/vulkan/custom_geometry.cpp
+@@ -0,0 +1,20 @@
++#include <mln/shaders/vulkan/custom_geometry.hpp>
++#include <mln/shaders/shader_defines.hpp>
++#include <mln/shaders/custom_geometry_ubo.hpp>
++
++namespace mln {
++namespace shaders {
++
++using CustomGeometryShaderSource = ShaderSource<BuiltIn::CustomGeometryShader, gfx::Backend::Type::Vulkan>;
++
++const std::array<AttributeInfo, 2> CustomGeometryShaderSource::attributes = {
++    AttributeInfo{0, gfx::AttributeDataType::Float3, idCustomGeometryPosVertexAttribute},
++    AttributeInfo{1, gfx::AttributeDataType::Float2, idCustomGeometryTexVertexAttribute},
++};
++
++const std::array<TextureInfo, 1> CustomGeometryShaderSource::textures = {
++    TextureInfo{0, idCustomGeometryTexture},
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/src/mln/shaders/vulkan/custom_symbol_icon.cpp b/src/mln/shaders/vulkan/custom_symbol_icon.cpp
+new file mode 100644
+index 000000000000..fad8604d2b60
+--- /dev/null
++++ b/src/mln/shaders/vulkan/custom_symbol_icon.cpp
+@@ -0,0 +1,19 @@
++#include <mln/shaders/vulkan/custom_symbol_icon.hpp>
++#include <mln/shaders/shader_defines.hpp>
++#include <mln/shaders/custom_drawable_layer_ubo.hpp>
++
++namespace mln {
++namespace shaders {
++
++using CustomSymbolIconShaderSource = ShaderSource<BuiltIn::CustomSymbolIconShader, gfx::Backend::Type::Vulkan>;
++
++const std::array<AttributeInfo, 2> CustomSymbolIconShaderSource::attributes = {
++    AttributeInfo{0, gfx::AttributeDataType::Float2, idCustomSymbolPosVertexAttribute},
++    AttributeInfo{1, gfx::AttributeDataType::Float2, idCustomSymbolTexVertexAttribute},
++};
++const std::array<TextureInfo, 1> CustomSymbolIconShaderSource::textures = {
++    TextureInfo{0, idCustomSymbolImageTexture},
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/src/mln/shaders/webgpu/custom_geometry.cpp b/src/mln/shaders/webgpu/custom_geometry.cpp
+new file mode 100644
+index 000000000000..40a1d741cd83
+--- /dev/null
++++ b/src/mln/shaders/webgpu/custom_geometry.cpp
+@@ -0,0 +1,19 @@
++#include <mln/shaders/webgpu/custom_geometry.hpp>
++#include <mln/shaders/shader_defines.hpp>
++#include <mln/shaders/custom_geometry_ubo.hpp>
++
++namespace mln {
++namespace shaders {
++
++using CustomGeometryShaderSource = ShaderSource<BuiltIn::CustomGeometryShader, gfx::Backend::Type::WebGPU>;
++
++const std::array<AttributeInfo, 2> CustomGeometryShaderSource::attributes = {
++    AttributeInfo{3, gfx::AttributeDataType::Float3, idCustomGeometryPosVertexAttribute},
++    AttributeInfo{4, gfx::AttributeDataType::Float2, idCustomGeometryTexVertexAttribute},
++};
++const std::array<TextureInfo, 1> CustomGeometryShaderSource::textures = {
++    TextureInfo{0, idCustomGeometryTexture},
++};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/src/mln/shaders/webgpu/custom_symbol_icon.cpp b/src/mln/shaders/webgpu/custom_symbol_icon.cpp
+new file mode 100644
+index 000000000000..76b4cd1395a3
+--- /dev/null
++++ b/src/mln/shaders/webgpu/custom_symbol_icon.cpp
+@@ -0,0 +1,17 @@
++#include <mln/shaders/webgpu/custom_symbol_icon.hpp>
++#include <mln/shaders/shader_defines.hpp>
++#include <mln/shaders/custom_drawable_layer_ubo.hpp>
++
++namespace mln {
++namespace shaders {
++
++using CustomSymbolIconShaderSource = ShaderSource<BuiltIn::CustomSymbolIconShader, gfx::Backend::Type::WebGPU>;
++
++const std::array<AttributeInfo, 2> CustomSymbolIconShaderSource::attributes = {
++    AttributeInfo{4, gfx::AttributeDataType::Float3, idCustomSymbolPosVertexAttribute},
++    AttributeInfo{5, gfx::AttributeDataType::Float2, idCustomSymbolTexVertexAttribute},
++};
++const std::array<TextureInfo, 1> CustomSymbolIconShaderSource::textures = {TextureInfo{0, idCustomSymbolImageTexture}};
++
++} // namespace shaders
++} // namespace mln
+diff --git a/src/mln/style/layers/custom_drawable_layer.cpp b/src/mln/style/layers/custom_drawable_layer.cpp
+new file mode 100644
+index 000000000000..38ed8d22d807
+--- /dev/null
++++ b/src/mln/style/layers/custom_drawable_layer.cpp
+@@ -0,0 +1,891 @@
++#include <mln/style/layers/custom_drawable_layer.hpp>
++#include <mln/style/layers/custom_drawable_layer_impl.hpp>
++
++#include <mln/renderer/layers/render_custom_drawable_layer.hpp>
++#include <mln/style/layer_observer.hpp>
++#include <mln/gfx/context.hpp>
++#include <mln/renderer/paint_parameters.hpp>
++#include <mln/renderer/change_request.hpp>
++#include <mln/renderer/layer_group.hpp>
++#include <mln/gfx/cull_face_mode.hpp>
++#include <mln/shaders/shader_program_base.hpp>
++#include <mln/renderer/layer_tweaker.hpp>
++#include <mln/gfx/drawable.hpp>
++#include <mln/gfx/drawable_tweaker.hpp>
++#include <mln/shaders/line_layer_ubo.hpp>
++#include <mln/util/convert.hpp>
++#include <mln/util/geometry.hpp>
++#include <mln/shaders/fill_layer_ubo.hpp>
++#include <mln/util/math.hpp>
++#include <mln/tile/geometry_tile_data.hpp>
++#include <mln/util/containers.hpp>
++#include <mln/gfx/fill_generator.hpp>
++#include <mln/shaders/custom_drawable_layer_ubo.hpp>
++#include <mln/shaders/shader_source.hpp>
++#include <mln/gfx/renderable.hpp>
++#include <mln/gfx/renderer_backend.hpp>
++#include <mln/shaders/widevector_ubo.hpp>
++#include <mln/shaders/custom_geometry_ubo.hpp>
++#include <mln/util/projection.hpp>
++#include <mln/util/mat4.hpp>
++#include <mln/renderer/render_tile.hpp>
++#include <mln/gfx/uniform_buffer.hpp>
++
++#include <cmath>
++
++namespace mln {
++
++namespace style {
++
++using namespace shaders;
++
++namespace {
++const LayerTypeInfo typeInfoCustomDrawable{.type = "custom-drawable",
++                                           .source = LayerTypeInfo::Source::NotRequired,
++                                           .pass3d = LayerTypeInfo::Pass3D::NotRequired,
++                                           .layout = LayerTypeInfo::Layout::NotRequired,
++                                           .fadingTiles = LayerTypeInfo::FadingTiles::NotRequired,
++                                           .crossTileIndex = LayerTypeInfo::CrossTileIndex::NotRequired,
++                                           .tileKind = LayerTypeInfo::TileKind::NotRequired};
++} // namespace
++
++CustomDrawableLayer::CustomDrawableLayer(const std::string& layerID, std::unique_ptr<CustomDrawableLayerHost> host)
++    : Layer(makeMutable<Impl>(layerID, std::move(host))) {}
++
++CustomDrawableLayer::~CustomDrawableLayer() = default;
++
++const CustomDrawableLayer::Impl& CustomDrawableLayer::impl() const {
++    return static_cast<const Impl&>(*baseImpl);
++}
++
++Mutable<CustomDrawableLayer::Impl> CustomDrawableLayer::mutableImpl() const {
++    return makeMutable<Impl>(impl());
++}
++
++std::unique_ptr<Layer> CustomDrawableLayer::cloneRef(const std::string&) const {
++    assert(false);
++    return nullptr;
++}
++
++using namespace conversion;
++
++std::optional<Error> CustomDrawableLayer::setPropertyInternal(const std::string& name, const Convertible&) {
++    return Error{"layer '" + getID() + "' doesn't support property '" + name + "'"};
++}
++
++StyleProperty CustomDrawableLayer::getProperty(const std::string&) const {
++    return {};
++}
++
++Mutable<Layer::Impl> CustomDrawableLayer::mutableBaseImpl() const {
++    return staticMutableCast<Layer::Impl>(mutableImpl());
++}
++
++// static
++const LayerTypeInfo* CustomDrawableLayer::Impl::staticTypeInfo() noexcept {
++    return &typeInfoCustomDrawable;
++}
++
++// CustomDrawableLayerHost::Interface
++
++class LineDrawableTweaker : public gfx::DrawableTweaker {
++public:
++    LineDrawableTweaker(const CustomDrawableLayerHost::Interface::LineOptions& options_,
++                        CustomDrawableLayerHost::Interface::LineTweakerCallback&& callback_)
++        : options(options_),
++          callback(callback_) {}
++
++    ~LineDrawableTweaker() override = default;
++
++    void init(gfx::Drawable&) override {}
++
++    void execute(gfx::Drawable& drawable, PaintParameters& parameters) override {
++        if (!drawable.getTileID().has_value()) {
++            return;
++        }
++
++        if (callback) {
++            callback(drawable, parameters, options);
++        }
++
++#if MLN_UBO_CONSOLIDATION
++        if (!layerUniforms) {
++            layerUniforms = parameters.context.createLayerUniformBufferArray();
++        }
++#endif
++
++        const UnwrappedTileID tileID = drawable.getTileID()->toUnwrapped();
++        const auto zoom = parameters.state.getZoom();
++
++        const auto matrix = LayerTweaker::getTileMatrix(
++            tileID, parameters, {{0, 0}}, style::TranslateAnchorType::Viewport, false, false, drawable, false);
++
++        const shaders::LineEvaluatedPropsUBO propsUBO = {.color = options.color,
++                                                         .blur = options.blur,
++                                                         .opacity = options.opacity,
++                                                         .gapwidth = options.gapWidth,
++                                                         .offset = options.offset,
++                                                         .width = options.width,
++                                                         /*floorwidth=*/.floorwidth = 0.0f,
++                                                         .expressionMask = LineExpressionMask::None,
++                                                         .pad1 = 0};
++
++        // We would need to set up `idLineExpressionUBO` if the expression mask isn't empty
++        assert(propsUBO.expressionMask == LineExpressionMask::None);
++
++        if (!expressionUniformBuffer) {
++            const LineExpressionUBO exprUBO = {
++                /* .color = */ .color = nullptr,
++                /* .blur = */ .blur = nullptr,
++                /* .opacity = */ .opacity = nullptr,
++                /* .gapwidth = */ .gapwidth = nullptr,
++                /* .offset = */ .offset = nullptr,
++                /* .width = */ .width = nullptr,
++                /* .floorWidth = */ .floorWidth = nullptr,
++            };
++
++            expressionUniformBuffer = parameters.context.createUniformBuffer(&exprUBO, sizeof(exprUBO));
++#if MLN_UBO_CONSOLIDATION
++            layerUniforms->set(idLineExpressionUBO, expressionUniformBuffer);
++#else
++            auto& drawableUniforms = drawable.mutableUniformBuffers();
++            drawableUniforms.set(idLineExpressionUBO, expressionUniformBuffer);
++#endif
++        }
++
++#if MLN_UBO_CONSOLIDATION
++        shaders::LineDrawableUnionUBO drawableUBO;
++        drawableUBO.lineDrawableUBO = {
++#else
++        const shaders::LineDrawableUBO drawableUBO = {
++#endif
++            /* .matrix = */ .matrix = util::cast<float>(matrix),
++            /* .ratio = */ .ratio = 1.0f / tileID.pixelsToTileUnits(1.0f, zoom),
++
++            /* .color_t = */ .color_t = 0.f,
++            /* .blur_t = */ .blur_t = 0.f,
++            /* .opacity_t = */ .opacity_t = 0.f,
++            /* .gapwidth_t = */ .gapwidth_t = 0.f,
++            /* .offset_t = */ .offset_t = 0.f,
++            /* .width_t = */ .width_t = 0.f,
++            /* .pad1 = */ .pad1 = 0
++        };
++
++#if MLN_UBO_CONSOLIDATION
++        if (!drawableUniformBuffer) {
++            drawableUniformBuffer = parameters.context.createUniformBuffer(
++                &drawableUBO, sizeof(drawableUBO), false, true);
++
++            layerUniforms->set(idLineDrawableUBO, drawableUniformBuffer);
++            drawable.setUBOIndex(0);
++        } else {
++            drawableUniformBuffer->update(&drawableUBO, sizeof(drawableUBO));
++        }
++
++        layerUniforms->createOrUpdate(idLineEvaluatedPropsUBO, &propsUBO, sizeof(propsUBO), parameters.context);
++        layerUniforms->bind(*parameters.renderPass);
++#else
++        auto& drawableUniforms = drawable.mutableUniformBuffers();
++        drawableUniforms.createOrUpdate(idLineDrawableUBO, &drawableUBO, parameters.context);
++        drawableUniforms.createOrUpdate(idLineEvaluatedPropsUBO, &propsUBO, parameters.context);
++#endif
++    };
++
++private:
++    CustomDrawableLayerHost::Interface::LineOptions options;
++    CustomDrawableLayerHost::Interface::LineTweakerCallback callback;
++
++#if MLN_UBO_CONSOLIDATION
++    gfx::UniqueUniformBufferArray layerUniforms;
++    gfx::UniformBufferPtr drawableUniformBuffer;
++#endif
++
++    gfx::UniformBufferPtr expressionUniformBuffer;
++};
++
++class WideVectorDrawableTweaker : public gfx::DrawableTweaker {
++public:
++    WideVectorDrawableTweaker(const CustomDrawableLayerHost::Interface::LineOptions& options_,
++                              CustomDrawableLayerHost::Interface::LineTweakerCallback&& callback_)
++        : options(options_),
++          callback(callback_) {}
++
++    void init(gfx::Drawable&) override {}
++
++    void execute(gfx::Drawable& drawable, PaintParameters& parameters) override {
++        if (!drawable.getTileID().has_value()) {
++            return;
++        }
++
++        if (callback) {
++            callback(drawable, parameters, options);
++        }
++
++        const UnwrappedTileID tileID = drawable.getTileID()->toUnwrapped();
++
++        mat4 tileMatrix;
++        parameters.state.matrixFor(/*out*/ tileMatrix, tileID);
++        if (const auto& origin{drawable.getOrigin()}; origin.has_value()) {
++            matrix::translate(tileMatrix, tileMatrix, origin->x, origin->y, 0);
++        }
++
++        mat4 projMatrix = parameters.transformParams.projMatrix;
++        const auto matrix = LayerTweaker::getTileMatrix(
++            tileID, parameters, {{0, 0}}, style::TranslateAnchorType::Viewport, false, false, drawable, false);
++
++        matf4 mvpMatrix, mvpMatrixDiff, mvMatrix, mvMatrixDiff, pMatrix, pMatrixDiff;
++        matrix::diffsplit(mvpMatrix, mvpMatrixDiff, matrix);
++        matrix::diffsplit(mvMatrix, mvMatrixDiff, tileMatrix);
++        matrix::diffsplit(pMatrix, pMatrixDiff, projMatrix);
++
++        const auto renderableSize = parameters.backend.getDefaultRenderable().getSize();
++        shaders::WideVectorUniformsUBO uniform = {
++            /* .mvpMatrix = */ .mvpMatrix = mvpMatrix,
++            /* .mvpMatrixDiff = */ .mvpMatrixDiff = mvpMatrixDiff,
++            /* .mvMatrix = */ .mvMatrix = mvMatrix,
++            /* .mvMatrixDiff = */ .mvMatrixDiff = mvMatrixDiff,
++            /* .pMatrix = */ .pMatrix = pMatrix,
++            /* .pMatrixDiff = */ .pMatrixDiff = pMatrixDiff,
++            /* .frameSize = */ .frameSize = {(float)renderableSize.width, (float)renderableSize.height},
++            /* .pad1 = */ .pad1 = 0,
++            /* .pad2 = */ .pad2 = 0};
++
++        shaders::WideVectorUniformWideVecUBO wideVec = {
++            /* .color = */ .color = options.color,
++            /* .w2 = */ .w2 = options.width,
++            /* .offset = */ .offset = options.offset,
++            /* .edge = */ .edge = 0.0f,           // TODO: MLN does not provide a value. Analyze impact.
++            /* .texRepeat = */ .texRepeat = 0.0f, // N/A
++            /* .texOffset = */ .texOffset = {},   // N/A
++            /* .miterLimit = */ .miterLimit = options.geometry.miterLimit,
++            /* .join = */ .join = static_cast<int32_t>(options.geometry.joinType),
++            /* .cap = */ .cap = static_cast<int32_t>(options.geometry.beginCap), // TODO: MLN option for endCap to be
++                                                                                 // implemented in the shader!
++            /* .hasExp = */ .hasExp = false,                                     // N/A
++            /* .interClipLimit = */ .interClipLimit = 0.0f,                      // N/A
++            /* .pad1 = */ .pad1 = 0};
++
++        auto& drawableUniforms = drawable.mutableUniformBuffers();
++        drawableUniforms.createOrUpdate(idWideVectorUniformsUBO, &uniform, parameters.context);
++        drawableUniforms.createOrUpdate(idWideVectorUniformWideVecUBO, &wideVec, parameters.context);
++    };
++
++private:
++    CustomDrawableLayerHost::Interface::LineOptions options;
++    CustomDrawableLayerHost::Interface::LineTweakerCallback callback;
++};
++
++class FillDrawableTweaker : public gfx::DrawableTweaker {
++public:
++    FillDrawableTweaker(const CustomDrawableLayerHost::Interface::FillOptions& options_,
++                        CustomDrawableLayerHost::Interface::FillTweakerCallback&& callback_)
++        : options(options_),
++          callback(callback_) {}
++
++    ~FillDrawableTweaker() override = default;
++
++    void init(gfx::Drawable&) override {}
++
++    void execute(gfx::Drawable& drawable, PaintParameters& parameters) override {
++        if (!drawable.getTileID().has_value()) {
++            return;
++        }
++
++        if (callback) {
++            callback(drawable, parameters, options);
++        }
++
++#if MLN_UBO_CONSOLIDATION
++        if (!layerUniforms) {
++            layerUniforms = parameters.context.createLayerUniformBufferArray();
++        }
++#endif
++
++        const UnwrappedTileID tileID = drawable.getTileID()->toUnwrapped();
++        const auto matrix = LayerTweaker::getTileMatrix(
++            tileID, parameters, {{0, 0}}, style::TranslateAnchorType::Viewport, false, false, drawable, false);
++
++        const shaders::FillEvaluatedPropsUBO propsUBO = {/* .color = */ .color = options.color,
++                                                         /* .outline_color = */ .outline_color = Color::white(),
++                                                         /* .opacity = */ .opacity = options.opacity,
++                                                         /* .fade = */ .fade = 0.f,
++                                                         /* .from_scale = */ .from_scale = 0.f,
++                                                         /* .to_scale = */ .to_scale = 0.f};
++
++#if MLN_UBO_CONSOLIDATION
++        FillDrawableUnionUBO drawableUBO;
++        drawableUBO.fillDrawableUBO = {
++#else
++        const shaders::FillDrawableUBO drawableUBO = {
++#endif
++            /* .matrix = */ .matrix = util::cast<float>(matrix),
++
++            /* .color_t = */ .color_t = 0.f,
++            /* .opacity_t = */ .opacity_t = 0.f,
++            /* .pad1 = */ .pad1 = 0,
++            /* .pad2 = */ .pad2 = 0
++        };
++
++#if MLN_UBO_CONSOLIDATION
++        if (!drawableUniformBuffer) {
++            drawableUniformBuffer = parameters.context.createUniformBuffer(
++                &drawableUBO, sizeof(drawableUBO), false, true);
++
++            layerUniforms->set(idFillDrawableUBO, drawableUniformBuffer);
++            drawable.setUBOIndex(0);
++        } else {
++            drawableUniformBuffer->update(&drawableUBO, sizeof(drawableUBO));
++        }
++
++        layerUniforms->createOrUpdate(idFillEvaluatedPropsUBO, &propsUBO, sizeof(propsUBO), parameters.context);
++        layerUniforms->bind(*parameters.renderPass);
++#else
++        auto& drawableUniforms = drawable.mutableUniformBuffers();
++        drawableUniforms.createOrUpdate(idFillDrawableUBO, &drawableUBO, parameters.context);
++        drawableUniforms.createOrUpdate(idFillEvaluatedPropsUBO, &propsUBO, parameters.context);
++#endif
++    };
++
++private:
++    CustomDrawableLayerHost::Interface::FillOptions options;
++    CustomDrawableLayerHost::Interface::FillTweakerCallback callback;
++
++#if MLN_UBO_CONSOLIDATION
++    gfx::UniqueUniformBufferArray layerUniforms;
++    gfx::UniformBufferPtr drawableUniformBuffer;
++#endif
++};
++
++class SymbolDrawableTweaker : public gfx::DrawableTweaker {
++public:
++    SymbolDrawableTweaker(const CustomDrawableLayerHost::Interface::SymbolOptions& options_,
++                          CustomDrawableLayerHost::Interface::SymbolTweakerCallback&& callback_)
++        : options(options_),
++          callback(callback_) {}
++    ~SymbolDrawableTweaker() override = default;
++
++    void init(gfx::Drawable&) override {}
++
++    void execute(gfx::Drawable& drawable, PaintParameters& parameters) override {
++        if (!drawable.getTileID().has_value()) {
++            return;
++        }
++
++        if (callback) {
++            callback(drawable, parameters, options);
++        }
++
++        const UnwrappedTileID tileID = drawable.getTileID()->toUnwrapped();
++
++        const auto matrix = LayerTweaker::getTileMatrix(
++            tileID, parameters, {{0, 0}}, style::TranslateAnchorType::Viewport, false, false, drawable, false);
++
++        const auto pixelsToTileUnits = tileID.pixelsToTileUnits(
++            1.0f, options.scaleWithMap ? tileID.canonical.z : parameters.state.getZoom());
++        const float factor = options.scaleWithMap
++                                 ? static_cast<float>(std::pow(2.f, parameters.state.getZoom() - tileID.canonical.z))
++                                 : 1.0f;
++        const auto extrudeScale = options.pitchWithMap ? std::array<float, 2>{pixelsToTileUnits, pixelsToTileUnits}
++                                                       : std::array<float, 2>{parameters.pixelsToGLUnits[0] * factor,
++                                                                              parameters.pixelsToGLUnits[1] * factor};
++
++        const shaders::CustomSymbolIconDrawableUBO drawableUBO = {
++            /* .matrix = */ .matrix = util::cast<float>(matrix),
++            /* .extrude_scale = */ .extrude_scale = {extrudeScale[0] * options.size.width,
++                                                     extrudeScale[1] * options.size.height},
++            /* .anchor = */ .anchor = options.anchor,
++            /* .angle_degrees = */ .angle_degrees = options.angleDegrees,
++            /* .scale_with_map = */ .scale_with_map = options.scaleWithMap,
++            /* .pitch_with_map = */ .pitch_with_map = options.pitchWithMap,
++            /* .camera_to_center_distance = */ .camera_to_center_distance =
++                parameters.state.getCameraToCenterDistance(),
++            /* .aspect_ratio = */ .aspect_ratio = parameters.pixelsToGLUnits[0] / parameters.pixelsToGLUnits[1],
++            /* .pad1 = */ .pad1 = 0,
++            /* .pad2 = */ .pad2 = 0,
++            /* .pad3 = */ .pad3 = 0};
++
++        auto& drawableUniforms = drawable.mutableUniformBuffers();
++        drawableUniforms.createOrUpdate(idCustomSymbolDrawableUBO, &drawableUBO, parameters.context);
++    };
++
++private:
++    CustomDrawableLayerHost::Interface::SymbolOptions options;
++    CustomDrawableLayerHost::Interface::SymbolTweakerCallback callback;
++};
++
++class GeometryDrawableTweaker : public gfx::DrawableTweaker {
++public:
++    GeometryDrawableTweaker(const CustomDrawableLayerHost::Interface::GeometryOptions& options_,
++                            CustomDrawableLayerHost::Interface::GeometryTweakerCallback&& callback_)
++        : options(options_),
++          callback(callback_) {}
++    ~GeometryDrawableTweaker() override = default;
++
++    void init(gfx::Drawable&) override {}
++
++    void execute(gfx::Drawable& drawable, PaintParameters& parameters) override {
++        if (!drawable.getTileID().has_value()) {
++            return;
++        }
++
++        if (callback) {
++            callback(drawable, parameters, options);
++        }
++
++        CustomGeometryDrawableUBO drawableUBO = {/* .matrix = */ .matrix = util::cast<float>(options.matrix),
++                                                 /* .color = */ .color = options.color};
++
++        auto& drawableUniforms = drawable.mutableUniformBuffers();
++        drawableUniforms.createOrUpdate(idCustomGeometryDrawableUBO, &drawableUBO, parameters.context);
++    };
++
++private:
++    CustomDrawableLayerHost::Interface::GeometryOptions options;
++    CustomDrawableLayerHost::Interface::GeometryTweakerCallback callback;
++};
++
++CustomDrawableLayerHost::Interface::Interface(RenderLayer& layer_,
++                                              LayerGroupBasePtr& layerGroup_,
++                                              gfx::ShaderRegistry& shaders_,
++                                              gfx::Context& context_,
++                                              const TransformState& state_,
++                                              const std::shared_ptr<UpdateParameters>& updateParameters_,
++                                              const RenderTree& renderTree_,
++                                              UniqueChangeRequestVec& changes_)
++    : layer(layer_),
++      layerGroup(layerGroup_),
++      shaders(shaders_),
++      context(context_),
++      state(state_),
++      updateParameters(updateParameters_),
++      renderTree(renderTree_),
++      changes(changes_) {
++    // ensure we have a default layer group set up
++    if (!layerGroup) {
++        if (auto aLayerGroup = context.createTileLayerGroup(
++                /*layerIndex*/ layer.getLayerIndex(), /*initialCapacity=*/64, layer.getID())) {
++            changes.emplace_back(std::make_unique<AddLayerGroupRequest>(aLayerGroup));
++            layerGroup = std::move(aLayerGroup);
++        }
++    }
++}
++
++std::size_t CustomDrawableLayerHost::Interface::getDrawableCount() const {
++    return layerGroup->getDrawableCount();
++}
++
++void CustomDrawableLayerHost::Interface::setTileID(OverscaledTileID tileID_) {
++    if (tileID != tileID_) finish();
++    tileID = tileID_;
++}
++
++void CustomDrawableLayerHost::Interface::setLineOptions(const LineOptions& options) {
++    finish();
++    lineOptions = options;
++}
++
++void CustomDrawableLayerHost::Interface::setFillOptions(const FillOptions& options) {
++    finish();
++    fillOptions = options;
++}
++
++void CustomDrawableLayerHost::Interface::setSymbolOptions(const SymbolOptions& options) {
++    finish();
++    symbolOptions = options;
++}
++
++void CustomDrawableLayerHost::Interface::setGeometryOptions(const GeometryOptions& options) {
++    finish();
++    geometryOptions = options;
++}
++
++bool CustomDrawableLayerHost::Interface::updateBuilder(BuilderType type,
++                                                       const std::string& name,
++                                                       gfx::ShaderPtr shader) {
++    if (!shader) return false;
++    if (type != builderType || !builder || builder->getShader() != shader) {
++        finish();
++        builder = createBuilder(name, shader);
++        builderType = type;
++    }
++    assert(builder);
++    assert(builder->getShader() == shader);
++    return true;
++};
++
++util::SimpleIdentity CustomDrawableLayerHost::Interface::addPolyline(const LineString<double>& coordinates,
++                                                                     LineShaderType shaderType) {
++#if !MLN_RENDER_BACKEND_METAL
++    shaderType = LineShaderType::Classic;
++#endif
++
++    switch (shaderType) {
++        case LineShaderType::Classic: {
++            // build classic polyline with Geo coordinates
++            if (!updateBuilder(BuilderType::LineClassic, "custom-lines", lineShaderDefault())) {
++                return util::SimpleIdentity::Empty;
++            }
++
++            // geographic coordinates require tile {0, 0, 0}
++            setTileID({0, 0, 0});
++
++            constexpr int32_t zoom = 0;
++            GeometryCoordinates tileCoordinates;
++            for (const auto& coord : coordinates) {
++                const auto point = Projection::project(LatLng(coord.y, coord.x), zoom);
++                tileCoordinates.push_back(Point<int16_t>(static_cast<int16_t>(point.x * mln::util::EXTENT),
++                                                         static_cast<int16_t>(point.y * mln::util::EXTENT)));
++            }
++
++            builder->addPolyline(tileCoordinates, lineOptions.geometry);
++        } break;
++
++        case LineShaderType::WideVector: {
++            // build wide vector polyline with Geo coordinates
++            if (!updateBuilder(BuilderType::LineWideVector, "custom-lines-widevector", lineShaderWideVector()))
++                return util::SimpleIdentity::Empty;
++
++            // geographic coordinates require tile {0, 0, 0}
++            setTileID({0, 0, 0});
++
++            builder->addWideVectorPolylineGlobal(coordinates, lineOptions.geometry);
++        } break;
++    }
++
++    return builder->getCurrentDrawable(true)->getID();
++}
++
++util::SimpleIdentity CustomDrawableLayerHost::Interface::addPolyline(const GeometryCoordinates& coordinates,
++                                                                     LineShaderType shaderType) {
++#if !MLN_RENDER_BACKEND_METAL
++    shaderType = LineShaderType::Classic;
++#endif
++
++    switch (shaderType) {
++        case LineShaderType::Classic: {
++            // build classic polyline with Tile coordinates
++            if (!updateBuilder(BuilderType::LineClassic, "custom-lines", lineShaderDefault())) {
++                return util::SimpleIdentity::Empty;
++            }
++
++            builder->addPolyline(coordinates, lineOptions.geometry);
++        } break;
++
++        case LineShaderType::WideVector: {
++            // build wide vector polyline
++            if (!updateBuilder(BuilderType::LineWideVector, "custom-lines-widevector", lineShaderWideVector()))
++                return util::SimpleIdentity::Empty;
++
++            builder->addWideVectorPolylineLocal(coordinates, lineOptions.geometry);
++        } break;
++    }
++
++    return builder->getCurrentDrawable(true)->getID();
++}
++
++util::SimpleIdentity CustomDrawableLayerHost::Interface::addFill(const GeometryCollection& geometry) {
++    // build fill
++    if (!updateBuilder(BuilderType::Fill, "custom-fill", fillShaderDefault())) {
++        return util::SimpleIdentity::Empty;
++    }
++
++    // provision buffers for fill vertices, indexes and segments
++    using VertexVector = gfx::VertexVector<FillLayoutVertex>;
++    const std::shared_ptr<VertexVector> sharedVertices = std::make_shared<VertexVector>();
++    VertexVector& vertices = *sharedVertices;
++
++    using TriangleIndexVector = gfx::IndexVector<gfx::Triangles>;
++    const std::shared_ptr<TriangleIndexVector> sharedTriangles = std::make_shared<TriangleIndexVector>();
++    TriangleIndexVector& triangles = *sharedTriangles;
++
++    SegmentVector triangleSegments;
++
++    // generate fill geometry into buffers
++    gfx::generateFillBuffers(geometry, vertices, triangles, triangleSegments);
++
++    // add to builder
++    auto attrs = context.createVertexAttributeArray();
++    if (const auto& attr = attrs->set(idFillPosVertexAttribute)) {
++        attr->setSharedRawData(sharedVertices,
++                               offsetof(FillLayoutVertex, a1),
++                               /*vertexOffset=*/0,
++                               sizeof(FillLayoutVertex),
++                               gfx::AttributeDataType::Short2);
++    }
++    builder->setVertexAttributes(std::move(attrs));
++    builder->setRawVertices({}, vertices.elements(), gfx::AttributeDataType::Short2);
++    builder->setSegments(gfx::Triangles(), sharedTriangles, triangleSegments.data(), triangleSegments.size());
++
++    const auto& id = builder->getCurrentDrawable(true)->getID();
++
++    // flush current builder drawable
++    builder->flush(context);
++
++    return id;
++}
++
++util::SimpleIdentity CustomDrawableLayerHost::Interface::addSymbol(
++    const GeometryCoordinate& point, const std::array<std::array<float, 2>, 2>& textureCoordinates) {
++    // build symbol
++    if (!updateBuilder(BuilderType::Symbol, "custom-symbol", symbolShaderDefault())) {
++        return util::SimpleIdentity::Empty;
++    }
++
++    // temporary: buffers
++    struct CustomSymbolIcon {
++        std::array<float, 2> a_pos;
++        std::array<float, 2> a_tex;
++    };
++
++    // vertices
++    using VertexVector = gfx::VertexVector<CustomSymbolIcon>;
++    const std::shared_ptr<VertexVector> sharedVertices = std::make_shared<VertexVector>();
++    VertexVector& vertices = *sharedVertices;
++
++    // encode center and extrude direction into vertices
++    for (int y = 0; y <= 1; ++y) {
++        for (int x = 0; x <= 1; ++x) {
++            vertices.emplace_back(
++                CustomSymbolIcon{.a_pos = {static_cast<float>(point.x * 2 + x), static_cast<float>(point.y * 2 + y)},
++                                 .a_tex = {textureCoordinates[x][0], textureCoordinates[y][1]}});
++        }
++    }
++
++    // indexes
++    using TriangleIndexVector = gfx::IndexVector<gfx::Triangles>;
++    const std::shared_ptr<TriangleIndexVector> sharedTriangles = std::make_shared<TriangleIndexVector>();
++    TriangleIndexVector& triangles = *sharedTriangles;
++
++    triangles.emplace_back(0, 1, 2, 1, 2, 3);
++
++    SegmentVector triangleSegments;
++    triangleSegments.emplace_back(0, 0, 4, 6);
++
++    // add to builder
++    auto attrs = context.createVertexAttributeArray();
++    if (const auto& attr = attrs->set(idCustomSymbolPosVertexAttribute)) {
++        attr->setSharedRawData(sharedVertices,
++                               offsetof(CustomSymbolIcon, a_pos),
++                               /*vertexOffset=*/0,
++                               sizeof(CustomSymbolIcon),
++                               gfx::AttributeDataType::Float2);
++    }
++    if (const auto& attr = attrs->set(idCustomSymbolTexVertexAttribute)) {
++        attr->setSharedRawData(sharedVertices,
++                               offsetof(CustomSymbolIcon, a_tex),
++                               /*vertexOffset=*/0,
++                               sizeof(CustomSymbolIcon),
++                               gfx::AttributeDataType::Float2);
++    }
++    builder->setVertexAttributes(std::move(attrs));
++    builder->setRawVertices({}, vertices.elements(), gfx::AttributeDataType::Float2);
++    builder->setSegments(gfx::Triangles(), sharedTriangles, triangleSegments.data(), triangleSegments.size());
++
++    // texture
++    if (symbolOptions.texture) {
++        builder->setTexture(symbolOptions.texture, idCustomSymbolImageTexture);
++    }
++
++    // create symbol tweaker
++    auto tweaker = std::make_shared<SymbolDrawableTweaker>(symbolOptions, std::move(symbolTweakerCallback));
++    builder->addTweaker(tweaker);
++
++    const auto& id = builder->getCurrentDrawable(true)->getID();
++
++    // flush current builder drawable
++    builder->flush(context);
++
++    return id;
++}
++
++util::SimpleIdentity CustomDrawableLayerHost::Interface::addGeometry(
++    std::shared_ptr<gfx::VertexVector<GeometryVertex>> vertices,
++    std::shared_ptr<gfx::IndexVector<gfx::Triangles>> indices,
++    bool is3D) {
++    if (!vertices || !indices) {
++        return util::SimpleIdentity::Empty;
++    }
++
++    if (!updateBuilder(BuilderType::Geometry, "custom-geometry", geometryShaderDefault())) {
++        return util::SimpleIdentity::Empty;
++    }
++
++    // geographic coordinates require tile {0, 0, 0}
++    setTileID({0, 0, 0});
++
++    SegmentVector triangleSegments;
++    triangleSegments.emplace_back(0, 0, vertices->elements(), indices->elements());
++
++    // add to builder
++    auto attrs = context.createVertexAttributeArray();
++    if (const auto& attr = attrs->set(idCustomGeometryPosVertexAttribute)) {
++        attr->setSharedRawData(vertices,
++                               offsetof(GeometryVertex, position),
++                               /*vertexOffset=*/0,
++                               sizeof(GeometryVertex),
++                               gfx::AttributeDataType::Float3);
++    }
++
++    if (const auto& attr = attrs->set(idCustomGeometryTexVertexAttribute)) {
++        attr->setSharedRawData(vertices,
++                               offsetof(GeometryVertex, texcoords),
++                               /*vertexOffset=*/0,
++                               sizeof(GeometryVertex),
++                               gfx::AttributeDataType::Float2);
++    }
++
++    builder->setVertexAttributes(std::move(attrs));
++    builder->setRawVertices({}, vertices->elements(), gfx::AttributeDataType::Float3);
++    builder->setSegments(gfx::Triangles(), indices, triangleSegments.data(), triangleSegments.size());
++
++    builder->setEnableDepth(true);
++
++    if (is3D) {
++        builder->setDepthType(gfx::DepthMaskType::ReadWrite);
++        builder->setIs3D(true);
++    }
++
++    // white texture
++    if (!geometryOptions.texture) {
++        auto image = std::make_shared<PremultipliedImage>(mln::Size(2, 2));
++        image->fill(255);
++
++        geometryOptions.texture = context.createTexture2D();
++        geometryOptions.texture->setImage(std::move(image));
++    }
++
++    builder->setTexture(geometryOptions.texture, shaders::idCustomGeometryTexture);
++
++    builder->addTweaker(std::make_shared<GeometryDrawableTweaker>(geometryOptions, std::move(geometryTweakerCallback)));
++
++    const auto& id = builder->getCurrentDrawable(true)->getID();
++
++    // flush current builder drawable
++    builder->flush(context);
++
++    return id;
++}
++
++void CustomDrawableLayerHost::Interface::finish() {
++    if (builder && !builder->empty()) {
++        // flush current builder drawable
++        builder->flush(context);
++
++        // finish function
++        const auto finish_ = [this](gfx::DrawableTweakerPtr tweaker) {
++            builder->flush(context);
++            for (auto& drawable : builder->clearDrawables()) {
++                assert(tileID.has_value());
++                drawable->setTileID(tileID.value());
++                if (tweaker) {
++                    drawable->addTweaker(tweaker);
++                }
++
++                TileLayerGroup* tileLayerGroup = static_cast<TileLayerGroup*>(layerGroup.get());
++                tileLayerGroup->addDrawable(RenderPass::Translucent, tileID.value(), std::move(drawable));
++            }
++        };
++
++        // what were we building?
++        switch (builderType) {
++            case BuilderType::LineClassic: {
++                // finish building classic lines
++
++                // create line tweaker
++                auto tweaker = std::make_shared<LineDrawableTweaker>(lineOptions, std::move(lineTweakerCallback));
++
++                // finish drawables
++                finish_(tweaker);
++            } break;
++            case BuilderType::LineWideVector: {
++                // finish building wide vector lines
++
++                // create line tweaker
++                auto tweaker = std::make_shared<WideVectorDrawableTweaker>(lineOptions, std::move(lineTweakerCallback));
++
++                // finish drawables
++                finish_(tweaker);
++            } break;
++            case BuilderType::Fill: {
++                // finish building fills
++
++                // create fill tweaker
++                auto tweaker = std::make_shared<FillDrawableTweaker>(fillOptions, std::move(fillTweakerCallback));
++
++                // finish drawables
++                finish_(tweaker);
++            } break;
++            case BuilderType::Symbol:
++                // finish building symbols
++                finish_(nullptr);
++                break;
++
++            case BuilderType::Geometry:
++                finish_(nullptr);
++                break;
++            default:
++                break;
++        }
++    }
++}
++
++void CustomDrawableLayerHost::Interface::removeDrawable(const util::SimpleIdentity& id) {
++    TileLayerGroup* tileLayerGroup = static_cast<TileLayerGroup*>(layerGroup.get());
++    tileLayerGroup->removeDrawablesIf([&](gfx::Drawable& drawable) { return drawable.getID() == id; });
++}
++
++gfx::ShaderPtr CustomDrawableLayerHost::Interface::lineShaderDefault() const {
++    gfx::ShaderGroupPtr shaderGroup = shaders.getShaderGroup("LineShader");
++    assert(shaderGroup);
++    if (!shaderGroup) return gfx::ShaderPtr();
++
++    const StringIDSetsPair propertiesAsUniforms{{"a_color", "a_blur", "a_opacity", "a_gapwidth", "a_offset", "a_width"},
++                                                {idLineColorVertexAttribute,
++                                                 idLineBlurVertexAttribute,
++                                                 idLineOpacityVertexAttribute,
++                                                 idLineGapWidthVertexAttribute,
++                                                 idLineOffsetVertexAttribute,
++                                                 idLineWidthVertexAttribute}};
++
++    return shaderGroup->getOrCreateShader(context, propertiesAsUniforms);
++}
++
++gfx::ShaderPtr CustomDrawableLayerHost::Interface::lineShaderWideVector() const {
++    gfx::ShaderGroupPtr shaderGroup = shaders.getShaderGroup("WideVectorShader");
++    if (!shaderGroup) return gfx::ShaderPtr();
++
++    return shaderGroup->getOrCreateShader(context, {});
++}
++
++gfx::ShaderPtr CustomDrawableLayerHost::Interface::fillShaderDefault() const {
++    gfx::ShaderGroupPtr shaderGroup = shaders.getShaderGroup("FillShader");
++
++    const StringIDSetsPair propertiesAsUniforms{{"a_color", "a_opacity"},
++                                                {idFillColorVertexAttribute, idFillOpacityVertexAttribute}};
++
++    return shaderGroup->getOrCreateShader(context, propertiesAsUniforms);
++}
++
++gfx::ShaderPtr CustomDrawableLayerHost::Interface::symbolShaderDefault() const {
++    return context.getGenericShader(shaders, "CustomSymbolIconShader");
++}
++
++gfx::ShaderPtr CustomDrawableLayerHost::Interface::geometryShaderDefault() const {
++    return context.getGenericShader(shaders, "CustomGeometryShader");
++}
++
++std::unique_ptr<gfx::DrawableBuilder> CustomDrawableLayerHost::Interface::createBuilder(const std::string& name,
++                                                                                        gfx::ShaderPtr shader) const {
++    std::unique_ptr<gfx::DrawableBuilder> builder_ = context.createDrawableBuilder(name);
++    builder_->setShader(std::static_pointer_cast<gfx::ShaderProgramBase>(shader));
++    builder_->setSubLayerIndex(0);
++    builder_->setEnableDepth(false);
++    builder_->setColorMode(gfx::ColorMode::alphaBlended());
++    builder_->setCullFaceMode(gfx::CullFaceMode::disabled());
++    builder_->setRenderPass(RenderPass::Translucent);
++
++    return builder_;
++}
++
++} // namespace style
++} // namespace mln
+diff --git a/src/mln/style/layers/custom_drawable_layer_impl.cpp b/src/mln/style/layers/custom_drawable_layer_impl.cpp
+new file mode 100644
+index 000000000000..6b7cc0b0979b
+--- /dev/null
++++ b/src/mln/style/layers/custom_drawable_layer_impl.cpp
+@@ -0,0 +1,18 @@
++#include <mln/style/layers/custom_drawable_layer_impl.hpp>
++
++namespace mln {
++namespace style {
++
++CustomDrawableLayer::Impl::Impl(const std::string& id_, std::unique_ptr<CustomDrawableLayerHost> host_)
++    : Layer::Impl(id_, std::string()) {
++    host = std::move(host_);
++}
++
++bool CustomDrawableLayer::Impl::hasLayoutDifference(const Layer::Impl&) const {
++    return false;
++}
++
++void CustomDrawableLayer::Impl::stringifyLayout(rapidjson::Writer<rapidjson::StringBuffer>&) const {}
++
++} // namespace style
++} // namespace mln
+diff --git a/src/mln/style/layers/custom_drawable_layer_impl.hpp b/src/mln/style/layers/custom_drawable_layer_impl.hpp
+new file mode 100644
+index 000000000000..685684e5fcd8
+--- /dev/null
++++ b/src/mln/style/layers/custom_drawable_layer_impl.hpp
+@@ -0,0 +1,36 @@
++#pragma once
++
++#include <mln/style/layers/custom_drawable_layer.hpp>
++#include <mln/style/layer_impl.hpp>
++#include <mln/style/layer_properties.hpp>
++
++#include <memory>
++
++namespace mln {
++
++class TransformState;
++
++namespace style {
++
++class CustomDrawableLayer::Impl : public Layer::Impl {
++public:
++    Impl(const std::string& id, std::unique_ptr<CustomDrawableLayerHost> host);
++
++    bool hasLayoutDifference(const Layer::Impl&) const override;
++    void stringifyLayout(rapidjson::Writer<rapidjson::StringBuffer>&) const override;
++
++    std::shared_ptr<CustomDrawableLayerHost> host;
++
++    DECLARE_LAYER_TYPE_INFO;
++};
++
++class CustomDrawableLayerProperties final : public LayerProperties {
++public:
++    explicit CustomDrawableLayerProperties(Immutable<CustomDrawableLayer::Impl> impl)
++        : LayerProperties(std::move(impl)) {}
++
++    expression::Dependency getDependencies() const noexcept override { return expression::Dependency::None; }
++};
++
++} // namespace style
++} // namespace mln
+diff --git a/src/mln/vulkan/renderer_backend.cpp b/src/mln/vulkan/renderer_backend.cpp
+index d12b01961908..51286c73423a 100644
+--- a/src/mln/vulkan/renderer_backend.cpp
++++ b/src/mln/vulkan/renderer_backend.cpp
+@@ -13,6 +13,8 @@
+ #include <mln/shaders/vulkan/clipping_mask.hpp>
+ #include <mln/shaders/vulkan/collision.hpp>
+ #include <mln/shaders/vulkan/color_relief.hpp>
++#include <mln/shaders/vulkan/custom_geometry.hpp>
++#include <mln/shaders/vulkan/custom_symbol_icon.hpp>
+ #include <mln/shaders/vulkan/debug.hpp>
+ #include <mln/shaders/vulkan/fill.hpp>
+ #include <mln/shaders/vulkan/fill_extrusion.hpp>
+@@ -697,6 +699,8 @@ void RendererBackend::initShaders(gfx::ShaderRegistry& shaders, const ProgramPar
+                   shaders::BuiltIn::CollisionBoxShader,
+                   shaders::BuiltIn::CollisionCircleShader,
+                   shaders::BuiltIn::ColorReliefShader,
++                  shaders::BuiltIn::CustomGeometryShader,
++                  shaders::BuiltIn::CustomSymbolIconShader,
+                   shaders::BuiltIn::DebugShader,
+                   shaders::BuiltIn::FillShader,
+                   shaders::BuiltIn::FillOutlineShader,
+diff --git a/src/mln/webgpu/renderer_backend.cpp b/src/mln/webgpu/renderer_backend.cpp
+index 262d770cb40b..a80cb1a403f9 100644
+--- a/src/mln/webgpu/renderer_backend.cpp
++++ b/src/mln/webgpu/renderer_backend.cpp
+@@ -12,6 +12,8 @@
+ #include <mln/shaders/webgpu/circle.hpp>
+ #include <mln/shaders/webgpu/clipping_mask.hpp>
+ #include <mln/shaders/webgpu/collision.hpp>
++#include <mln/shaders/webgpu/custom_geometry.hpp>
++#include <mln/shaders/webgpu/custom_symbol_icon.hpp>
+ #include <mln/shaders/webgpu/debug.hpp>
+ #include <mln/shaders/webgpu/fill.hpp>
+ #include <mln/shaders/webgpu/fill_extrusion.hpp>
+@@ -95,6 +97,8 @@ void RendererBackend::initShaders(gfx::ShaderRegistry& registry, const ProgramPa
+                   shaders::BuiltIn::ClippingMaskProgram,
+                   shaders::BuiltIn::CollisionBoxShader,
+                   shaders::BuiltIn::CollisionCircleShader,
++                  shaders::BuiltIn::CustomGeometryShader,
++                  shaders::BuiltIn::CustomSymbolIconShader,
+                   shaders::BuiltIn::DebugShader,
+                   shaders::BuiltIn::FillShader,
+                   shaders::BuiltIn::FillOutlineShader,

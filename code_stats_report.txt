@@ -1,0 +1,614 @@
+================================================================================
+MapLibre Native 代码行数统计（按目录树结构）
+================================================================================
+项目根目录: /Users/yidafu/github/maplibre-native
+排除目录: ['platform/harmony/maplibre_harmony/src/main/cpp/thirdparty']
+统计文件类型: .cpp, .h, .hpp, .c, .cc, .cxx, .ets, .ts
+
+================================================================================
+扫描目录: platform/harmony/maplibre_harmony/src/main/cpp
+================================================================================
+
+cpp/  [211 文件, 34243 行有效代码]
+
+bitmap/  [4 文件, 404 行有效代码]
+├── bitmap_harmony.cpp  [139/219 行]
+├── bitmap_harmony.hpp  [47/163 行]
+├── bitmap_napi.cpp  [186/244 行]
+└── bitmap_napi.hpp  [32/65 行]
+
+camera/  [2 文件, 129 行有效代码]
+├── camera_position_harmony.cpp  [117/154 行]
+└── camera_position_harmony.hpp  [12/41 行]
+
+config/  [4 文件, 206 行有效代码]
+├── maplibre_settings.cpp  [75/105 行]
+├── maplibre_settings.hpp  [33/126 行]
+├── maplibre_settings_napi.cpp  [78/117 行]
+└── maplibre_settings_napi.hpp  [20/51 行]
+
+core/  [14 文件, 6098 行有效代码]
+├── callback_manager.cpp  [209/289 行]
+├── callback_manager.hpp  [44/164 行]
+├── common.hpp  [4/12 行]
+├── thread_safe_callback.cpp  [197/256 行]
+├── thread_safe_callback.hpp  [51/143 行]
+
+native_map_view/  [9 文件, 5593 行有效代码]
+├── native_map_view_annotations.cpp  [616/839 行]
+├── native_map_view_base.cpp  [834/1193 行]
+├── native_map_view_camera.cpp  [1056/1431 行]
+├── native_map_view_debug.cpp  [103/193 行]
+├── native_map_view_harmony.hpp  [314/442 行]
+├── native_map_view_observers.cpp  [1377/1843 行]
+├── native_map_view_performance.cpp  [170/251 行]
+├── native_map_view_query.cpp  [517/700 行]
+└── native_map_view_style.cpp  [606/843 行]
+
+geojson/  [4 文件, 703 行有效代码]
+├── geojson_converter.cpp  [323/434 行]
+├── geojson_converter.hpp  [40/131 行]
+├── util.cpp  [304/400 行]
+└── util.hpp  [36/117 行]
+
+geometry/  [10 文件, 442 行有效代码]
+├── lat_lng_bounds_harmony.cpp  [83/113 行]
+├── lat_lng_bounds_harmony.hpp  [12/38 行]
+├── lat_lng_harmony.cpp  [94/126 行]
+├── lat_lng_harmony.hpp  [15/40 行]
+├── point_harmony.cpp  [66/88 行]
+├── point_harmony.hpp  [14/58 行]
+├── projected_meters_harmony.cpp  [58/78 行]
+├── projected_meters_harmony.hpp  [12/38 行]
+├── rect_harmony.cpp  [73/101 行]
+└── rect_harmony.hpp  [15/56 行]
+
+icon/  [2 文件, 123 行有效代码]
+├── icon_factory.cpp  [99/155 行]
+└── icon_factory.hpp  [24/93 行]
+
+napi/  [32 文件, 6947 行有效代码]
+
+bindings/  [26 文件, 6141 行有效代码]
+├── style_builder_napi.cpp  [305/431 行]
+├── style_builder_napi.hpp  [44/74 行]
+
+icon/  [2 文件, 288 行有效代码]
+├── icon_napi.cpp  [246/335 行]
+└── icon_napi.hpp  [42/88 行]
+
+icon_factory/  [2 文件, 206 行有效代码]
+├── icon_factory_napi.cpp  [187/275 行]
+└── icon_factory_napi.hpp  [19/108 行]
+
+image/  [2 文件, 508 行有效代码]
+├── image_napi.cpp  [450/572 行]
+└── image_napi.hpp  [58/98 行]
+
+marker/  [3 文件, 749 行有效代码]
+├── marker_napi.hpp  [81/125 行]
+├── marker_napi_base.cpp  [363/521 行]
+└── marker_napi_options.cpp  [305/443 行]
+
+network/  [4 文件, 345 行有效代码]
+├── network_napi.cpp  [121/182 行]
+├── network_napi.hpp  [16/61 行]
+├── url_transform_napi.cpp  [187/249 行]
+└── url_transform_napi.hpp  [21/56 行]
+
+polygon/  [2 文件, 741 行有效代码]
+├── polygon_napi.cpp  [671/920 行]
+└── polygon_napi.hpp  [70/103 行]
+
+polyline/  [2 文件, 602 行有效代码]
+├── polyline_napi.cpp  [537/740 行]
+└── polyline_napi.hpp  [65/98 行]
+
+style/  [7 文件, 2353 行有效代码]
+├── custom_layer_napi.cpp  [244/325 行]
+├── custom_layer_napi.hpp  [54/91 行]
+├── style_napi.hpp  [54/91 行]
+├── style_napi_base.cpp  [337/429 行]
+├── style_napi_images.cpp  [655/889 行]
+├── style_napi_layers.cpp  [827/993 行]
+└── style_napi_sources.cpp  [182/228 行]
+
+core/  [6 文件, 806 行有效代码]
+├── napi_args.cpp  [545/743 行]
+├── napi_args.hpp  [65/290 行]
+├── napi_init.cpp  [81/129 行]
+├── napi_utils.cpp  [38/50 行]
+├── napi_utils.h  [24/71 行]
+└── napi_utils_ext.cpp  [53/67 行]
+
+network/  [7 文件, 1121 行有效代码]
+├── curl_event_loop.cpp  [416/567 行]
+├── curl_event_loop.hpp  [62/132 行]
+├── http_file_source_harmony.cpp  [480/667 行]
+├── http_request_config.cpp  [54/72 行]
+├── http_request_config.hpp  [26/90 行]
+├── url_transform_manager.cpp  [57/81 行]
+└── url_transform_manager.hpp  [26/103 行]
+
+offline/  [8 文件, 1286 行有效代码]
+├── offline_manager_napi.cpp  [524/692 行]
+├── offline_manager_napi.hpp  [32/51 行]
+├── offline_region_definition_napi.cpp  [158/240 行]
+├── offline_region_definition_napi.hpp  [17/33 行]
+├── offline_region_napi.cpp  [467/622 行]
+├── offline_region_napi.hpp  [39/64 行]
+├── offline_region_status_napi.cpp  [38/62 行]
+└── offline_region_status_napi.hpp  [11/21 行]
+
+rendering/  [18 文件, 3190 行有效代码]
+├── harmony_map_render_thread.cpp  [460/659 行]
+├── harmony_map_render_thread.hpp  [94/276 行]
+├── harmony_renderer.cpp  [464/653 行]
+├── harmony_renderer.hpp  [96/160 行]
+├── harmony_renderer_thread_manager.cpp  [139/194 行]
+├── harmony_renderer_thread_manager.hpp  [52/138 行]
+
+backends/  [8 文件, 1382 行有效代码]
+├── egl_display_manager.cpp  [182/234 行]
+├── egl_display_manager.hpp  [36/126 行]
+├── harmony_gl_renderer_backend.cpp  [812/1181 行]
+├── harmony_gl_renderer_backend.hpp  [65/102 行]
+├── harmony_renderer_backend.cpp  [19/32 行]
+├── harmony_renderer_backend.hpp  [33/48 行]
+├── harmony_vulkan_renderer_backend.cpp  [202/339 行]
+└── harmony_vulkan_renderer_backend.hpp  [33/105 行]
+
+egl/  [4 文件, 503 行有效代码]
+├── EGLCore.cpp  [399/611 行]
+├── EGLCore.h  [39/53 行]
+├── Render.cpp  [36/50 行]
+└── Render.h  [29/38 行]
+
+snapshot/  [6 文件, 832 行有效代码]
+├── map_snapshot_napi.cpp  [147/222 行]
+├── map_snapshot_napi.hpp  [49/121 行]
+├── map_snapshotter_harmony.cpp  [141/186 行]
+├── map_snapshotter_harmony.hpp  [68/170 行]
+├── snapshotter_napi.cpp  [417/681 行]
+└── snapshotter_napi.hpp  [10/26 行]
+
+sources/  [10 文件, 1887 行有效代码]
+├── geojson_source_napi.cpp  [559/762 行]
+├── geojson_source_napi.hpp  [50/90 行]
+├── image_source_napi.cpp  [349/454 行]
+├── image_source_napi.hpp  [45/74 行]
+├── raster_dem_source_napi.cpp  [217/290 行]
+├── raster_dem_source_napi.hpp  [44/73 行]
+├── raster_source_napi.cpp  [293/389 行]
+├── raster_source_napi.hpp  [45/74 行]
+├── vector_source_napi.cpp  [240/318 行]
+└── vector_source_napi.hpp  [45/74 行]
+
+style/  [39 文件, 9170 行有效代码]
+├── filter_conversion.cpp  [52/71 行]
+├── filter_conversion.hpp  [16/52 行]
+├── layer_source_factory_harmony.cpp  [107/150 行]
+├── layer_source_factory_harmony.hpp  [16/38 行]
+├── light_harmony.cpp  [377/494 行]
+├── light_harmony.hpp  [36/67 行]
+├── napi_value_wrapper.cpp  [184/215 行]
+├── napi_value_wrapper.hpp  [37/75 行]
+├── transition_options_harmony.cpp  [64/84 行]
+├── transition_options_harmony.hpp  [12/38 行]
+├── value_conversion.cpp  [159/203 行]
+├── value_conversion.hpp  [28/98 行]
+
+conversion/  [5 文件, 490 行有效代码]
+├── constant.cpp  [238/290 行]
+├── constant.hpp  [40/65 行]
+├── harmony_conversion.hpp  [124/160 行]
+├── property_expression.hpp  [19/35 行]
+└── property_value.hpp  [69/105 行]
+
+layers/  [22 文件, 7592 行有效代码]
+├── background_layer_harmony.cpp  [358/495 行]
+├── background_layer_harmony.hpp  [56/99 行]
+├── circle_layer_harmony.cpp  [688/935 行]
+├── circle_layer_harmony.hpp  [76/125 行]
+├── custom_layer_harmony.cpp  [236/309 行]
+├── custom_layer_harmony.hpp  [37/97 行]
+├── fill_extrusion_layer_harmony.cpp  [466/610 行]
+├── fill_extrusion_layer_harmony.hpp  [66/95 行]
+├── fill_layer_harmony.cpp  [562/776 行]
+├── fill_layer_harmony.hpp  [68/116 行]
+├── heatmap_layer_harmony.cpp  [505/670 行]
+├── heatmap_layer_harmony.hpp  [66/112 行]
+├── hillshade_layer_harmony.cpp  [439/578 行]
+├── hillshade_layer_harmony.hpp  [61/92 行]
+├── layer_base_methods.hpp  [120/213 行]
+├── layer_property_utils.hpp  [150/228 行]
+├── line_layer_harmony.cpp  [813/1070 行]
+├── line_layer_harmony.hpp  [81/129 行]
+├── raster_layer_harmony.cpp  [474/648 行]
+├── raster_layer_harmony.hpp  [66/106 行]
+├── symbol_layer_harmony.cpp  [2030/2659 行]
+└── symbol_layer_harmony.hpp  [174/223 行]
+
+types/  [46 文件, 1419 行有效代码]
+
+libmaplibre/  [46 文件, 1419 行有效代码]
+├── CommonTypes.d.ts  [22/97 行]
+├── ExpressionTypes.d.ts  [109/222 行]
+├── Icon.d.ts  [10/111 行]
+├── IconFactory.d.ts  [9/141 行]
+├── Index.d.ts  [31/223 行]
+├── LayerPropertyTypes.d.ts  [7/63 行]
+├── MapSnapshot.d.ts  [11/70 行]
+├── Marker.d.ts  [53/377 行]
+├── NativeMapView.d.ts  [290/1489 行]
+├── Style.d.ts  [38/263 行]
+
+annotations/  [2 文件, 78 行有效代码]
+├── Polygon.d.ts  [40/197 行]
+└── Polyline.d.ts  [38/192 行]
+
+geojson/  [11 文件, 79 行有效代码]
+├── Feature.d.ts  [10/70 行]
+├── FeatureCollection.d.ts  [5/42 行]
+├── Geometry.d.ts  [23/50 行]
+├── GeometryCollection.d.ts  [5/56 行]
+├── LineString.d.ts  [4/34 行]
+├── MultiLineString.d.ts  [4/41 行]
+├── MultiPoint.d.ts  [4/35 行]
+├── MultiPolygon.d.ts  [4/52 行]
+├── Point.d.ts  [4/31 行]
+├── Polygon.d.ts  [4/50 行]
+└── index.d.ts  [12/35 行]
+
+images/  [1 文件, 23 行有效代码]
+└── Image.d.ts  [23/117 行]
+
+layers/  [11 文件, 438 行有效代码]
+├── BackgroundLayer.d.ts  [21/101 行]
+├── CircleLayer.d.ts  [42/195 行]
+├── CustomLayer.d.ts  [13/64 行]
+├── FillExtrusionLayer.d.ts  [32/169 行]
+├── FillLayer.d.ts  [34/164 行]
+├── HeatmapLayer.d.ts  [28/152 行]
+├── HillshadeLayer.d.ts  [24/109 行]
+├── LineLayer.d.ts  [47/221 行]
+├── RasterLayer.d.ts  [32/149 行]
+├── SymbolLayer.d.ts  [134/683 行]
+└── index.d.ts  [31/53 行]
+
+offline/  [5 文件, 102 行有效代码]
+├── OfflineManager.d.ts  [25/274 行]
+├── OfflineRegion.d.ts  [30/242 行]
+├── OfflineRegionDefinition.d.ts  [32/151 行]
+├── OfflineRegionStatus.d.ts  [11/81 行]
+└── index.d.ts  [4/13 行]
+
+sources/  [6 文件, 119 行有效代码]
+├── GeoJsonSource.d.ts  [42/212 行]
+├── ImageSource.d.ts  [13/62 行]
+├── RasterDemSource.d.ts  [16/66 行]
+├── RasterSource.d.ts  [16/70 行]
+├── VectorSource.d.ts  [16/70 行]
+└── index.d.ts  [16/33 行]
+
+utils/  [3 文件, 129 行有效代码]
+├── anr_detector.hpp  [61/107 行]
+├── logger.cpp  [40/72 行]
+└── logger.h  [28/79 行]
+
+vsync/  [2 文件, 157 行有效代码]
+├── harmony_vsync_manager.cpp  [124/190 行]
+└── harmony_vsync_manager.hpp  [33/99 行]
+
+================================================================================
+扫描目录: platform/harmony/maplibre_harmony/src/main/ets
+================================================================================
+
+ets/  [165 文件, 20419 行有效代码]
+├── MapLibre.ets  [24/136 行]
+
+components/  [7 文件, 456 行有效代码]
+
+declarative/  [7 文件, 456 行有效代码]
+├── MarkerComponent.ets  [70/91 行]
+├── index.ets  [8/58 行]
+
+layers/  [4 文件, 295 行有效代码]
+├── CircleLayerComponent.ets  [74/90 行]
+├── FillLayerComponent.ets  [70/86 行]
+├── LineLayerComponent.ets  [70/87 行]
+└── SymbolLayerComponent.ets  [81/100 行]
+
+sources/  [1 文件, 83 行有效代码]
+└── GeoJsonSourceComponent.ets  [83/103 行]
+
+constants/  [1 文件, 1 行有效代码]
+└── HiLogConstants.ets  [1/13 行]
+
+maps/  [156 文件, 19938 行有效代码]
+├── MapLibreMap.ets  [2209/3938 行]
+├── MapLibreMapOptions.ets  [167/197 行]
+├── MapViewComponentController.ets  [23/49 行]
+├── NativeMap.ets  [171/311 行]
+├── NativeMapOptions.ets  [120/135 行]
+├── NativeMapView.ets  [2045/3159 行]
+├── UiSettings.ets  [501/1110 行]
+├── index.ets  [207/321 行]
+
+annotations/  [24 文件, 3848 行有效代码]
+├── Annotation.ets  [47/132 行]
+├── AnnotationType.ets  [5/23 行]
+├── AnnotationView.ets  [322/545 行]
+├── AnnotationViewAdapter.ets  [6/57 行]
+├── AnnotationViewDelegate.ets  [22/128 行]
+├── AnnotationViewManager.ets  [332/599 行]
+├── AnnotationViewOverlay.ets  [87/156 行]
+├── Icon.ets  [49/110 行]
+├── IconFactory.ets  [231/543 行]
+├── IconManager.ets  [281/660 行]
+├── InfoWindow.ets  [389/629 行]
+├── InfoWindowAdapter.ets  [5/36 行]
+├── InfoWindowManager.ets  [165/292 行]
+├── InfoWindowOverlay.ets  [68/99 行]
+├── Marker.ets  [187/308 行]
+├── MarkerDragState.ets  [7/41 行]
+├── MarkerLayerManager.ets  [316/570 行]
+├── MarkerManager.ets  [649/1293 行]
+├── MarkerOptions.ets  [155/372 行]
+├── Polygon.ets  [180/401 行]
+├── PolygonManager.ets  [83/167 行]
+├── Polyline.ets  [160/371 行]
+├── PolylineManager.ets  [83/167 行]
+└── index.ets  [19/54 行]
+
+camera/  [6 文件, 227 行有效代码]
+├── CameraAnimationCallback.ets  [31/77 行]
+├── CameraChangeDispatcher.ets  [121/210 行]
+├── CameraListener.ets  [22/91 行]
+├── CameraMoveReason.ets  [21/55 行]
+├── CameraPosition.ets  [20/64 行]
+└── index.ets  [12/20 行]
+
+constants/  [1 文件, 36 行有效代码]
+└── DefaultStyles.ets  [36/123 行]
+
+exceptions/  [1 文件, 6 行有效代码]
+└── TooManyIconsException.ets  [6/33 行]
+
+geojson/  [4 文件, 225 行有效代码]
+├── factory.ets  [117/340 行]
+├── geometries.ets  [53/172 行]
+├── index.ets  [29/51 行]
+└── types.ets  [26/51 行]
+
+geometry/  [5 文件, 312 行有效代码]
+├── LatLng.ets  [57/149 行]
+├── LatLngBounds.ets  [100/177 行]
+├── Point.ets  [43/101 行]
+├── ProjectedMeters.ets  [29/62 行]
+└── Rect.ets  [83/158 行]
+
+gestures/  [3 文件, 1204 行有效代码]
+├── GestureListeners.ets  [51/244 行]
+├── MapGestureDetector.ets  [1083/1838 行]
+└── VelocityTracker.ets  [70/142 行]
+
+listeners/  [14 文件, 210 行有效代码]
+├── MapEventListeners.ets  [85/364 行]
+├── OnFpsChangedListener.ets  [3/7 行]
+├── OnInfoWindowClickListener.ets  [5/24 行]
+├── OnInfoWindowCloseListener.ets  [5/23 行]
+├── OnInfoWindowLongClickListener.ets  [5/24 行]
+├── OnMarkerClickListener.ets  [4/25 行]
+├── OnMarkerDragListener.ets  [6/38 行]
+├── OnMarkerLongClickListener.ets  [4/22 行]
+├── OnMarkerSelectListener.ets  [6/31 行]
+├── OnStyleLoadErrorListener.ets  [3/15 行]
+├── OnStyleLoadedListener.ets  [4/17 行]
+├── StateCallback.ets  [20/41 行]
+├── ViewCallback.ets  [20/41 行]
+└── index.ets  [40/73 行]
+
+location/  [20 文件, 1896 行有效代码]
+├── CompassEngine.ets  [134/236 行]
+├── LocationAnimatorCoordinator.ets  [123/214 行]
+├── LocationCameraController.ets  [112/192 行]
+├── LocationComponent.ets  [350/589 行]
+├── LocationComponentConstants.ets  [33/43 行]
+├── LocationComponentOptions.ets  [297/366 行]
+├── LocationLayerController.ets  [321/496 行]
+├── PerformanceMonitor.ets  [119/190 行]
+├── PermissionManager.ets  [100/161 行]
+├── index.ets  [16/46 行]
+
+engine/  [4 文件, 212 行有效代码]
+├── HarmonyLocationEngine.ets  [143/219 行]
+├── LocationEngine.ets  [7/29 行]
+├── LocationEngineCallback.ets  [5/20 行]
+└── LocationEngineRequest.ets  [57/82 行]
+
+listeners/  [4 文件, 13 行有效代码]
+├── OnCameraTrackingChangedListener.ets  [4/17 行]
+├── OnLocationClickListener.ets  [3/11 行]
+├── OnLocationStaleListener.ets  [3/12 行]
+└── OnRenderModeChangedListener.ets  [3/12 行]
+
+modes/  [2 文件, 66 行有效代码]
+├── CameraMode.ets  [44/90 行]
+└── RenderMode.ets  [22/48 行]
+
+network/  [1 文件, 77 行有效代码]
+└── NetworkConfiguration.ets  [77/233 行]
+
+offline/  [8 文件, 359 行有效代码]
+├── OfflineManager.ets  [220/443 行]
+├── OfflineRegion.ets  [57/149 行]
+├── OfflineRegionDefinition.ets  [37/55 行]
+├── OfflineRegionError.ets  [8/18 行]
+├── OfflineRegionExtensions.ets  [19/48 行]
+├── OfflineRegionObserver.ets  [1/9 行]
+├── OfflineRegionStatus.ets  [3/14 行]
+└── index.ets  [14/29 行]
+
+projection/  [3 文件, 291 行有效代码]
+├── Projection.ets  [233/576 行]
+├── VisibleRegion.ets  [56/167 行]
+└── index.ets  [2/11 行]
+
+renderer/  [2 文件, 52 行有效代码]
+├── MapRenderer.ets  [28/57 行]
+└── RenderingStats.ets  [24/57 行]
+
+snapshot/  [5 文件, 532 行有效代码]
+├── MapSnapshot.ets  [68/168 行]
+├── MapSnapshotter.ets  [316/522 行]
+├── SnapshotOptions.ets  [58/147 行]
+├── SnapshotOverlay.ets  [85/237 行]
+└── index.ets  [5/17 行]
+
+storage/  [2 文件, 70 行有效代码]
+├── FileSource.ets  [28/67 行]
+└── ResourceTransform.ets  [42/169 行]
+
+style/  [40 文件, 4481 行有效代码]
+├── Style.ets  [194/380 行]
+├── StyleBuilder.ets  [203/374 行]
+├── index.ets  [15/35 行]
+
+expressions/  [4 文件, 967 行有效代码]
+├── Expression.ets  [855/1975 行]
+├── ExpressionTypes.ets  [19/39 行]
+├── FormatEntry.ets  [84/242 行]
+└── index.ets  [9/25 行]
+
+images/  [1 文件, 123 行有效代码]
+└── Image.ets  [123/246 行]
+
+layers/  [22 文件, 2508 行有效代码]
+├── BackgroundLayer.ets  [78/120 行]
+├── CircleLayer.ets  [146/215 行]
+├── CustomLayer.ets  [73/134 行]
+├── Expression.ets  [25/57 行]
+├── FillExtrusionLayer.ets  [107/160 行]
+├── FillLayer.ets  [116/176 行]
+├── HeatmapLayer.ets  [94/143 行]
+├── HillshadeLayer.ets  [82/128 行]
+├── Layer.ets  [78/151 行]
+├── LayerLayout.ets  [100/503 行]
+├── LayerPaint.ets  [103/590 行]
+├── LayerUtils.ets  [8/21 行]
+├── LayoutPropertyValue.ets  [13/29 行]
+├── LineLayer.ets  [164/237 行]
+├── PaintPropertyValue.ets  [13/29 行]
+├── PropertyFactory.ets  [633/1326 行]
+├── PropertyTypes.ets  [23/79 行]
+├── PropertyValue.ets  [44/81 行]
+├── RasterLayer.ets  [106/157 行]
+├── SymbolLayer.ets  [414/589 行]
+├── TransitionOptions.ets  [24/53 行]
+└── index.ets  [64/100 行]
+
+light/  [1 文件, 3 行有效代码]
+└── Light.ets  [3/33 行]
+
+sources/  [9 文件, 468 行有效代码]
+├── GeoJsonOptions.ets  [65/113 行]
+├── GeoJsonSource.ets  [98/352 行]
+├── ImageSource.ets  [47/65 行]
+├── RasterDemSource.ets  [48/72 行]
+├── RasterSource.ets  [43/59 行]
+├── Source.ets  [39/114 行]
+├── TileSet.ets  [68/153 行]
+├── VectorSource.ets  [51/81 行]
+└── index.ets  [9/24 行]
+
+types/  [2 文件, 87 行有效代码]
+├── MapDebugOptions.ets  [10/75 行]
+└── NativeTypes.ets  [77/220 行]
+
+widgets/  [7 文件, 582 行有效代码]
+├── AttributionButton.ets  [109/190 行]
+├── CompassView.ets  [103/191 行]
+├── CompassVisibility.ets  [5/23 行]
+├── LogoView.ets  [15/28 行]
+├── ScaleBarView.ets  [198/289 行]
+├── WidgetLayoutTypes.ets  [147/236 行]
+└── index.ets  [5/9 行]
+
+================================================================================
+扫描目录: platform/harmony/src
+================================================================================
+
+src/  [22 文件, 1627 行有效代码]
+├── async_task.cpp  [91/217 行]
+├── attach_env.cpp  [8/13 行]
+├── attach_env.hpp  [14/24 行]
+├── bitmap.cpp  [10/14 行]
+├── bitmap.hpp  [18/27 行]
+├── bitmap_factory.cpp  [12/18 行]
+├── bitmap_factory.hpp  [12/19 行]
+├── gl_functions.cpp  [287/308 行]
+├── image.cpp  [128/170 行]
+├── logging_harmony.cpp  [26/34 行]
+├── run_loop.cpp  [378/608 行]
+├── run_loop_impl.hpp  [32/50 行]
+├── string_util.cpp  [33/47 行]
+├── thread.cpp  [36/54 行]
+
+i18n/  [2 文件, 81 行有效代码]
+├── collator.cpp  [68/98 行]
+└── number_format.cpp  [13/29 行]
+
+style/  [1 文件, 24 行有效代码]
+└── harmony_symbol_layer_properties.hpp  [24/68 行]
+
+text/  [1 文件, 192 行有效代码]
+└── local_glyph_rasterizer.cpp  [192/265 行]
+
+timer/  [4 文件, 245 行有效代码]
+├── timer.cpp  [69/114 行]
+├── timer_original.cpp  [70/107 行]
+├── timer_thread_pool.cpp  [78/102 行]
+└── timer_thread_pool.hpp  [28/94 行]
+
+================================================================================
+总体统计
+================================================================================
+
+总文件数: 398
+总行数: 96996
+总有效代码行数: 56289
+总注释/空行: 40707
+代码占比: 58.03%
+
+按文件类型汇总:
+
+  .cpp:
+    文件数: 102
+    总行数: 41668
+    有效代码行数: 30399
+    代码占比: 72.96%
+
+  .ets:
+    文件数: 165
+    总行数: 39627
+    有效代码行数: 20419
+    代码占比: 51.53%
+
+  .h:
+    文件数: 4
+    总行数: 241
+    有效代码行数: 120
+    代码占比: 49.79%
+
+  .hpp:
+    文件数: 81
+    总行数: 8068
+    有效代码行数: 3932
+    代码占比: 48.74%
+
+  .ts:
+    文件数: 46
+    总行数: 7392
+    有效代码行数: 1419
+    代码占比: 19.20%

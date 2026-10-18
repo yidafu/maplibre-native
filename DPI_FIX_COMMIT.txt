@@ -1,0 +1,58 @@
+fix: Add DPI coordinate conversion for queryRenderedFeatures methods
+
+Fixed coordinate handling in queryRenderedFeaturesForPoint and 
+queryRenderedFeaturesForBox to properly convert logical pixels to 
+physical pixels before passing to native layer.
+
+Problem:
+- queryRenderedFeaturesForBox/Point directly passed coordinates to NAPI
+  without DPI conversion
+- This caused inaccurate feature queries on high-DPI devices
+- Inconsistent with other methods like handleMapClick that do convert
+
+Changes:
+1. queryRenderedFeaturesForPoint:
+   - Added pixelRatio multiplication for x, y coordinates
+   - Added debug logging for coordinate conversion tracing
+   
+2. queryRenderedFeaturesForBox:
+   - Added pixelRatio multiplication for left, top, right, bottom
+   - Added debug logging for coordinate conversion tracing
+
+3. Documentation updates:
+   - Clarified parameter units (logical pixels → physical pixels)
+   - Added @note explaining coordinate system
+   - Updated examples to reflect logical pixel input
+
+Technical details:
+- Input: Logical pixels (consistent with touch event coordinates)
+- Internal: Auto-multiply by pixelRatio
+- Output to C++: Physical pixels (as expected by render engine)
+- Formula: physicalCoordinate = logicalCoordinate × pixelRatio
+
+Impact:
+- ✅ No breaking changes to API signature
+- ✅ Fixes DPI query accuracy bug
+- ✅ Maintains consistency with handleMapClick
+- ✅ All 5 test pages work correctly without modification
+
+Test pages that benefit:
+- PointClickQueryTestPage.ets
+- QueryRenderedFeaturesBoxCountTestPage.ets
+- QueryRenderedFeaturesBoxHighlightTestPage.ets
+- QueryRenderedFeaturesBoxSymbolCountTestPage.ets
+- QueryRenderedFeaturesPropertiesTestPage.ets
+
+Verification needed:
+- Test on devices with different DPI (1.0x, 2.0x, 3.0x)
+- Verify touch click matches query result
+- Check debug logs show correct coordinate conversion
+
+Related:
+- Project rule: "屏幕坐标传递到cpp地图对象上的方法是需要乘以DPI"
+- Reference: MarkerManager.handleMapClick() for consistent pattern
+- C++ layer: native_map_view_query.cpp (no changes needed)
+
+
+
+
